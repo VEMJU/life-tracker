@@ -1,0 +1,11 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / tooling
+*.log
+node_modules/
+
+# Local Claude Code config
+.claude/

@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#000000" />
+  <title>Nathan Vélez — Son of God</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css?v=5" />
+</head>
+<body data-view="home">
+
+  <!-- ───────────────────────────────  AMBIENT BACKDROP  ─────────────────────────────── -->
+  <div class="backdrop" aria-hidden="true">
+    <div class="backdrop__noise"></div>
+    <div class="backdrop__vignette"></div>
+    <svg class="backdrop__cross" viewBox="0 0 200 360" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <filter id="cross-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2.4" />
+        </filter>
+        <linearGradient id="cross-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.72" />
+          <stop offset="55%"  stop-color="#ffffff" stop-opacity="0.96" />
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0.50" />
+        </linearGradient>
+      </defs>
+      <g filter="url(#cross-blur)" fill="url(#cross-grad)">
+        <rect x="93" y="18"  width="14" height="324" rx="1.5" />
+        <rect x="74" y="54"  width="52" height="9"   rx="1.5" />
+        <rect x="46" y="104" width="108" height="15" rx="1.5" />
+        <g transform="rotate(-22 100 238)">
+          <rect x="56" y="232" width="88" height="11" rx="1.5" />
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ───────────────────────────────  SIDEBAR (desktop)  ─────────────────────────────── -->
+  <aside class="sidebar" aria-label="Primary navigation">
+    <a class="sidebar__brand" href="#" data-tab="home" aria-label="Home">
+      <span class="sidebar__sigil" aria-hidden="true">
+        <svg viewBox="0 0 24 36" width="20" height="28">
+          <g fill="currentColor">
+            <rect x="11" y="2"  width="2" height="32" rx=".5"/>
+            <rect x="8"  y="5"  width="8"  height="1.6" rx=".4"/>
+            <rect x="5"  y="11" width="14" height="2.4" rx=".5"/>
+            <g transform="rotate(-22 12 24)"><rect x="6" y="23" width="12" height="1.8" rx=".4"/></g>
+          </g>
+        </svg>
+      </span>
+      <span class="sidebar__wordmark">NV</span>
+    </a>
+
+    <nav class="sidebar__nav" role="tablist" aria-label="Modules">
+      <button class="navlink is-active" role="tab" aria-selected="true" data-tab="home">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-9Z" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Home</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="gym">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 9v6M21 9v6M6 7v10M18 7v10M6 12h12" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Gym</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="skincare">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 2s6 7 6 12a6 6 0 1 1-12 0c0-5 6-12 6-12Z" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Skincare</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="nutrition">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 2v6M9 8h6M7 12c0 6 4 10 5 10s5-4 5-10c0-2-2-4-5-4s-5 2-5 4Z" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Nutrition</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="finance">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 17l5-5 4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 7h6v6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Finance</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="photos">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="3" y="6" width="18" height="14" rx="2"/>
+          <circle cx="12" cy="13" r="4"/>
+          <path d="M8 6l2-3h4l2 3" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Photos</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="academics">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 7l9-4 9 4-9 4-9-4Z" stroke-linejoin="round"/>
+          <path d="M7 10v6c0 1 2 3 5 3s5-2 5-3v-6" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Academics</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="vision">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="navlink__label">Vision</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="goals">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>
+        </svg>
+        <span class="navlink__label">Goals</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="reminders">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Reminders</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="logs">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Logs</span>
+      </button>
+    </nav>
+
+    <p class="sidebar__seal">SOLI · DEO · GLORIA</p>
+  </aside>
+
+  <!-- ───────────────────────────────  TOP-BAR (mobile)  ─────────────────────────────── -->
+  <header class="topbar" aria-label="Primary navigation, mobile">
+    <span class="topbar__sigil" aria-hidden="true">
+      <svg viewBox="0 0 24 36" width="16" height="22">
+        <g fill="currentColor">
+          <rect x="11" y="2"  width="2" height="32" rx=".5"/>
+          <rect x="8"  y="5"  width="8"  height="1.6" rx=".4"/>
+          <rect x="5"  y="11" width="14" height="2.4" rx=".5"/>
+          <g transform="rotate(-22 12 24)"><rect x="6" y="23" width="12" height="1.8" rx=".4"/></g>
+        </g>
+      </svg>
+    </span>
+    <nav class="topbar__nav" aria-label="Modules">
+      <button class="topbar__link is-active" data-tab="home">Home</button>
+      <button class="topbar__link" data-tab="gym">Gym</button>
+      <button class="topbar__link" data-tab="skincare">Skincare</button>
+      <button class="topbar__link" data-tab="nutrition">Nutrition</button>
+      <button class="topbar__link" data-tab="finance">Finance</button>
+      <button class="topbar__link" data-tab="photos">Photos</button>
+      <button class="topbar__link" data-tab="academics">Academics</button>
+      <button class="topbar__link" data-tab="vision">Vision</button>
+      <button class="topbar__link" data-tab="goals">Goals</button>
+      <button class="topbar__link" data-tab="reminders">Reminders</button>
+      <button class="topbar__link" data-tab="logs">Logs</button>
+    </nav>
+  </header>
+
+  <!-- ───────────────────────────────  SHELL  ─────────────────────────────── -->
+  <div class="shell">
+
+    <!-- MASTER HEADER -->
+    <header class="masthead">
+      <p class="masthead__overline">Personal Life Tracker</p>
+      <h1 class="masthead__title">
+        <span class="masthead__name">NATHAN&nbsp;VÉLEZ</span>
+        <span class="masthead__sep" aria-hidden="true">:</span>
+        <span class="masthead__epithet">SON&nbsp;OF&nbsp;GOD</span>
+      </h1>
+      <p class="masthead__quote">
+        <span class="masthead__quote-mark" aria-hidden="true">&ldquo;</span>
+        With God all things are possible.
+        <span class="masthead__quote-mark" aria-hidden="true">&rdquo;</span>
+        <span class="masthead__cite">— Matthew 19:26</span>
+      </p>
+      <div class="masthead__rule" aria-hidden="true">
+        <span></span><i></i><span></span>
+      </div>
+    </header>
+
+    <!-- VIEW HEAD -->
+    <div class="view-head">
+      <p class="view-head__eyebrow" data-view-eyebrow>Dashboard</p>
+      <h2 class="view-head__title" data-view-title>Home</h2>
+    </div>
+
+    <!-- ════════════════════  VIEWS  ════════════════════ -->
+    <div class="views">
+
+      <!-- ───────────────────────────  HOME  ─────────────────────────── -->
+      <main class="board board--home" data-tab-panel="home">
+
+        <!-- COUNTDOWN -->
+        <article class="card card--countdown reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">I.</span>
+            <h3 class="card__title">Countdown Widget</h3>
+            <button class="icon-btn" data-edit="countdown" aria-label="Edit countdown target">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M12 20h9" stroke-linecap="round"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </header>
+          <div class="countdown">
+            <p class="countdown__label" data-countdown-label>Protocols Begin In</p>
+            <div class="countdown__digits" data-countdown>
+              <span class="cdgroup"><span data-d>00</span><i>Days</i></span>
+              <span class="sep" aria-hidden="true">:</span>
+              <span class="cdgroup"><span data-h>00</span><i>Hours</i></span>
+              <span class="sep" aria-hidden="true">:</span>
+              <span class="cdgroup"><span data-m>00</span><i>Mins</i></span>
+              <span class="sep" aria-hidden="true">:</span>
+              <span class="cdgroup"><span data-s>00</span><i>Secs</i></span>
+            </div>
+            <p class="countdown__foot">
+              <span class="countdown__pulse" aria-hidden="true"></span>
+              <span data-countdown-target>Target locked</span>
+            </p>
+          </div>
+        </article>
+
+        <!-- TODAY'S WORKOUT ROUTINE — clickable, routes to Gym -->
+        <article class="card card--workout reveal is-clickable" style="--d:.12s"
+                 data-route="gym" role="button" tabindex="0"
+                 aria-label="Today's workout routine — open the Gym tab">
+          <header class="card__head">
+            <span class="card__tag">II.</span>
+            <h3 class="card__title">Today's Workout Routine</h3>
+            <span class="card__route" aria-hidden="true">Gym&nbsp;→</span>
+          </header>
+          <div class="workout" data-no-route>
+            <div class="workout__body" data-workout-today>
+              <!-- injected -->
+            </div>
+          </div>
+          <footer class="workout__foot">
+            <button class="btn btn--ghost btn--sm" data-route="gym">Open Full Session →</button>
+          </footer>
+        </article>
+
+        <!-- GOALS OVERVIEW (live) -->
+        <article class="card card--goals-ov reveal" style="--d:.18s">
+          <header class="card__head">
+            <span class="card__tag">III.</span>
+            <h3 class="card__title">Goals Overview</h3>
+            <button class="card__route-btn" data-route="goals">Manage&nbsp;→</button>
+          </header>
+          <div class="goals-ov" data-goals-widget>
+            <!-- injected -->
+          </div>
+        </article>
+
+        <!-- POMODORO -->
+        <article class="card card--pomodoro reveal" style="--d:.24s">
+          <header class="card__head">
+            <span class="card__tag">IV.</span>
+            <h3 class="card__title">Pomodoro Timer</h3>
+            <button class="icon-btn" data-edit="pomodoro" aria-label="Edit pomodoro duration">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M12 20h9" stroke-linecap="round"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </header>
+          <div class="pomo">
+            <div class="pomo__ring">
+              <svg viewBox="0 0 120 120" width="170" height="170">
+                <circle class="pomo__track" cx="60" cy="60" r="52"/>
+                <circle class="pomo__bar"   cx="60" cy="60" r="52" data-pomo-bar/>
+              </svg>
+              <div class="pomo__center">
+                <span class="pomo__time" data-pomo-time>25:00</span>
+                <span class="pomo__phase">Focus</span>
+              </div>
+            </div>
+            <p class="pomo__session">Work Session&nbsp;<b data-pomo-count>#1</b></p>
+            <div class="pomo__ctrl">
+              <button class="btn-bracket" data-pomo="start"><span>[</span>&nbsp;Play&nbsp;<span>]</span></button>
+              <button class="btn-bracket" data-pomo="pause"><span>[</span>&nbsp;Pause&nbsp;<span>]</span></button>
+              <button class="btn-bracket" data-pomo="reset"><span>[</span>&nbsp;Reset&nbsp;<span>]</span></button>
+            </div>
+          </div>
+        </article>
+
+      </main>
+
+      <!-- ───────────────────────────  GOALS  ─────────────────────────── -->
+      <section class="board board--goals-pro" data-tab-panel="goals" hidden>
+
+        <article class="card card--goal-new reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">✦</span>
+            <h3 class="card__title">Forge a Life Goal</h3>
+          </header>
+          <form class="goal-new-form" data-goal-form autocomplete="off">
+            <div class="gnf-field gnf-field--title">
+              <label>The Goal</label>
+              <input class="input" data-gf="title" required maxlength="80" placeholder="e.g. Reach 10% body fat by Christmas">
+            </div>
+            <div class="gnf-field">
+              <label>Category</label>
+              <select class="input" data-gf="category"><!-- injected --></select>
+            </div>
+            <div class="gnf-field">
+              <label>Deadline</label>
+              <input class="input" type="date" data-gf="deadline" title="Deadline (optional)">
+            </div>
+            <button type="submit" class="btn btn--primary gnf-submit">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+              Add Goal
+            </button>
+          </form>
+        </article>
+
+        <article class="card card--goals-board reveal" style="--d:.08s">
+          <header class="card__head">
+            <span class="card__tag">∴</span>
+            <h3 class="card__title">Active Goals</h3>
+            <span class="card__count" data-goals-count>0</span>
+          </header>
+          <div class="goal-filter-bar" data-goal-filter-bar><!-- injected --></div>
+          <div class="goals-grid" data-goals-grid><!-- injected --></div>
+        </article>
+
+        <article class="card card--shopping reveal" style="--d:.12s">
+          <header class="card__head">
+            <span class="card__tag">⛁</span>
+            <h3 class="card__title">Shopping List</h3>
+            <select class="input input--sm" data-shop-filter><!-- injected --></select>
+          </header>
+          <div class="shopping-body" data-shopping-body><!-- injected --></div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  REMINDERS  ─────────────────────────── -->
+      <section class="board board--stack" data-tab-panel="reminders" hidden>
+        <article class="card reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">✦</span>
+            <h3 class="card__title">New Reminder</h3>
+          </header>
+          <form class="form" data-reminder-form autocomplete="off">
+            <div class="field">
+              <label for="rem-text">Reminder</label>
+              <input id="rem-text" class="input" name="text" required maxlength="120"
+                     placeholder="e.g. Evening skincare — retinol" />
+            </div>
+            <div class="field">
+              <label for="rem-when">When</label>
+              <input id="rem-when" class="input" name="when" type="datetime-local" required />
+            </div>
+            <div class="form__actions">
+              <button type="submit" class="btn btn--primary">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                Set Reminder
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article class="card reveal" style="--d:.12s">
+          <header class="card__head">
+            <span class="card__tag">∴</span>
+            <h3 class="card__title">Upcoming</h3>
+            <span class="card__count" data-reminders-count>0</span>
+          </header>
+          <ul class="reminders-list" data-reminders-list>
+            <!-- injected -->
+          </ul>
+        </article>
+      </section>
+
+      <!-- ───────────────────────────  NUTRITION  ─────────────────────────── -->
+      <section class="board board--nutrition" data-tab-panel="nutrition" hidden>
+
+        <!-- Row 1: Macro Rings + Targets -->
+        <article class="card card--macro-rings reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">◉</span>
+            <h3 class="card__title">Daily Macros</h3>
+            <button class="icon-btn" id="targets-toggle" title="Edit macro targets" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linejoin="round"/></svg>
+            </button>
+          </header>
+          <div class="macro-rings-row" data-macro-rings><!-- injected --></div>
+          <div class="targets-panel" id="targets-panel" hidden>
+            <p class="targets-panel__label">Lean Bulk Targets</p>
+            <div data-macro-targets></div>
+          </div>
+        </article>
+
+        <!-- Row 1b: Meals log -->
+        <article class="card card--meals reveal" style="--d:.10s">
+          <header class="card__head">
+            <span class="card__tag">②</span>
+            <h3 class="card__title">Meal Log — <span id="nut-date-lbl" style="font-weight:400;color:var(--c-fog)"></span></h3>
+          </header>
+          <div data-meals-host><!-- injected --></div>
+        </article>
+
+        <!-- Row 2: Supplement Tracker -->
+        <article class="card card--supp-full reveal" style="--d:.15s">
+          <header class="card__head">
+            <span class="card__tag">⊕</span>
+            <h3 class="card__title">Supplement Stack</h3>
+          </header>
+          <div data-supplements class="supp-list"><!-- injected --></div>
+          <form class="supp-add-form" data-supp-form autocomplete="off">
+            <p class="supp-add-form__label">Add Supplement</p>
+            <div class="supp-add-form__grid">
+              <div class="field"><label>Name</label>
+                <input class="input input--sm" data-sf-name placeholder="e.g. Creatine" maxlength="40" required/>
+              </div>
+              <div class="field"><label>Daily doses</label>
+                <input class="input input--sm" type="number" data-sf-freq value="1" min="1" max="6" inputmode="numeric"/>
+              </div>
+              <div class="field"><label>Times <span class="field__opt">comma-separated</span></label>
+                <input class="input input--sm" data-sf-times placeholder="e.g. 08:00, 20:00"/>
+              </div>
+              <div class="field"><label>Note <span class="field__opt">optional</span></label>
+                <input class="input input--sm" data-sf-note placeholder="e.g. Take with food"/>
+              </div>
+            </div>
+            <div class="form__actions">
+              <button type="submit" class="btn btn--primary btn--sm">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                Add to Stack
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <!-- Row 2b: Electrolyte Monitor -->
+        <article class="card card--elec-full reveal" style="--d:.20s">
+          <header class="card__head">
+            <span class="card__tag">⚡</span>
+            <h3 class="card__title">Electrolyte &amp; Face Aesthetics</h3>
+          </header>
+          <p class="elec-desc">Track Sodium vs Potassium ratio to minimize facial water retention and achieve hollow cheek structure.</p>
+          <div data-electrolyte><!-- injected --></div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  FINANCE / SHOPPING  ─────────────────────────── -->
+      <section class="board board--finance" data-tab-panel="finance" hidden>
+
+        <!-- Row 1: Dual-Vault command strip -->
+        <article class="card card--vaults reveal" style="--d:.04s">
+          <header class="card__head">
+            <span class="card__tag">$</span>
+            <h3 class="card__title">Capital Vaults</h3>
+            <button class="card__route-btn" data-fin-edit-vaults>⚙ Edit</button>
+          </header>
+          <div class="fin-vaults" data-fin-vaults><!-- injected --></div>
+        </article>
+
+        <!-- Row 2 · Panel A: Personal Growth & Aesthetics -->
+        <article class="card card--shop-personal reveal" style="--d:.10s">
+          <header class="card__head">
+            <span class="card__tag">◆</span>
+            <h3 class="card__title">Personal Growth &amp; Aesthetics</h3>
+            <button class="chip chip--sm" data-fin-cats="personal" title="Customize categories">✎ Cats</button>
+            <button class="chip chip--sm" data-fin-whatif="personal" title="Toggle What-If projection">What-If</button>
+          </header>
+          <div class="fin-cats-editor" data-fin-cats-editor="personal" hidden></div>
+          <div class="fin-list" data-fin-list="personal"><!-- injected --></div>
+          <footer class="fin-foot" data-fin-foot="personal"><!-- injected --></footer>
+          <div class="fin-addhost" data-fin-addhost="personal"><!-- injected --></div>
+        </article>
+
+        <!-- Row 2 · Panel B: Bronx Asset Procurement -->
+        <article class="card card--shop-asset reveal" style="--d:.16s">
+          <header class="card__head">
+            <span class="card__tag">⌂</span>
+            <h3 class="card__title">Bronx Asset Procurement</h3>
+            <button class="chip chip--sm" data-fin-cats="asset" title="Customize strategic categories">✎ Cats</button>
+            <button class="chip chip--sm" data-fin-whatif="asset" title="Toggle What-If projection">What-If</button>
+            <button class="chip chip--sm" data-fin-rent-roll-toggle title="Switch to Rent Roll view">⊞ Rent Roll</button>
+          </header>
+          <div class="fin-cats-editor" data-fin-cats-editor="asset" hidden></div>
+          <div class="fin-rent-roll" data-fin-rent-roll hidden><!-- injected --></div>
+          <div class="fin-list" data-fin-list="asset"><!-- injected --></div>
+          <footer class="fin-foot" data-fin-foot="asset"><!-- injected --></footer>
+          <div class="fin-addhost" data-fin-addhost="asset"><!-- injected --></div>
+        </article>
+
+        <!-- Row 3: Balance Trends (sparklines) -->
+        <article class="card card--fin-ledger reveal" style="--d:.22s">
+          <header class="card__head">
+            <span class="card__tag">∿</span>
+            <h3 class="card__title">Balance Trends</h3>
+            <span class="card__count" data-fin-ledger-count title="Recorded movements">0</span>
+            <button class="card__route-btn" data-fin-clear-ledger>Reset</button>
+          </header>
+          <div class="fin-trends" data-fin-trends><!-- injected --></div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  PHOTOS  ─────────────────────────── -->
+      <section class="board board--photos" data-tab-panel="photos" hidden>
+
+        <!-- Control card: filter + upload -->
+        <article class="card card--photo-ctrl reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">◈</span>
+            <h3 class="card__title">Photo Journal</h3>
+            <button class="chip chip--sm" data-photo-compare-toggle title="Select two photos to compare">⇄ Compare</button>
+            <label class="btn btn--primary btn--sm ph-upload-label" tabindex="0" title="Add a photo">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+              Add Photo
+              <input type="file" accept="image/*" data-photo-file-input class="sr-only">
+            </label>
+          </header>
+          <!-- Category filter pills -->
+          <div class="ph-filter" data-photo-filter><!-- injected --></div>
+          <!-- Upload zone (slides in after file is chosen) -->
+          <div class="ph-upload-zone" data-photo-upload-zone hidden>
+            <div class="ph-upload-preview-wrap">
+              <img class="ph-upload-preview" data-photo-preview alt="Preview" />
+              <span class="ph-upload-placeholder" data-ph-placeholder>No image selected</span>
+            </div>
+            <div class="ph-upload-meta">
+              <input class="input input--sm" data-photo-caption placeholder="Caption — e.g. Kitchen before reno" maxlength="100">
+              <input class="input input--sm" type="date" data-photo-date>
+              <select class="input input--sm" data-photo-cat>
+                <option value="personal">Personal</option>
+                <option value="gym">Gym</option>
+                <option value="bronx">Bronx</option>
+                <option value="family">Family</option>
+                <option value="business">Business</option>
+              </select>
+              <select class="input input--sm" data-photo-tag>
+                <option value="">No tag</option>
+                <option value="before">Before</option>
+                <option value="after">After</option>
+                <option value="progress">Progress</option>
+              </select>
+            </div>
+            <div class="ph-upload-actions">
+              <button type="button" class="btn btn--ghost btn--sm" data-photo-cancel>Cancel</button>
+              <button type="button" class="btn btn--primary btn--sm" data-photo-save>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Save Photo
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Photo grid -->
+        <article class="card card--photo-grid reveal" style="--d:.10s">
+          <header class="card__head">
+            <span class="card__tag">⊞</span>
+            <h3 class="card__title">Photos</h3>
+            <span class="card__count" data-photo-count>0</span>
+          </header>
+          <div class="photo-grid" data-photo-grid><!-- injected --></div>
+        </article>
+
+        <!-- Before / After comparison panel (shown when 2 photos selected) -->
+        <article class="card card--compare reveal" style="--d:.15s" data-photo-compare hidden>
+          <header class="card__head">
+            <span class="card__tag">⇄</span>
+            <h3 class="card__title">Before / After</h3>
+            <button class="icon-btn" data-compare-clear aria-label="Clear comparison">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+            </button>
+          </header>
+          <div class="compare-grid">
+            <div class="compare-side" data-compare-left><!-- injected --></div>
+            <div class="compare-side" data-compare-right><!-- injected --></div>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  ACADEMICS  ─────────────────────────── -->
+      <section class="board board--academics" data-tab-panel="academics" hidden>
+
+        <!-- Top Row: SAT + Credits -->
+        <div class="acad-dual-row">
+
+          <article class="card card--sat reveal" style="--d:.05s">
+            <header class="card__head">
+              <span class="card__tag">◈</span>
+              <h3 class="card__title">SAT Tracker</h3>
+              <span class="acad-goal-chip" data-sat-goal-chip>Goal: 1550</span>
+              <button class="btn btn--sm btn--ghost" data-sat-add>+ Attempt</button>
+            </header>
+            <div class="sat-body" data-sat-body><!-- injected --></div>
+          </article>
+
+          <article class="card card--credits reveal" style="--d:.08s">
+            <header class="card__head">
+              <span class="card__tag">✦</span>
+              <h3 class="card__title">College Credits</h3>
+            </header>
+            <div class="credits-body" data-credits-body><!-- injected --></div>
+          </article>
+
+        </div>
+
+        <!-- AP / CLEP Subjects -->
+        <article class="card card--subjects reveal" style="--d:.10s">
+          <header class="card__head">
+            <span class="card__tag">◎</span>
+            <h3 class="card__title">AP &amp; CLEP Subjects</h3>
+            <div class="acad-type-tabs" data-subj-filter-bar><!-- injected --></div>
+            <button class="btn btn--sm btn--ghost" data-subj-add>+ Subject</button>
+          </header>
+          <div class="subjects-grid" data-subjects-grid><!-- injected --></div>
+        </article>
+
+        <!-- Mid Row: Essay + Recs -->
+        <div class="acad-dual-row">
+
+          <article class="card card--essay reveal" style="--d:.12s">
+            <header class="card__head">
+              <span class="card__tag">✎</span>
+              <h3 class="card__title">College Essay</h3>
+              <button class="btn btn--sm btn--ghost" data-essay-add-supp>+ School</button>
+            </header>
+            <div class="essay-body" data-essay-body><!-- injected --></div>
+          </article>
+
+          <article class="card card--recs reveal" style="--d:.14s">
+            <header class="card__head">
+              <span class="card__tag">✉</span>
+              <h3 class="card__title">Recommendations</h3>
+              <button class="btn btn--sm btn--ghost" data-rec-add>+ Add</button>
+            </header>
+            <div class="recs-body" data-recs-body><!-- injected --></div>
+          </article>
+
+        </div>
+
+        <!-- Extracurriculars -->
+        <article class="card card--ecs reveal" style="--d:.16s">
+          <header class="card__head">
+            <span class="card__tag">⚡</span>
+            <h3 class="card__title">Extracurriculars</h3>
+            <span class="acad-nyc-tag">NYC</span>
+            <button class="btn btn--sm btn--ghost" data-ec-add>+ Activity</button>
+          </header>
+          <div class="ecs-grid" data-ecs-grid><!-- injected --></div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  LOGS  ─────────────────────────── -->
+      <section class="board board--logs" data-tab-panel="logs" hidden>
+
+        <!-- Top Row: Sleep + Hydration -->
+        <div class="log-dual-row">
+
+          <article class="card card--sleep reveal" style="--d:.05s">
+            <header class="card__head">
+              <span class="card__tag">☾</span>
+              <h3 class="card__title">Sleep</h3>
+              <span class="log-goal-chip" data-sleep-goal-chip>Goal: 8h</span>
+              <button class="btn btn--sm btn--ghost" data-sleep-add>+ Log Night</button>
+            </header>
+            <div class="sleep-body" data-sleep-body><!-- injected --></div>
+          </article>
+
+          <article class="card card--water reveal" style="--d:.08s">
+            <header class="card__head">
+              <span class="card__tag">◉</span>
+              <h3 class="card__title">Hydration</h3>
+              <span class="log-goal-chip" data-water-goal-chip>Goal: 100 oz</span>
+            </header>
+            <div class="water-body" data-water-body><!-- injected --></div>
+          </article>
+
+        </div>
+
+        <!-- Running -->
+        <article class="card card--running reveal" style="--d:.10s">
+          <header class="card__head">
+            <span class="card__tag">➳</span>
+            <h3 class="card__title">Running</h3>
+            <span class="log-map-tag">🗺 NYC route map · coming soon</span>
+            <button class="btn btn--sm btn--ghost" data-run-add>+ Log Run</button>
+          </header>
+          <div class="running-body" data-running-body><!-- injected --></div>
+        </article>
+
+        <!-- Quick Vitals -->
+        <article class="card card--vitals reveal" style="--d:.14s">
+          <header class="card__head">
+            <span class="card__tag">✦</span>
+            <h3 class="card__title">Quick Vitals</h3>
+            <button class="btn btn--sm btn--ghost" data-vital-add>+ Tracker</button>
+          </header>
+          <div class="vitals-grid" data-vitals-grid><!-- injected --></div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────────────────  GYM HUB  ─────────────────────────── -->
+      <section class="board board--gym" data-tab-panel="gym" hidden>
+
+        <!-- LAYOUT RESET -->
+        <div class="gym-layout-reset">
+          <button class="gym-reset-btn" data-gym-reset-layout title="Reset all card positions to default">⟲ Reset Card Positions</button>
+        </div>
+
+        <!-- BODY WEIGHT TRACKER -->
+        <article class="card card--bw reveal" style="--d:.0s" data-bw-card>
+          <header class="card__head">
+            <span class="card__tag">⚖</span>
+            <h3 class="card__title">Body Weight</h3>
+          </header>
+          <div class="bw-grid">
+            <div class="bw-block">
+              <p class="bw-block__label">Starting Weight</p>
+              <p class="bw-block__sub">as of <span data-bw-startdate>2026-06-01</span></p>
+              <div class="bw-input-wrap">
+                <input class="input bw-input" type="number" step="0.1" min="0" max="500"
+                       data-bw-start inputmode="decimal" placeholder="e.g. 185.0" />
+                <span class="bw-unit">kg</span>
+              </div>
+            </div>
+            <div class="bw-block bw-block--center">
+              <p class="bw-block__label">Change</p>
+              <p class="bw__delta" data-bw-delta>—</p>
+            </div>
+            <div class="bw-block">
+              <p class="bw-block__label">Current Weight</p>
+              <p class="bw-block__sub">update each session</p>
+              <div class="bw-input-wrap">
+                <input class="input bw-input" type="number" step="0.1" min="0" max="500"
+                       data-bw-current inputmode="decimal" placeholder="e.g. 182.5" />
+                <span class="bw-unit">kg</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card card--split reveal" style="--d:.05s">
+          <header class="card__head">
+            <span class="card__tag">⚔</span>
+            <h3 class="card__title">5-Day Aesthetic Split</h3>
+            <span class="card__count" data-split-volume>—</span>
+          </header>
+          <div class="day-pills" data-day-pills role="tablist" aria-label="Training day">
+            <!-- injected -->
+          </div>
+          <div class="session" data-gym-session aria-live="polite">
+            <!-- injected -->
+          </div>
+        </article>
+
+        <article class="card card--gym-timer reveal" style="--d:.12s">
+          <header class="card__head">
+            <span class="card__tag">⏱</span>
+            <h3 class="card__title" data-gtimer-label>Rest Timer</h3>
+          </header>
+
+          <div class="gtimer">
+            <div class="gtimer__readout">
+              <span class="gtimer__time" data-gtimer-time>02:00</span>
+            </div>
+            <div class="gtimer__track"><i data-gtimer-bar></i></div>
+
+            <div class="gtimer__presets" role="group" aria-label="Quick durations">
+              <button class="chip" data-gtimer-preset="60">01:00</button>
+              <button class="chip" data-gtimer-preset="90">01:30</button>
+              <button class="chip" data-gtimer-preset="120">02:00</button>
+              <button class="chip" data-gtimer-preset="180">03:00</button>
+            </div>
+
+            <div class="gtimer__custom">
+              <label class="gtimer__cfield">
+                <span>Min</span>
+                <input class="input input--sm" type="number" min="0" max="99" data-gtimer-min value="2" inputmode="numeric" />
+              </label>
+              <span class="gtimer__colon">:</span>
+              <label class="gtimer__cfield">
+                <span>Sec</span>
+                <input class="input input--sm" type="number" min="0" max="59" data-gtimer-sec value="0" inputmode="numeric" />
+              </label>
+            </div>
+
+            <div class="gtimer__ctrl">
+              <button class="btn-bracket" data-gtimer="start"><span>[</span>&nbsp;Start&nbsp;<span>]</span></button>
+              <button class="btn-bracket" data-gtimer="pause"><span>[</span>&nbsp;Pause&nbsp;<span>]</span></button>
+              <button class="btn-bracket" data-gtimer="reset"><span>[</span>&nbsp;Reset&nbsp;<span>]</span></button>
+            </div>
+
+            <div class="field gtimer__desc">
+              <label for="gtimer-desc">Description</label>
+              <input id="gtimer-desc" class="input" data-gtimer-desc maxlength="48"
+                     placeholder="e.g. Rest Timer · Pre-Workout Kick-in" />
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- ───────────────  REUSABLE PLACEHOLDER (sealed tabs)  ─────────────── -->
+      <section class="board board--placeholder" data-tab-panel="placeholder" hidden>
+        <article class="card card--placeholder">
+          <div class="placeholder">
+            <div class="placeholder__mark" aria-hidden="true">
+              <svg viewBox="0 0 80 80" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.1">
+                <path d="M40 6 L74 40 L40 74 L6 40 Z" />
+                <path d="M40 22 L58 40 L40 58 L22 40 Z" />
+                <circle cx="40" cy="40" r="3" fill="currentColor"/>
+              </svg>
+            </div>
+            <p class="placeholder__eyebrow" data-placeholder-eyebrow>Module</p>
+            <h3 class="placeholder__title" data-placeholder-title>Module Reserved</h3>
+            <p class="placeholder__desc" data-placeholder-desc>This protocol is sealed. Implementation arrives in the next ascension cycle.</p>
+            <div class="placeholder__lines" aria-hidden="true"><span></span><span></span><span></span></div>
+          </div>
+        </article>
+      </section>
+
+    </div><!-- /views -->
+
+    <footer class="footer">
+      <span>© Nathan Vélez</span>
+      <span class="footer__dot" aria-hidden="true">·</span>
+      <span>Built with reverence</span>
+    </footer>
+  </div>
+
+  <!-- ════════════════════  MODALS  ════════════════════ -->
+
+  <!-- Countdown modal -->
+  <div class="modal" id="modal-countdown" aria-hidden="true">
+    <div class="modal__overlay" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="cd-modal-title">
+      <header class="modal__head">
+        <h3 class="modal__title" id="cd-modal-title">Edit Countdown</h3>
+        <button class="icon-btn" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <form class="form" data-countdown-form autocomplete="off">
+        <div class="field">
+          <label for="cd-label">Label</label>
+          <input id="cd-label" class="input" name="label" maxlength="40" placeholder="e.g. Protocols Begin In" />
+        </div>
+        <div class="field">
+          <label for="cd-target">Target date &amp; time</label>
+          <input id="cd-target" class="input" name="target" type="datetime-local" required />
+        </div>
+        <div class="form__actions form__actions--split">
+          <button type="button" class="btn btn--ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pomodoro modal -->
+  <div class="modal" id="modal-pomodoro" aria-hidden="true">
+    <div class="modal__overlay" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="pomo-modal-title">
+      <header class="modal__head">
+        <h3 class="modal__title" id="pomo-modal-title">Edit Pomodoro</h3>
+        <button class="icon-btn" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <form class="form" data-pomodoro-form autocomplete="off">
+        <div class="field">
+          <label for="pomo-min">Focus length (minutes)</label>
+          <input id="pomo-min" class="input" name="minutes" type="number" min="1" max="180" required value="25" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="pomo-phase">Phase label</label>
+          <input id="pomo-phase" class="input" name="phase" maxlength="20" placeholder="e.g. Focus / Deep Work" />
+        </div>
+        <div class="form__actions form__actions--split">
+          <button type="button" class="btn btn--ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Photo lightbox modal -->
+  <div class="modal modal--photo" id="modal-photo" aria-hidden="true">
+    <div class="modal__overlay" data-pm-close></div>
+    <div class="modal__dialog modal__dialog--photo" role="dialog" aria-modal="true" aria-labelledby="ph-modal-title">
+      <button class="photo-modal__close icon-btn" data-pm-close aria-label="Close photo">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+      </button>
+      <img class="photo-modal__img" data-pm-img alt="" />
+      <div class="photo-modal__info">
+        <p class="photo-modal__caption" id="ph-modal-title" data-pm-caption></p>
+        <div class="photo-modal__meta">
+          <span data-pm-cat></span>
+          <span data-pm-date></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" data-toast aria-live="polite"></div>
+
+  <!-- ════════════  PROGRESS LOG PANEL (gym, draggable + resizable)  ════════════ -->
+  <div class="log-panel" data-log-panel aria-label="Exercise progress log">
+    <div class="log-panel__header" data-log-drag-handle>
+      <span class="log-panel__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l5-5 4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 7h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="log-panel__title">Progress Log</span>
+      <select class="log-panel__select" data-log-exercise aria-label="Select exercise">
+        <option value="">— Select exercise —</option>
+      </select>
+      <button class="log-panel__toggle" data-log-toggle aria-label="Collapse / expand">—</button>
+    </div>
+    <div class="log-panel__body" data-log-body>
+      <!-- injected by ProgressLog module -->
+    </div>
+    <div class="log-panel__resize-hint" aria-hidden="true">↔ drag corner to resize</div>
+  </div>
+
+  <!-- ═══════════════  FLOATING NUTRITION WIDGETS  ═══════════════ -->
+  <div class="floating-widgets">
+
+    <!-- Widget A: Macro Quick-View Ring -->
+    <article class="card fw-card" data-widget="macro-view">
+      <header class="card__head">
+        <span class="card__tag">◉</span>
+        <h3 class="card__title">Macros</h3>
+      </header>
+      <div data-macro-widget><!-- injected --></div>
+    </article>
+
+    <!-- Widget B: Nutrition Heatmap -->
+    <article class="card fw-card" data-widget="nutri-heatmap">
+      <header class="card__head">
+        <span class="card__tag">▦</span>
+        <h3 class="card__title">Nutrition Track</h3>
+      </header>
+      <div data-nutri-heatmap><!-- injected --></div>
+    </article>
+
+    <!-- Widget C: Supplement Tracker (compact) -->
+    <article class="card fw-card" data-widget="supp-widget">
+      <header class="card__head">
+        <span class="card__tag">⊕</span>
+        <h3 class="card__title">Supplements</h3>
+        <button class="card__route-btn" data-route="nutrition">Manage →</button>
+      </header>
+      <div data-supp-widget class="supp-list"><!-- injected --></div>
+    </article>
+
+    <!-- Widget D: Electrolyte Monitor (compact) -->
+    <article class="card fw-card" data-widget="elec-widget">
+      <header class="card__head">
+        <span class="card__tag">⚡</span>
+        <h3 class="card__title">Electrolytes</h3>
+        <button class="card__route-btn" data-route="nutrition">Details →</button>
+      </header>
+      <div data-elec-widget><!-- injected --></div>
+    </article>
+
+  </div>
+
+  <!-- ════════════  FINANCE HEATMAP PANEL (finance tab only, draggable)  ════════════ -->
+  <div class="fhm-panel" data-fhm-panel aria-label="Financial consistency heatmap">
+    <div class="fhm-panel__head" data-fhm-drag>
+      <span class="fhm-panel__icon" aria-hidden="true">▦</span>
+      <span class="fhm-panel__title">Burn Heatmap</span>
+      <span class="fhm-panel__sub">Low-spend days</span>
+      <button class="fhm-panel__toggle" data-fhm-toggle aria-label="Collapse heatmap">—</button>
+    </div>
+    <div class="fhm-panel__body" data-fhm-body>
+      <div class="fhm-inner" data-fhm-inner><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- ════════════  PHOTO PIN FRAMES (per-tab floating photos)  ════════════ -->
+  <div class="photo-pins" data-photo-pins></div>
+
+  <!-- ════════════  FLOATING PHOTO WIDGET (draggable · resizable · all tabs)  ════════════ -->
+  <div class="photo-widget" data-photo-widget aria-label="Floating photo viewer" hidden>
+    <div class="photo-widget__head" data-pw-drag>
+      <span class="photo-widget__icon" aria-hidden="true">◈</span>
+      <span class="photo-widget__title">Photos</span>
+      <div class="photo-widget__controls">
+        <button class="ph-size-btn" data-pw-size="sm" title="Small (S)">S</button>
+        <button class="ph-size-btn" data-pw-size="md" title="Medium (M)">M</button>
+        <button class="ph-size-btn" data-pw-size="lg" title="Large (L)">L</button>
+        <button class="photo-widget__close" data-pw-close aria-label="Close photo widget">×</button>
+      </div>
+    </div>
+    <div class="photo-widget__body" data-pw-body>
+      <div class="photo-widget__img-wrap">
+        <img class="photo-widget__img" data-pw-img alt="" />
+        <div class="photo-widget__empty" data-pw-empty>No photos yet</div>
+        <div class="photo-widget__nav">
+          <button class="ph-nav-btn" data-pw-prev aria-label="Previous photo">‹</button>
+          <span class="ph-nav-counter" data-pw-counter></span>
+          <button class="ph-nav-btn" data-pw-next aria-label="Next photo">›</button>
+        </div>
+      </div>
+      <p class="photo-widget__caption" data-pw-caption></p>
+      <p class="photo-widget__date" data-pw-date></p>
+    </div>
+  </div>
+
+  <script src="app.js?v=4" defer></script>
+</body>
+</html>
