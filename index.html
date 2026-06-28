@@ -13,9 +13,39 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body data-view="home">
+
+  <!-- ───────────────────────────────  CINEMATIC BOOT INTRO  ─────────────────────────────── -->
+  <div class="intro" id="intro" role="dialog" aria-label="Enter the Life Tracker">
+    <canvas class="intro__sky" id="introSky" aria-hidden="true"></canvas>
+    <div class="intro__vignette" aria-hidden="true"></div>
+    <div class="intro__content">
+      <p class="intro__eyebrow">Personal Life Tracker</p>
+      <h1 class="intro__title">
+        <span class="intro__w">NATHAN&nbsp;VÉLEZ</span><span class="intro__sep" aria-hidden="true">:</span><span class="intro__w">SON&nbsp;OF&nbsp;GOD</span>
+      </h1>
+      <p class="intro__verse">&ldquo;With God all things are possible.&rdquo; &mdash; Matthew&nbsp;19:26</p>
+
+      <div class="intro__tabs" role="list">
+        <button class="intro-tab" data-go="gym"     role="listitem"><span class="intro-tab__n">01</span><span class="intro-tab__name">Gym</span><span class="intro-tab__sub">Temple of the Body</span></button>
+        <button class="intro-tab" data-go="nutrition" role="listitem"><span class="intro-tab__n">02</span><span class="intro-tab__name">Nutrition</span><span class="intro-tab__sub">Fuel &amp; Form</span></button>
+        <button class="intro-tab" data-go="finance"  role="listitem"><span class="intro-tab__n">03</span><span class="intro-tab__name">Finance</span><span class="intro-tab__sub">The Vault</span></button>
+        <button class="intro-tab" data-go="academics" role="listitem"><span class="intro-tab__n">04</span><span class="intro-tab__name">Academics</span><span class="intro-tab__sub">College Prep</span></button>
+        <button class="intro-tab" data-go="goals"    role="listitem"><span class="intro-tab__n">05</span><span class="intro-tab__name">Goals</span><span class="intro-tab__sub">The Oath</span></button>
+        <button class="intro-tab" data-go="logs"     role="listitem"><span class="intro-tab__n">06</span><span class="intro-tab__name">Logs</span><span class="intro-tab__sub">The Ledger</span></button>
+      </div>
+
+      <button class="intro__enter" id="introEnter" type="button">
+        Enter
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
 
   <!-- ───────────────────────────────  AMBIENT BACKDROP  ─────────────────────────────── -->
   <div class="backdrop" aria-hidden="true">
@@ -1021,5 +1051,6 @@
 
   <script src="app.js?v=4" defer></script>
   <script src="bg.js?v=2" defer></script>
+  <script src="intro.js?v=2" defer></script>
 </body>
 </html>
