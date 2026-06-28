@@ -89,9 +89,12 @@
     ctx.globalAlpha = 1;
   }
 
-  /* ---------- enter the app ---------- */
+  /* ---------- enter a tab / re-open the hub ---------- */
   let dismissed = false;
-  function enter(targetTab) {
+  function stopCanvas() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
+  function startCanvas() { if (reduce || !ctx) return; running = true; resize(); raf = requestAnimationFrame(frame); }
+
+  function hide(targetTab) {
     if (dismissed) return;
     dismissed = true;
     if (targetTab) {
@@ -100,37 +103,44 @@
     }
     intro.classList.add('is-leaving');
     document.body.classList.remove('intro-locked');
-    setTimeout(() => {
-      running = false;
-      if (raf) cancelAnimationFrame(raf);
-      intro.remove();
-    }, 900);
+    setTimeout(() => { intro.style.display = 'none'; stopCanvas(); }, 900);
   }
 
-  // wire: tab cards, ENTER button, keyboard
+  function replay() {                              // restart the reveal animations
+    const els = intro.querySelectorAll('.intro__eyebrow,.intro__w,.intro__sep,.intro__verse,.intro-tab,.intro__enter');
+    els.forEach((el) => { el.style.animation = 'none'; });
+    void intro.offsetWidth;                        // force reflow
+    els.forEach((el) => { el.style.animation = ''; });
+  }
+
+  function open() {                                // re-enter the hub (the "Hub" button)
+    dismissed = false;
+    intro.style.display = '';
+    intro.classList.remove('is-leaving');
+    document.body.classList.add('intro-locked');
+    startCanvas();
+    replay();
+  }
+  window.lifeHub = { open };
+
+  /* ---------- wiring ---------- */
   intro.addEventListener('click', (e) => {
     const card = e.target.closest('[data-go]');
-    if (card) { enter(card.getAttribute('data-go')); return; }
-    if (e.target.closest('#introEnter')) enter(null);
+    if (card) { hide(card.getAttribute('data-go')); return; }
+    if (e.target.closest('#introEnter')) hide(null);
   });
+  const back = document.getElementById('hubBack');
+  if (back) back.addEventListener('click', open);
   window.addEventListener('keydown', (e) => {
     if (dismissed) return;
-    if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') enter(null);
+    if (e.key === 'Enter' || e.key === 'Escape') hide(null);
   });
+  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('load', resize, { passive: true });
 
   /* ---------- boot ---------- */
-  if (reduce || !ctx) {
-    // accessibility / no-canvas: skip the show, no lock
-    intro.remove();
-    document.body.classList.remove('intro-locked');
-    return;
-  }
-  document.body.classList.add('intro-locked');
-  resize();
-  requestAnimationFrame(resize);                 // re-measure after first layout
-  window.addEventListener('load', resize, { passive: true });
-  window.addEventListener('resize', resize, { passive: true });
-  raf = requestAnimationFrame(frame);
-  // safety: never trap the user — auto-enter after 25s of inactivity
-  setTimeout(() => enter(null), 25000);
+  document.body.classList.add('intro-locked');     // the hub is the home base + navigation
+  if (reduce || !ctx) return;                      // static hub (no canvas), still navigable
+  startCanvas();
+  requestAnimationFrame(resize);                   // re-measure after first layout
 })();

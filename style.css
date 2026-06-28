@@ -2516,3 +2516,38 @@ body.intro-locked { overflow: hidden; }
     animation: none !important; opacity: 1 !important; filter: none !important; transform: none !important;
   }
 }
+
+/* ───────────────── §38  HUB NAV MODEL (cinematic hub = home; no sidebar) ───────────────── */
+.sidebar, .topbar { display: none !important; }
+.masthead { display: none !important; }            /* identity now lives on the hub */
+.shell {
+  margin: 0 auto !important;
+  max-width: var(--max-w) !important;
+  padding: calc(var(--topbar-h) + var(--sp-6)) var(--sp-6) var(--sp-9) !important;
+}
+
+.hub-back {
+  position: fixed; top: 18px; left: 18px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 17px 9px 13px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 11px; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--c-bone);
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(130%); backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: var(--glass-shadow);
+  transition: color .2s var(--ease-out), border-color .2s, box-shadow .2s, transform .2s;
+}
+.hub-back:hover {
+  color: #fff; border-color: var(--accent-soft); transform: translateY(-1px);
+  box-shadow: var(--glass-shadow-hover), 0 0 26px -6px var(--accent-glow);
+}
+.hub-back__sigil { display: inline-flex; color: var(--accent); }
+
+/* the active-tab title glows crimson while it decodes */
+.view-head__title.is-decoding { color: var(--accent-bright); text-shadow: 0 0 18px rgba(225,29,56,.42); }
+
+@media (max-width: 720px) {
+  .shell { padding: 60px var(--sp-4) var(--sp-8) !important; }
+  .hub-back { top: 12px; left: 12px; }
+}

@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body data-view="home">
 
@@ -194,6 +194,21 @@
       <button class="topbar__link" data-tab="logs">Logs</button>
     </nav>
   </header>
+
+  <!-- ───────────────────────────────  BACK TO HUB  ─────────────────────────────── -->
+  <button class="hub-back" id="hubBack" type="button" aria-label="Back to main screen">
+    <span class="hub-back__sigil" aria-hidden="true">
+      <svg viewBox="0 0 24 36" width="12" height="18">
+        <g fill="currentColor">
+          <rect x="11" y="2" width="2" height="32" rx=".5"/>
+          <rect x="8" y="5" width="8" height="1.6" rx=".4"/>
+          <rect x="5" y="11" width="14" height="2.4" rx=".5"/>
+          <g transform="rotate(-22 12 24)"><rect x="6" y="23" width="12" height="1.8" rx=".4"/></g>
+        </g>
+      </svg>
+    </span>
+    Hub
+  </button>
 
   <!-- ───────────────────────────────  SHELL  ─────────────────────────────── -->
   <div class="shell">
@@ -1051,6 +1066,7 @@
 
   <script src="app.js?v=4" defer></script>
   <script src="bg.js?v=2" defer></script>
-  <script src="intro.js?v=2" defer></script>
+  <script src="fx.js?v=1" defer></script>
+  <script src="intro.js?v=3" defer></script>
 </body>
 </html>
