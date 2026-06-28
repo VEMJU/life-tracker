@@ -51,3 +51,21 @@
   // expose for manual triggers (e.g. on hub → tab entry)
   window.lifeFX = { scrambleTitle: () => scramble((el.textContent || '').trim()) };
 })();
+
+/* ---------- staggered blur-in of cards each time a tab opens ---------- */
+(() => {
+  'use strict';
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const body = document.body;
+  function reveal(view) {
+    const panel = document.querySelector(`[data-tab-panel="${view}"]`);
+    if (!panel) return;
+    panel.querySelectorAll('.card, .goal-card').forEach((c, i) => c.style.setProperty('--i', i % 12));
+    panel.classList.remove('is-entering');
+    void panel.offsetWidth;                         // reflow → restart the stagger
+    panel.classList.add('is-entering');
+  }
+  new MutationObserver((muts) => {
+    for (const m of muts) if (m.attributeName === 'data-view') reveal(body.getAttribute('data-view'));
+  }).observe(body, { attributes: true, attributeFilter: ['data-view'] });
+})();

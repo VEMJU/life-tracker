@@ -2551,3 +2551,28 @@ body.intro-locked { overflow: hidden; }
   .shell { padding: 60px var(--sp-4) var(--sp-8) !important; }
   .hub-back { top: 12px; left: 12px; }
 }
+
+/* ───────────────── §39  GLASS + CRIMSON POLISH · TAB REVEAL ───────────────── */
+/* numbered card tags carry the surgical crimson (matches the design screens) */
+.card__tag { color: var(--accent); }
+
+/* every card gets a warmer crimson hover + a touch more lift */
+.card:hover {
+  border-color: var(--accent-soft);
+  box-shadow: var(--glass-shadow-hover), 0 18px 50px -26px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+/* staggered blur-in when a tab opens (transform/opacity only — GPU friendly) */
+.board.is-entering .card,
+.board.is-entering .goal-card {
+  opacity: 0; transform: translateY(18px);
+  animation: cardIn .55s var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes cardIn { to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .board.is-entering .card,
+  .board.is-entering .goal-card { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
