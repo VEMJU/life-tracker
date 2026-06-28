@@ -2576,3 +2576,12 @@ body.intro-locked { overflow: hidden; }
   .board.is-entering .card,
   .board.is-entering .goal-card { animation: none !important; opacity: 1 !important; transform: none !important; }
 }
+
+/* crimson celebration burst (injected on completion) */
+.fx-burst {
+  position: fixed; z-index: 95; pointer-events: none;
+  width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(225,29,56,.85), rgba(196,22,59,0) 70%);
+  animation: fxBurst .62s var(--ease-out) forwards;
+}
+@keyframes fxBurst { 0% { transform: scale(.35); opacity: 1; } 100% { transform: scale(9); opacity: 0; } }

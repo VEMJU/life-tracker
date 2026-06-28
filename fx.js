@@ -69,3 +69,27 @@
     for (const m of muts) if (m.attributeName === 'data-view') reveal(body.getAttribute('data-view'));
   }).observe(body, { attributes: true, attributeFilter: ['data-view'] });
 })();
+
+/* ---------- crimson celebration burst when you complete something ---------- */
+(() => {
+  'use strict';
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function burst(x, y) {
+    if (reduce) return;
+    const b = document.createElement('div');
+    b.className = 'fx-burst';
+    b.style.left = x + 'px';
+    b.style.top = y + 'px';
+    document.body.appendChild(b);
+    setTimeout(() => b.remove(), 640);
+  }
+  window.lifeFX = Object.assign(window.lifeFX || {}, { burst });
+  // fires on any checkbox the user ticks on (workout sets, goal tasks, reminders…)
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type="checkbox"]') && t.checked) {
+      const r = t.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2);
+    }
+  }, true);
+})();
