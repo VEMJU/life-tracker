@@ -9,3 +9,6 @@ node_modules/
 
 # Local Claude Code config
 .claude/
+
+# Local-only reference apps (licensed personal/educational use — never publish)
+*-exact.html
