@@ -1751,6 +1751,7 @@
 
     /* ── register + initialise a single card ── */
     function initCard(id, el, defaultTabs) {
+      if (LOCKED) return;          // frozen: cards stay in their natural grid slots
       registry.push({id, el, defaultTabs});
       floatCard(id, el, defaultTabs);
       wireCard(id, el);
@@ -1758,6 +1759,7 @@
 
     /* ── show/hide cards based on current tab ── */
     function updateVisibility(tab) {
+      if (LOCKED) return;          // panels handle visibility natively
       registry.forEach(({id, el, defaultTabs}) => {
         const tabs = state[id]?.tabs || defaultTabs;
         // Use explicit 'block' so it overrides .fw-card { display:none } from CSS
@@ -4780,6 +4782,290 @@
     return { init, renderAll };
   })();
 
+  /* ═══════════════════  DAYFLOW (goal ticker · day ring · to-do)  ═══════════════════ */
+  const DayFlow = (() => {
+    const DAY_PREFIX = 'nv.day.';
+    const STREAK_KEY = 'nv.day.streak';
+    const WAKE_HOUR = 8, SLEEP_HOUR = 24;
+
+    /* ── date helpers (6 AM day boundary) ── */
+    function activeDate() {
+      const d = new Date();
+      if (d.getHours() < 6) d.setDate(d.getDate() - 1);
+      return localDateKey(d);
+    }
+    function tomorrowDate() {
+      const d = new Date();
+      if (d.getHours() >= 6) d.setDate(d.getDate() + 1);
+      return localDateKey(d);
+    }
+    function fmtDate(s) {
+      const [y,m,dd] = s.split('-').map(Number);
+      return new Date(y, m-1, dd).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+    }
+    const dayKey  = (s) => DAY_PREFIX + s;
+    const getDay  = (s) => Store.get(dayKey(s), []);
+    const setDay  = (s, goals) => { Store.set(dayKey(s), goals); window.dispatchEvent(new CustomEvent('nv-day-changed')); };
+    function listDayKeys() {
+      const out = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(DAY_PREFIX) && /\d{4}-\d{2}-\d{2}$/.test(k)) out.push(k.slice(DAY_PREFIX.length));
+      }
+      return out.sort();
+    }
+
+    /* ── rollover: pull undone goals from past days into today ── */
+    function rollover() {
+      const today = activeDate();
+      const todays = getDay(today);
+      let moved = false;
+      listDayKeys().forEach(ds => {
+        if (ds >= today) return;
+        const old = getDay(ds);
+        old.filter(g => !g.done).forEach(g => {
+          if (!todays.some(t => t.text === g.text)) { todays.push({text: g.text, done: false}); moved = true; }
+        });
+        Store.remove(dayKey(ds));
+      });
+      if (moved) setDay(today, todays);
+    }
+
+    /* ── streak: consecutive fully-completed days ── */
+    function checkStreak() {
+      const st = Store.get(STREAK_KEY, {count: 0, lastProcessedDate: ''});
+      const today = activeDate();
+      listDayKeys().forEach(ds => {
+        if (ds >= today || ds <= st.lastProcessedDate) return;
+        const goals = getDay(ds);
+        if (!goals.length) return;                       // empty day doesn't break it
+        st.count = goals.every(g => g.done) ? st.count + 1 : 0;
+        st.lastProcessedDate = ds;
+      });
+      Store.set(STREAK_KEY, st);
+      return st;
+    }
+
+    /* ── DAY RING · wine-red sun cycle ── */
+    const RING_STOPS = [
+      [0,   [207,207,207]],   // dawn bone
+      [20,  [236,236,236]],   // morning paper
+      [40,  [225, 29, 56]],   // midday bright crimson
+      [60,  [196, 22, 59]],   // afternoon crimson
+      [80,  [110, 31, 42]],   // evening wine
+      [100, [ 42, 10, 18]],   // night oxblood
+    ];
+    function ringColor(pct) {
+      for (let i = 1; i < RING_STOPS.length; i++) {
+        const [p1, c1] = RING_STOPS[i-1], [p2, c2] = RING_STOPS[i];
+        if (pct <= p2) {
+          const t = (pct - p1) / (p2 - p1);
+          return 'rgb(' + c1.map((v, j) => Math.round(v + (c2[j]-v)*t)).join(',') + ')';
+        }
+      }
+      return 'rgb(42,10,18)';
+    }
+    const C = 2 * Math.PI * 52;
+    function updateRing() {
+      const fill = $('[data-ring-fill]'); if (!fill) return;
+      const now = new Date();
+      const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+      const pctEl = $('[data-ring-pct]'), phaseEl = $('[data-ring-phase]'), clockEl = $('[data-ring-clock]');
+      const statusEl = $('[data-ring-status]'), remainEl = $('[data-ring-remain]');
+      let h12 = now.getHours() % 12 || 12;
+      if (clockEl) clockEl.textContent = h12 + ':' + pad(now.getMinutes()) + (now.getHours() < 12 ? ' AM' : ' PM');
+
+      let pct, color, phase, status, remain;
+      if (hours < WAKE_HOUR) {
+        pct = 0; color = '#4a4a4a'; phase = 'SLEEPING'; status = 'Still sleeping';
+        const mins = Math.round((WAKE_HOUR - hours) * 60);
+        remain = Math.floor(mins/60) + 'h ' + (mins%60) + 'm until wake-up';
+        if (pctEl) pctEl.textContent = '—';
+      } else {
+        pct = clamp((hours - WAKE_HOUR) / (SLEEP_HOUR - WAKE_HOUR) * 100, 0, 100);
+        color = ringColor(pct);
+        phase  = pct < 25 ? 'MORNING' : pct < 50 ? 'MIDDAY' : pct < 75 ? 'AFTERNOON' : pct < 90 ? 'EVENING' : 'BEDTIME';
+        status = pct < 25 ? 'Morning — fresh start' : pct < 50 ? 'Midday — keep moving'
+               : pct < 75 ? 'Afternoon — push it'   : pct < 90 ? 'Evening — wrap up' : 'Bedtime soon';
+        const mins = Math.round((SLEEP_HOUR - hours) * 60);
+        remain = Math.floor(mins/60) + 'h ' + (mins%60) + 'm awake time left';
+        if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+      }
+      fill.style.strokeDasharray = C;
+      fill.style.strokeDashoffset = C * (1 - pct/100);
+      fill.style.stroke = color;
+      if (phaseEl)  phaseEl.textContent  = phase;
+      if (statusEl) statusEl.textContent = status;
+      if (remainEl) remainEl.textContent = remain;
+    }
+
+    /* ── GOAL TICKER ── */
+    let cycleIdx = 0, tickerT = null;
+    function tickerItems() {
+      const goals = getDay(activeDate());
+      const done = goals.filter(g => g.done).length;
+      if (!goals.length) return {items: [{status:'empty', text:'No goals set for today — add one to get rolling.'}], done, total: 0};
+      if (done === goals.length) return {items: [{status:'done', text:'All goals done — solid day.'}], done, total: goals.length};
+      return {items: goals.filter(g => !g.done).map(g => ({status:'pending', text: g.text})), done, total: goals.length};
+    }
+    function tick() {
+      const stage = $('[data-ticker-stage]'); if (!stage) return;
+      const {items, done, total} = tickerItems();
+      const item = items[cycleIdx % items.length];
+      cycleIdx++;
+      const meta = $('[data-ticker-meta]');
+      if (meta) meta.textContent = done + '/' + total;
+      const glyph = item.status === 'done' ? '✓' : item.status === 'pending' ? '○' : '·';
+      const old = stage.querySelector('.hm-ticker__row');
+      const row = document.createElement('div');
+      row.className = 'hm-ticker__row' + (old ? ' is-entering' : '');
+      row.innerHTML = '<span class="hm-ticker__status" data-status="' + item.status + '">' + glyph + '</span>'
+                    + '<span class="hm-ticker__text">' + esc(item.text) + '</span>';
+      if (old) { old.classList.add('is-leaving'); setTimeout(() => old.remove(), 460); }
+      stage.appendChild(row);
+    }
+    function startTicker() {
+      clearInterval(tickerT);
+      tick();
+      tickerT = setInterval(tick, 5000);
+    }
+
+    /* ── TO-DO LISTS ── */
+    function renderTodayHeader(goals) {
+      const done = goals.filter(g => g.done).length, total = goals.length;
+      const numEl = $('[data-td-num]'), totEl = $('[data-td-total]'), lblEl = $('[data-td-label]');
+      if (numEl) numEl.textContent = done;
+      if (totEl) totEl.textContent = '/ ' + total;
+      if (lblEl) lblEl.textContent = !total ? 'no goals yet' : done === total ? 'all done — solid day' : 'complete';
+      const card = $('[data-td-card]');
+      if (card) card.classList.toggle('is-all-done', total > 0 && done === total);
+      const bar = $('[data-td-bar]');
+      if (bar) bar.innerHTML = goals.map(g => '<i class="' + (g.done ? 'is-done' : '') + '"></i>').join('');
+      const push = $('[data-td-push]');
+      if (push) push.hidden = !goals.some(g => !g.done);
+      const dateEl = $('[data-td-date]');
+      if (dateEl) dateEl.textContent = 'Today — ' + fmtDate(activeDate());
+    }
+    function renderStreak() {
+      const st = Store.get(STREAK_KEY, {count: 0});
+      const pill = $('[data-td-streak]'), n = $('[data-td-streak-num]');
+      if (n) n.textContent = st.count;
+      if (pill) pill.classList.toggle('is-active', st.count > 0);
+    }
+    function buildRow(goals, idx, dateStr, readOnly) {
+      const g = goals[idx];
+      const li = document.createElement('li');
+      li.className = 'td-row' + (g.done ? ' is-done' : '');
+      li.innerHTML =
+        '<label class="td-check"><input type="checkbox" ' + (g.done ? 'checked' : '') + (readOnly ? ' disabled title="Activates at 6 AM tomorrow"' : '') + '><i></i></label>' +
+        '<span class="td-text">' + esc(g.text) + '</span>' +
+        '<button class="td-del" aria-label="Delete goal">×</button>';
+      li.querySelector('input').addEventListener('change', (e) => {
+        goals[idx].done = e.target.checked;
+        if (e.target.checked) goals[idx].doneAt = Date.now(); else delete goals[idx].doneAt;
+        setDay(dateStr, goals); render();
+      });
+      const txt = li.querySelector('.td-text');
+      txt.addEventListener('click', () => {
+        if (txt.isContentEditable) return;
+        txt.contentEditable = 'true'; txt.focus();
+        const range = document.createRange(); range.selectNodeContents(txt); range.collapse(false);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        const commit = () => {
+          txt.contentEditable = 'false';
+          const v = txt.textContent.trim();
+          if (v && v !== goals[idx].text) { goals[idx].text = v; setDay(dateStr, goals); }
+          render();
+        };
+        txt.addEventListener('blur', commit, {once: true});
+        txt.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); txt.blur(); }
+          if (ev.key === 'Escape') { txt.textContent = goals[idx].text; txt.blur(); }
+        });
+      });
+      li.querySelector('.td-del').addEventListener('click', () => {
+        goals.splice(idx, 1); setDay(dateStr, goals); render();
+      });
+      return li;
+    }
+    function renderList(dateStr, listSel, emptySel, readOnly, expanded) {
+      const ul = $(listSel), empty = $(emptySel);
+      if (!ul) return;
+      const goals = getDay(dateStr);
+      ul.innerHTML = '';
+      if (empty) empty.hidden = goals.length > 0;
+      const LIMIT = 5;
+      const showAll = expanded || goals.length <= LIMIT;
+      goals.forEach((g, i) => {
+        if (!showAll && i >= LIMIT) return;
+        ul.appendChild(buildRow(goals, i, dateStr, readOnly));
+      });
+      if (goals.length > LIMIT) {
+        const btn = document.createElement('button');
+        btn.className = 'td-more';
+        btn.textContent = expanded ? 'Show less ▴' : 'Show ' + (goals.length - LIMIT) + ' more ▾';
+        btn.addEventListener('click', () => renderList(dateStr, listSel, emptySel, readOnly, !expanded));
+        ul.appendChild(btn);
+      }
+      return goals;
+    }
+
+    function render() {
+      const goals = renderList(activeDate(), '[data-td-list]', '[data-td-empty]', false, false) || [];
+      renderTodayHeader(goals);
+      renderStreak();
+      renderList(tomorrowDate(), '[data-tm-list]', '[data-tm-empty]', true, false);
+      const cnt = $('[data-tm-count]');
+      if (cnt) cnt.textContent = getDay(tomorrowDate()).length + ' planned';
+      const tmDate = $('[data-tm-date]');
+      if (tmDate) tmDate.textContent = 'Plan tomorrow — ' + fmtDate(tomorrowDate());
+    }
+
+    function wireAdd(inputSel, btnSel, dateFn) {
+      const input = $(inputSel), btn = $(btnSel);
+      if (!input || !btn) return;
+      const add = () => {
+        const v = input.value.trim(); if (!v) return;
+        const ds = dateFn();
+        const goals = getDay(ds);
+        goals.push({text: v, done: false});
+        setDay(ds, goals);
+        input.value = '';
+        render();
+      };
+      btn.addEventListener('click', add);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+    }
+
+    let booted = false;
+    function init() {
+      if (booted || !$('[data-td-list]')) return;
+      booted = true;
+      rollover();
+      checkStreak();
+      wireAdd('[data-td-input]', '[data-td-add]', activeDate);
+      wireAdd('[data-tm-input]', '[data-tm-add]', tomorrowDate);
+      $('[data-td-push]')?.addEventListener('click', () => {
+        const today = activeDate(), tmr = tomorrowDate();
+        const goals = getDay(today), plan = getDay(tmr);
+        goals.filter(g => !g.done).forEach(g => {
+          if (!plan.some(p => p.text === g.text)) plan.push({text: g.text, done: false});
+        });
+        setDay(tmr, plan);
+        setDay(today, goals.filter(g => g.done));
+        render();
+        toast('Remaining goals pushed to tomorrow');
+      });
+      window.addEventListener('nv-day-changed', () => { cycleIdx = 0; tick(); });
+      render();
+      startTicker();
+      updateRing();
+      setInterval(updateRing, 60 * 1000);
+    }
+
+    return {init, render: () => { if (booted) { render(); updateRing(); } else init(); }};
+  })();
+
   /* ═══════════════════  TABS  ═══════════════════ */
   const Tabs = (() => {
     const navlinks = () => $$('.navlink');
@@ -4790,7 +5076,7 @@
       if (REAL_PANELS.includes(name)) {
         const panel = $(`[data-tab-panel="${name}"]`);
         if (panel) panel.hidden = false;
-        if (name==='home')      { Goals.renderWidget(); Workout.render(); }
+        if (name==='home')      { Goals.renderWidget(); Workout.render(); DayFlow.render(); }
         if (name==='goals')     Goals.renderAll();
         if (name==='reminders') Reminders.render();
         if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
@@ -4872,6 +5158,7 @@
     FinHeatmap.init();
     Photos.initWidget();
     Photos.initPins();
+    DayFlow.init();
 
     // Widget manager — home cards init first (home is default visible tab)
     WidgetManager.initHomeCards();

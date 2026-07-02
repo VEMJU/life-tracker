@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=12" />
 </head>
 <body data-view="home">
 
@@ -243,6 +243,83 @@
 
       <!-- ───────────────────────────  HOME  ─────────────────────────── -->
       <main class="board board--home" data-tab-panel="home">
+
+        <!-- GOAL TICKER — LED strip cycling today's pending goals -->
+        <div class="hm-ticker reveal" style="--d:.02s" aria-live="polite" aria-atomic="true">
+          <span class="hm-ticker__led" aria-hidden="true"><i></i></span>
+          <span class="hm-ticker__label">GOALS</span>
+          <div class="hm-ticker__stage" data-ticker-stage></div>
+          <span class="hm-ticker__meta" data-ticker-meta>0/0</span>
+        </div>
+
+        <!-- DAY RING — the day burning down in wine-red -->
+        <article class="card card--dayring reveal" style="--d:.04s">
+          <header class="card__head">
+            <span class="card__tag">O.</span>
+            <h3 class="card__title">Day Ring</h3>
+          </header>
+          <div class="dayring">
+            <div class="dayring__wrap">
+              <svg viewBox="0 0 120 120" width="168" height="168" aria-hidden="true">
+                <circle class="dayring__track" cx="60" cy="60" r="52"/>
+                <circle class="dayring__fill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)" data-ring-fill/>
+              </svg>
+              <div class="dayring__center">
+                <span class="dayring__pct" data-ring-pct>—</span>
+                <span class="dayring__phase" data-ring-phase>…</span>
+                <span class="dayring__clock" data-ring-clock></span>
+              </div>
+            </div>
+            <div class="dayring__side">
+              <p class="dayring__status" data-ring-status>Loading…</p>
+              <p class="dayring__remain" data-ring-remain></p>
+              <p class="dayring__hours">8:00 AM – 12:00 AM</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- TO DO — TODAY -->
+        <article class="card card--today reveal" style="--d:.08s" data-td-card>
+          <header class="td-head">
+            <div>
+              <p class="td-eyebrow" data-td-date>Today</p>
+              <p class="td-progress">
+                <span class="td-progress__num" data-td-num>0</span>
+                <span class="td-progress__total" data-td-total>/ 0</span>
+                <span class="td-progress__label" data-td-label>no goals yet</span>
+              </p>
+            </div>
+            <span class="td-streak" data-td-streak>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+              <b data-td-streak-num>0</b> day streak
+            </span>
+          </header>
+          <div class="td-bar" data-td-bar></div>
+          <ul class="td-list" data-td-list></ul>
+          <div class="td-empty" data-td-empty>No goals for today yet — add one below.</div>
+          <button class="td-push" data-td-push hidden>Push remaining to tomorrow</button>
+          <div class="td-add">
+            <input class="input" type="text" data-td-input placeholder="Add a goal for today…" />
+            <button class="btn btn--primary btn--sm" data-td-add>+ Add</button>
+          </div>
+        </article>
+
+        <!-- PLAN TOMORROW -->
+        <article class="card card--tomorrow reveal" style="--d:.12s">
+          <header class="td-head">
+            <div>
+              <p class="td-eyebrow" data-tm-date>Plan tomorrow</p>
+              <p class="td-sub">Write tonight, locked until 6 AM.</p>
+            </div>
+            <span class="td-count" data-tm-count>0 planned</span>
+          </header>
+          <ul class="td-list" data-tm-list></ul>
+          <div class="td-empty" data-tm-empty>Nothing planned for tomorrow yet.</div>
+          <div class="td-add">
+            <input class="input" type="text" data-tm-input placeholder="Add a goal for tomorrow…" />
+            <button class="btn btn--primary btn--sm" data-tm-add>+ Add</button>
+          </div>
+        </article>
 
         <!-- COUNTDOWN -->
         <article class="card card--countdown reveal" style="--d:.05s">
@@ -1064,7 +1141,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=5" defer></script>
+  <script src="app.js?v=6" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=3" defer></script>
   <script src="intro.js?v=3" defer></script>
