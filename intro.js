@@ -107,7 +107,7 @@
   }
 
   function replay() {                              // restart the reveal animations
-    const els = intro.querySelectorAll('.intro__eyebrow,.intro__w,.intro__sep,.intro__verse,.intro-tab,.intro__enter');
+    const els = intro.querySelectorAll('.intro__eyebrow,.intro__w,.intro__sep,.intro__verse,.intro-tab,.intro__enter,.intro__tools');
     els.forEach((el) => { el.style.animation = 'none'; });
     void intro.offsetWidth;                        // force reflow
     els.forEach((el) => { el.style.animation = ''; });

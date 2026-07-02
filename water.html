@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#000000" />
+<title>Water Coach — Son of God</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#000; --card:rgba(16,16,16,.55); --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.18);
+    --fg:#ececec; --dim:#8a8a8a; --mute:#6a6a6a;
+    --accent:#C4163B; --accent-br:#E11D38; --wine:#6E1F2A;
+    --mono:'JetBrains Mono',ui-monospace,monospace; --gothic:'Cinzel',serif;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--bg); color:var(--fg);
+    font:400 14px/1.55 'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    background-image: radial-gradient(90% 60% at 50% -10%, rgba(110,31,42,.28), transparent 60%);
+    display:flex; flex-direction:column; align-items:center; padding:28px 18px 56px;
+  }
+  .back { position:fixed; top:16px; left:16px; display:inline-flex; align-items:center; gap:8px;
+    padding:8px 15px; border-radius:999px; border:1px solid var(--border-strong);
+    background:rgba(16,16,16,.5); backdrop-filter:blur(14px); color:var(--fg); text-decoration:none;
+    font:700 10.5px/1 var(--mono); letter-spacing:.22em; text-transform:uppercase; transition:border-color .2s, box-shadow .2s; }
+  .back:hover { border-color:rgba(196,22,59,.55); box-shadow:0 0 22px -6px rgba(225,29,56,.4); }
+  .back i { color:var(--accent); font-style:normal; }
+  h1 { font:900 clamp(24px,5vw,34px)/1.1 var(--gothic); letter-spacing:.04em; margin:34px 0 4px; text-align:center;
+       text-shadow:0 0 34px rgba(196,22,59,.3); }
+  .sub { font:400 11px/1 var(--mono); letter-spacing:.34em; text-transform:uppercase; color:var(--mute); margin:0 0 26px; text-align:center; }
+  .app { width:min(460px,100%); display:grid; gap:14px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px;
+          backdrop-filter:blur(20px) saturate(1.2); box-shadow:0 12px 40px rgba(0,0,0,.45); }
+  .count-row { display:flex; align-items:center; justify-content:center; gap:22px; padding:10px 0 4px; }
+  .big { font:800 64px/1 'Inter'; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+  .big small { font:400 13px var(--mono); color:var(--dim); letter-spacing:.14em; display:block; text-align:center; margin-top:4px; }
+  .rbtn { width:56px; height:56px; border-radius:50%; border:1px solid var(--border-strong); background:rgba(255,255,255,.04);
+    color:var(--fg); font-size:26px; cursor:pointer; transition:transform .15s, border-color .2s, box-shadow .2s; }
+  .rbtn:hover { border-color:rgba(196,22,59,.55); box-shadow:0 0 20px -4px rgba(225,29,56,.5); transform:translateY(-2px); }
+  .rbtn:active { transform:scale(.94); }
+  .rbtn--plus { background:linear-gradient(180deg,var(--accent-br),var(--accent)); border-color:var(--accent);
+    box-shadow:0 6px 22px -6px rgba(225,29,56,.6); font-weight:700; }
+  .track { height:8px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; margin:14px 0 6px; }
+  .track i { display:block; height:100%; width:0%; border-radius:inherit;
+    background:linear-gradient(90deg,var(--wine),var(--accent-br)); box-shadow:0 0 12px rgba(225,29,56,.5); transition:width .5s cubic-bezier(.22,1,.36,1); }
+  .helper { font:400 12px/1.5 var(--mono); color:var(--dim); text-align:center; min-height:18px; }
+  .helper.good { color:var(--accent-br); }
+  .sec-title { font:700 10.5px/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--mute);
+    display:flex; align-items:center; gap:10px; margin:2px 0 12px; }
+  .sec-title::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,rgba(255,255,255,.08),transparent); }
+  .log { display:grid; gap:6px; }
+  .log-group { font:700 10px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin:8px 0 2px; }
+  .log-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); font:400 12.5px var(--mono); }
+  .log-row time { color:var(--mute); font-size:10.5px; letter-spacing:.06em; margin-left:auto; }
+  .empty { font-size:12px; font-style:italic; color:var(--mute); text-align:center; padding:10px 0; }
+  .stat-row { display:flex; gap:10px; }
+  .stat { flex:1; text-align:center; padding:12px 8px; border-radius:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); }
+  .stat b { display:block; font:700 22px/1.2 'Inter'; font-variant-numeric:tabular-nums; }
+  .stat span { font:400 9.5px var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--mute); }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn { padding:13px; border-radius:12px; cursor:pointer; font:700 11px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase;
+    border:1px solid var(--border-strong); background:rgba(255,255,255,.04); color:var(--fg); transition:all .2s; }
+  .btn:hover { border-color:rgba(196,22,59,.55); }
+  .btn--primary { background:linear-gradient(180deg,var(--accent-br),var(--accent)); border-color:var(--accent); box-shadow:0 6px 22px -8px rgba(225,29,56,.55); }
+  .btn--primary:hover { transform:translateY(-1px); }
+  .toast { position:fixed; left:50%; bottom:30px; transform:translate(-50%,20px); opacity:0; pointer-events:none;
+    padding:12px 22px; border-radius:999px; border:1px solid rgba(196,22,59,.5);
+    background:rgba(20,4,8,.92); backdrop-filter:blur(10px); color:#fff; font:700 12px var(--mono); letter-spacing:.1em;
+    box-shadow:0 0 34px rgba(225,29,56,.35); transition:all .4s cubic-bezier(.22,1,.36,1); z-index:50; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .note { font:400 10.5px var(--mono); color:var(--mute); text-align:center; letter-spacing:.06em; margin-top:12px; }
+  @media (max-width:480px){ .big{font-size:54px} .rbtn{width:50px;height:50px} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html"><i>✝</i> Hub</a>
+  <h1>WATER COACH</h1>
+  <p class="sub">Drinks through the day</p>
+
+  <div class="app">
+    <div class="card">
+      <div class="count-row">
+        <button class="rbtn" id="minus" aria-label="Undo last drink">−</button>
+        <div class="big"><span id="count">0</span><small id="unitLabel">glasses today</small></div>
+        <button class="rbtn rbtn--plus" id="plus" aria-label="Log a drink">+</button>
+      </div>
+      <div class="track"><i id="bar"></i></div>
+      <p class="helper" id="helper"></p>
+    </div>
+
+    <div class="card">
+      <p class="sec-title">Today's hydration</p>
+      <div class="log" id="log"></div>
+      <div class="empty" id="empty">Nothing logged yet — hit + when you drink.</div>
+    </div>
+
+    <div class="card">
+      <div class="stat-row">
+        <div class="stat"><b id="best">0</b><span>Best day</span></div>
+        <div class="stat"><b id="streak">0</b><span>Day streak</span></div>
+        <div class="stat"><b id="goalEl">8</b><span>Daily goal</span></div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn" id="fresh">Start fresh</button>
+      <button class="btn btn--primary" id="finish">Finish the day</button>
+    </div>
+    <p class="note">Saved on this device. No account, no cloud, no internet needed.</p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+  const KEY = 'nv.water.v1';
+  const GOAL = 8;
+  const $ = (s) => document.querySelector(s);
+  const pad = (n) => String(n).padStart(2,'0');
+  const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+
+  let st = load();
+  function load() {
+    try { return Object.assign({date:todayStr(), drinks:[], best:0, streak:0, lastFinished:''}, JSON.parse(localStorage.getItem(KEY)||'{}')); }
+    catch { return {date:todayStr(), drinks:[], best:0, streak:0, lastFinished:''}; }
+  }
+  const save = () => localStorage.setItem(KEY, JSON.stringify(st));
+
+  // auto-reset when a new day opens
+  if (st.date !== todayStr()) { st.date = todayStr(); st.drinks = []; save(); }
+
+  function groupOf(h) { return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening'; }
+  function fmtTime(ts) { const d = new Date(ts); let h = d.getHours()%12||12; return h+':'+pad(d.getMinutes())+(d.getHours()<12?' AM':' PM'); }
+
+  let toastT = null;
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function render() {
+    const n = st.drinks.length;
+    $('#count').textContent = n;
+    $('#unitLabel').textContent = (n === 1 ? 'glass' : 'glasses') + ' today';
+    $('#bar').style.width = Math.min(100, n/GOAL*100) + '%';
+    const h = $('#helper');
+    h.classList.toggle('good', n >= GOAL);
+    h.textContent = n === 0 ? 'First glass sets the tone.'
+      : n < GOAL/2 ? 'Keep sipping — ' + (GOAL-n) + ' to go.'
+      : n < GOAL ? 'Over halfway. ' + (GOAL-n) + ' left.'
+      : n === GOAL ? '✓ Target hit — top up if you train tonight.'
+      : '✓ ' + n + ' down. Hydrated and then some.';
+    $('#best').textContent = st.best;
+    $('#streak').textContent = st.streak;
+    $('#goalEl').textContent = GOAL;
+    const log = $('#log'); log.innerHTML = '';
+    $('#empty').hidden = n > 0;
+    let lastGroup = '';
+    st.drinks.forEach((ts) => {
+      const g = groupOf(new Date(ts).getHours());
+      if (g !== lastGroup) { lastGroup = g; const el = document.createElement('p'); el.className = 'log-group'; el.textContent = g; log.appendChild(el); }
+      const row = document.createElement('div'); row.className = 'log-row';
+      row.innerHTML = '<span>Glass of water</span><time>' + fmtTime(ts) + '</time>';
+      log.appendChild(row);
+    });
+  }
+
+  $('#plus').addEventListener('click', () => { st.drinks.push(Date.now()); save(); render(); });
+  $('#minus').addEventListener('click', () => { st.drinks.pop(); save(); render(); });
+  $('#fresh').addEventListener('click', () => {
+    if (st.drinks.length && !confirm('Clear today\'s log and start fresh?')) return;
+    st.drinks = []; save(); render();
+  });
+  $('#finish').addEventListener('click', () => {
+    const n = st.drinks.length;
+    if (!n) { toast('Nothing to finish — log a glass first.'); return; }
+    let msg = 'Day closed: ' + n + ' glasses.';
+    if (n > st.best) { st.best = n; msg = '✦ NEW BEST — ' + n + ' glasses!'; }
+    const yesterday = (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); })();
+    st.streak = (st.lastFinished === yesterday) ? st.streak + 1 : 1;
+    st.lastFinished = todayStr();
+    st.drinks = []; save(); render(); toast(msg);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
