@@ -1,209 +1,342 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#000000" />
-<title>Lift Logger — Son of God</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0b">
+<title>Workout logger</title>
 <style>
-  :root {
-    --bg:#000; --card:rgba(16,16,16,.55); --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.18);
-    --fg:#ececec; --dim:#8a8a8a; --mute:#6a6a6a;
-    --accent:#C4163B; --accent-br:#E11D38; --wine:#6E1F2A;
-    --mono:'JetBrains Mono',ui-monospace,monospace; --gothic:'Cinzel',serif;
-  }
-  * { box-sizing:border-box; }
-  body {
-    margin:0; min-height:100vh; background:var(--bg); color:var(--fg);
-    font:400 14px/1.55 'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
-    background-image: radial-gradient(90% 60% at 50% -10%, rgba(110,31,42,.28), transparent 60%);
-    display:flex; flex-direction:column; align-items:center; padding:28px 18px 56px;
-  }
-  .back { position:fixed; top:16px; left:16px; display:inline-flex; align-items:center; gap:8px;
-    padding:8px 15px; border-radius:999px; border:1px solid var(--border-strong);
-    background:rgba(16,16,16,.5); backdrop-filter:blur(14px); color:var(--fg); text-decoration:none;
-    font:700 10.5px/1 var(--mono); letter-spacing:.22em; text-transform:uppercase; transition:border-color .2s, box-shadow .2s; }
-  .back:hover { border-color:rgba(196,22,59,.55); box-shadow:0 0 22px -6px rgba(225,29,56,.4); }
-  .back i { color:var(--accent); font-style:normal; }
-  h1 { font:900 clamp(24px,5vw,34px)/1.1 var(--gothic); letter-spacing:.04em; margin:34px 0 4px; text-align:center;
-       text-shadow:0 0 34px rgba(196,22,59,.3); }
-  .sub { font:400 11px/1 var(--mono); letter-spacing:.34em; text-transform:uppercase; color:var(--mute); margin:0 0 26px; text-align:center; }
-  .app { width:min(520px,100%); display:grid; gap:14px; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px;
-          backdrop-filter:blur(20px) saturate(1.2); box-shadow:0 12px 40px rgba(0,0,0,.45); }
-  .vol-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-  .vol { font:800 40px/1 'Inter'; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
-  .vol small { font:400 11px var(--mono); color:var(--dim); letter-spacing:.16em; text-transform:uppercase; margin-left:8px; }
-  .pill { font:700 10px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--dim);
-    padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid var(--border); }
-  .pill.pr { color:var(--accent-br); border-color:rgba(196,22,59,.4); background:rgba(196,22,59,.08); }
-  .lift { border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:14px; background:rgba(8,8,8,.4); }
-  .lift + .lift { margin-top:10px; }
-  .lift-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .lift-name { font:700 15px 'Inter'; letter-spacing:.01em; flex:1; }
-  .lift-del { color:var(--mute); font-size:16px; cursor:pointer; border:0; background:none; padding:4px 6px; opacity:.6; transition:color .2s; }
-  .lift-del:hover { color:var(--accent-br); opacity:1; }
-  .set { display:flex; align-items:center; gap:8px; font:400 12.5px var(--mono); padding:7px 10px;
-    border-radius:9px; background:rgba(255,255,255,.03); margin-bottom:5px; }
-  .set b { color:var(--fg); }
-  .set .x { color:var(--mute); }
-  .set .svol { margin-left:auto; color:var(--mute); font-size:10.5px; letter-spacing:.06em; }
-  .set-add { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-top:8px; }
-  input[type=number], input[type=text] {
-    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
-    background:rgba(0,0,0,.4); color:var(--fg); font:600 13px var(--mono); outline:none; transition:border-color .2s, box-shadow .2s;
-  }
-  input:focus { border-color:rgba(196,22,59,.55); box-shadow:0 0 0 3px rgba(196,22,59,.12); }
-  input::placeholder { color:var(--mute); font-weight:400; }
-  .btn { padding:12px 16px; border-radius:10px; cursor:pointer; font:700 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
-    border:1px solid var(--border-strong); background:rgba(255,255,255,.04); color:var(--fg); transition:all .2s; }
-  .btn:hover { border-color:rgba(196,22,59,.55); }
-  .btn--primary { background:linear-gradient(180deg,var(--accent-br),var(--accent)); border-color:var(--accent); box-shadow:0 6px 22px -8px rgba(225,29,56,.55); }
-  .btn--primary:hover { transform:translateY(-1px); }
-  .btn--wide { width:100%; padding:14px; }
-  .add-lift { display:flex; gap:8px; }
-  .add-lift input { flex:1; }
-  .empty { font-size:12px; font-style:italic; color:var(--mute); text-align:center; padding:16px 0; }
-  .hist { display:grid; gap:6px; }
-  .hist-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
-    background:rgba(255,255,255,.03); font:400 12px var(--mono); color:var(--dim); }
-  .hist-row b { color:var(--fg); }
-  .hist-row .pr-tag { color:var(--accent-br); font-weight:700; letter-spacing:.1em; font-size:9.5px; }
-  .hist-row time { margin-left:auto; font-size:10.5px; color:var(--mute); }
-  .sec-title { font:700 10.5px/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--mute);
-    display:flex; align-items:center; gap:10px; margin:2px 0 12px; }
-  .sec-title::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,rgba(255,255,255,.08),transparent); }
-  .toast { position:fixed; left:50%; bottom:30px; transform:translate(-50%,20px); opacity:0; pointer-events:none;
-    padding:12px 22px; border-radius:999px; border:1px solid rgba(196,22,59,.5);
-    background:rgba(20,4,8,.92); backdrop-filter:blur(10px); color:#fff; font:700 12px var(--mono); letter-spacing:.1em;
-    box-shadow:0 0 34px rgba(225,29,56,.35); transition:all .4s cubic-bezier(.22,1,.36,1); z-index:50; }
-  .toast.show { opacity:1; transform:translate(-50%,0); }
-  .note { font:400 10.5px var(--mono); color:var(--mute); text-align:center; letter-spacing:.06em; margin-top:12px; }
-  @media (max-width:480px){ .vol{font-size:32px} .set-add{grid-template-columns:1fr 1fr; } .set-add .btn{grid-column:1/-1} }
-  @media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+:root {
+  --bg: #0a0a0b;
+  --bg-card: #111113;
+  --text-1: #ffffff;
+  --text-2: rgba(255,255,255,0.6);
+  --text-3: rgba(255,255,255,0.4);
+  --text-4: rgba(255,255,255,0.25);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.14);
+  --good: #E11D38;
+  --warn: #fbbf24;
+  --bad: #ff8a8a;
+  --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #14141a 0%, #0a0a0b 60%);
+  color: var(--text-1);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+.shell { max-width: 640px; margin: 0 auto; padding: 24px 16px 90px; }
+
+.day-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.10em;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.day-pill .day-sep { color: var(--text-4); }
+
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.title { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; margin: 0; }
+.subtitle { font-size: 12.5px; color: var(--text-3); margin: 0 0 18px; }
+
+.finish-btn {
+  background: linear-gradient(180deg, #ffffff 0%, #e8e5dd 100%);
+  color: #0a0a0b; border: none; border-radius: 12px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  padding: 11px 18px; cursor: pointer; white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 14px rgba(0,0,0,0.40);
+  transition: transform 0.15s;
+}
+.finish-btn:hover { transform: translateY(-1px); }
+.finish-btn:active { transform: scale(0.98); }
+
+.divider { display: flex; align-items: center; gap: 16px; margin: 18px 0 14px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.10); }
+.divider span { font-size: 11px; letter-spacing: 0.22em; font-weight: 600; color: rgba(255,255,255,0.85); text-transform: uppercase; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.vol-label { font-size: 10px; letter-spacing: 0.20em; font-weight: 700; color: var(--text-3); margin-bottom: 8px; text-transform: uppercase; }
+.vol-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.vol-num { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.vol-num small { font-size: 15px; color: var(--text-3); font-weight: 500; margin-left: 6px; }
+.best-pill {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3);
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+}
+.best-pill.pr { color: var(--good); border-color: rgba(225,29,56,0.35); background: rgba(225,29,56,0.08); }
+
+.lift {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px;
+  margin-bottom: 10px;
+}
+.lift-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.lift-name { font-size: 15px; font-weight: 700; flex: 1; letter-spacing: -0.01em; }
+.lift-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 16px; padding: 4px 6px; opacity: 0.6;
+  transition: color 0.18s, opacity 0.18s;
+}
+.lift-del:hover { color: var(--bad); opacity: 1; }
+
+.set-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; margin-bottom: 5px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--font-mono); font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.set-row .set-n { color: var(--text-3); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; width: 42px; }
+.set-row b { font-weight: 700; }
+.set-row .x { color: var(--text-4); }
+.set-row .set-vol { margin-left: auto; color: var(--text-3); font-size: 10.5px; }
+
+.set-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; }
+.set-add input {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-strong);
+  border-radius: 10px; color: var(--text-1);
+  font-family: var(--font-mono); font-size: 13px; outline: none;
+}
+.set-add input:focus { border-color: rgba(225,29,56,0.5); }
+.set-add input::placeholder { color: var(--text-4); }
+.set-add .add-set-btn {
+  background: rgba(255,255,255,0.06); color: var(--text-1);
+  border: 1px solid var(--border-strong); border-radius: 10px;
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  padding: 10px 14px; cursor: pointer; transition: background 0.18s;
+}
+.set-add .add-set-btn:hover { background: rgba(255,255,255,0.10); }
+
+.empty { font-size: 12px; font-style: italic; color: var(--text-3); text-align: center; padding: 14px 0; }
+
+.add-lift { display: flex; gap: 8px; }
+.add-lift input {
+  flex: 1; padding: 13px 14px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-strong);
+  border-radius: 12px; color: var(--text-1);
+  font-family: inherit; font-size: 14px; outline: none;
+}
+.add-lift input:focus { border-color: rgba(225,29,56,0.5); }
+.add-lift input::placeholder { color: var(--text-4); }
+.add-lift .btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e8e5dd 100%);
+  color: #0a0a0b; border: none; border-radius: 12px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  padding: 13px 20px; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 14px rgba(0,0,0,0.40);
+  transition: transform 0.15s;
+}
+.add-lift .btn-primary:hover { transform: translateY(-1px); }
+.add-lift .btn-primary:active { transform: scale(0.98); }
+
+.hist-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; margin-bottom: 5px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.hist-row b { color: var(--text-1); }
+.hist-row .pr-tag { color: var(--good); font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; }
+.hist-row time { margin-left: auto; font-size: 10.5px; color: var(--text-3); }
+
+.note { text-align: center; font-size: 11px; color: var(--text-4); margin-top: 16px; line-height: 1.5; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 64px; transform: translate(-50%, 16px);
+  opacity: 0; pointer-events: none; z-index: 60;
+  background: #16161a; border: 1px solid var(--border-strong);
+  border-radius: 12px; padding: 12px 18px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  transition: opacity 0.35s, transform 0.35s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.best { border-color: rgba(225,29,56,0.5); box-shadow: 0 0 30px rgba(225,29,56,0.25), 0 12px 40px rgba(0,0,0,0.5); }
+.toast .tag { color: var(--good); font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; margin-right: 8px; }
+
+.hub-link {
+  position: fixed; bottom: 14px; left: 14px; z-index: 50;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 15px; border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(10,10,11,0.65); backdrop-filter: blur(12px);
+  color: var(--text-1); text-decoration: none;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+}
+.hub-link span { color: var(--good); }
+@media (max-width: 460px) { .set-add { grid-template-columns: 1fr 1fr; } .set-add .add-set-btn { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-  <a class="back" href="index.html"><i>✝</i> Hub</a>
-  <h1>LIFT LOGGER</h1>
-  <p class="sub">Log a set · close the tab · it is still here</p>
+<a class="hub-link" href="index.html"><span>&#10013;</span> Hub</a>
 
-  <div class="app">
-    <div class="card">
-      <div class="vol-row">
-        <p class="vol"><span id="vol">0</span><small>kg session volume</small></p>
-        <span class="pill" id="bestPill">best: 0 kg</span>
-      </div>
+<div class="shell">
+  <button class="day-pill" type="button"><span id="dayPill">—</span></button>
+
+  <div class="header">
+    <h1 class="title">Workout logger</h1>
+    <button class="finish-btn" id="finishBtn">Finish session</button>
+  </div>
+  <p class="subtitle">Log a set, close the tab, it is still here.</p>
+
+  <div class="card">
+    <div class="vol-label">Session volume</div>
+    <div class="vol-row">
+      <div class="vol-num"><span id="vol">0</span><small>kg</small></div>
+      <span class="best-pill" id="bestPill">best: 0 kg</span>
     </div>
-
-    <div class="card">
-      <p class="sec-title">This session</p>
-      <div id="lifts"></div>
-      <div class="empty" id="empty">No lifts yet — add one below.</div>
-      <div class="add-lift" style="margin-top:12px">
-        <input type="text" id="liftName" placeholder="Add a lift… e.g. Back Squat" />
-        <button class="btn btn--primary" id="addLift">+ Add</button>
-      </div>
-    </div>
-
-    <button class="btn btn--primary btn--wide" id="finish">Finish session</button>
-
-    <div class="card" id="histCard" hidden>
-      <p class="sec-title">Past sessions</p>
-      <div class="hist" id="hist"></div>
-    </div>
-    <p class="note">Saved on this device. No account, no cloud, no internet needed.</p>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="divider"><span>This session</span></div>
+
+  <div id="lifts"></div>
+  <div class="empty" id="empty">No lifts yet — add one below.</div>
+
+  <div class="add-lift">
+    <input type="text" id="liftName" placeholder="add a lift… e.g. Back Squat" autocomplete="off">
+    <button class="btn-primary" id="addLift">Add</button>
+  </div>
+
+  <div class="divider" id="histDivider" hidden><span>Past sessions</span></div>
+  <div class="card" id="histCard" hidden>
+    <div id="hist"></div>
+  </div>
+
+  <p class="note">Saved on this device. Log a set, close the tab, it is still here.</p>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 (() => {
-  'use strict';
-  const KEY = 'nv.lifts.v1';
-  const $ = (s) => document.querySelector(s);
-  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+'use strict';
+const KEY = 'nv.lifts.v1';
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  let st = load();
-  function load() {
-    try { return Object.assign({session:[], history:[], best:0}, JSON.parse(localStorage.getItem(KEY)||'{}')); }
-    catch { return {session:[], history:[], best:0}; }
-  }
-  const save = () => localStorage.setItem(KEY, JSON.stringify(st));
+let st = load();
+function load() {
+  try { return Object.assign({session: [], history: [], best: 0}, JSON.parse(localStorage.getItem(KEY) || '{}')); }
+  catch { return {session: [], history: [], best: 0}; }
+}
+const save = () => localStorage.setItem(KEY, JSON.stringify(st));
 
-  let toastT = null;
-  function toast(msg) {
-    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
-  }
+let toastT = null;
+function toast(msg, best) {
+  const t = $('#toast');
+  t.innerHTML = (best ? '<span class="tag">NEW BEST</span>' : '') + msg;
+  t.classList.toggle('best', !!best);
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
 
-  const liftVol = (l) => l.sets.reduce((s, x) => s + x.w * x.r, 0);
-  const sessionVol = () => st.session.reduce((s, l) => s + liftVol(l), 0);
+const liftVol = (l) => l.sets.reduce((s, x) => s + x.w * x.r, 0);
+const sessionVol = () => st.session.reduce((s, l) => s + liftVol(l), 0);
 
-  function render() {
-    $('#vol').textContent = sessionVol().toLocaleString();
-    $('#bestPill').textContent = 'best: ' + st.best.toLocaleString() + ' kg';
-    $('#empty').hidden = st.session.length > 0;
-    const wrap = $('#lifts'); wrap.innerHTML = '';
-    st.session.forEach((l, li) => {
-      const div = document.createElement('div'); div.className = 'lift';
-      div.innerHTML = '<div class="lift-head"><span class="lift-name">' + esc(l.name) + '</span>'
-        + '<button class="lift-del" aria-label="Remove lift">×</button></div>'
-        + l.sets.map((s, i) => '<div class="set"><b>SET ' + (i+1) + '</b><span class="x">·</span><b>' + s.w + '</b>kg <span class="x">×</span> <b>' + s.r + '</b> reps'
-          + '<span class="svol">' + (s.w*s.r).toLocaleString() + ' kg</span></div>').join('')
-        + '<div class="set-add"><input type="number" inputmode="decimal" min="0" step="2.5" placeholder="kg" data-w>'
-        + '<input type="number" inputmode="numeric" min="0" step="1" placeholder="reps" data-r>'
-        + '<button class="btn" data-add>+ Set</button></div>';
-      div.querySelector('.lift-del').addEventListener('click', () => { st.session.splice(li,1); save(); render(); });
-      const wEl = div.querySelector('[data-w]'), rEl = div.querySelector('[data-r]');
-      const addSet = () => {
-        const w = parseFloat(wEl.value), r = parseInt(rEl.value, 10);
-        if (!Number.isFinite(w) || !Number.isFinite(r) || w <= 0 || r <= 0) return;
-        l.sets.push({w, r}); save(); render();
-      };
-      div.querySelector('[data-add]').addEventListener('click', addSet);
-      rEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addSet(); });
-      wrap.appendChild(div);
+function render() {
+  const now = new Date();
+  $('#dayPill').innerHTML = now.toLocaleDateString('en-US', {weekday:'short'}) + ' <span class="day-sep">·</span> ' + now.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+
+  $('#vol').textContent = sessionVol().toLocaleString();
+  const pill = $('#bestPill');
+  pill.textContent = 'best: ' + st.best.toLocaleString() + ' kg';
+  pill.classList.toggle('pr', st.best > 0 && sessionVol() > st.best);
+  $('#empty').style.display = st.session.length ? 'none' : '';
+
+  const wrap = $('#lifts');
+  wrap.innerHTML = '';
+  st.session.forEach((l, li) => {
+    const div = document.createElement('div');
+    div.className = 'lift';
+    div.innerHTML =
+      '<div class="lift-head"><span class="lift-name">' + esc(l.name) + '</span>' +
+      '<button class="lift-del" aria-label="Remove lift">×</button></div>' +
+      l.sets.map((s, i) =>
+        '<div class="set-row"><span class="set-n">SET ' + (i+1) + '</span>' +
+        '<b>' + s.w + '</b><span>kg</span><span class="x">×</span><b>' + s.r + '</b><span>reps</span>' +
+        '<span class="set-vol">' + (s.w * s.r).toLocaleString() + ' kg</span></div>').join('') +
+      '<div class="set-add">' +
+      '<input type="number" inputmode="decimal" min="0" step="2.5" placeholder="kg" data-w>' +
+      '<input type="number" inputmode="numeric" min="0" step="1" placeholder="reps" data-r>' +
+      '<button class="add-set-btn" data-add>+ Add set</button></div>';
+
+    div.querySelector('.lift-del').addEventListener('click', () => {
+      st.session.splice(li, 1); save(); render();
     });
-    renderHist();
-  }
-
-  function renderHist() {
-    const card = $('#histCard'), h = $('#hist');
-    card.hidden = !st.history.length;
-    h.innerHTML = st.history.slice(-6).reverse().map(s =>
-      '<div class="hist-row"><b>' + s.vol.toLocaleString() + ' kg</b> · ' + s.lifts + ' lifts'
-      + (s.pr ? ' <span class="pr-tag">★ PR</span>' : '')
-      + '<time>' + s.date + '</time></div>').join('');
-  }
-
-  $('#addLift').addEventListener('click', addLift);
-  $('#liftName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addLift(); });
-  function addLift() {
-    const v = $('#liftName').value.trim(); if (!v) return;
-    st.session.push({name: v, sets: []});
-    $('#liftName').value = '';
-    save(); render();
-  }
-
-  $('#finish').addEventListener('click', () => {
-    const vol = sessionVol();
-    if (!vol) { toast('Log at least one set first.'); return; }
-    const pr = vol > st.best;
-    if (pr) st.best = vol;
-    const d = new Date();
-    st.history.push({date: (d.getMonth()+1) + '/' + d.getDate(), vol, lifts: st.session.length, pr});
-    if (st.history.length > 30) st.history = st.history.slice(-30);
-    st.session = [];
-    save(); render();
-    toast(pr ? '★ NEW BEST — ' + vol.toLocaleString() + ' kg session!' : 'Session closed: ' + vol.toLocaleString() + ' kg.');
+    const wEl = div.querySelector('[data-w]'), rEl = div.querySelector('[data-r]');
+    const addSet = () => {
+      const w = parseFloat(wEl.value), r = parseInt(rEl.value, 10);
+      if (!Number.isFinite(w) || !Number.isFinite(r) || w <= 0 || r <= 0) return;
+      l.sets.push({w, r}); save(); render();
+    };
+    div.querySelector('[data-add]').addEventListener('click', addSet);
+    rEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addSet(); });
+    wrap.appendChild(div);
   });
 
-  render();
+  const hasHist = st.history.length > 0;
+  $('#histDivider').hidden = !hasHist;
+  $('#histCard').hidden = !hasHist;
+  $('#hist').innerHTML = st.history.slice(-8).reverse().map(s =>
+    '<div class="hist-row"><b>' + s.vol.toLocaleString() + ' kg</b> · ' + s.lifts + (s.lifts === 1 ? ' lift' : ' lifts') +
+    (s.pr ? ' <span class="pr-tag">★ PR</span>' : '') +
+    '<time>' + s.date + '</time></div>').join('');
+}
+
+$('#addLift').addEventListener('click', addLift);
+$('#liftName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addLift(); });
+function addLift() {
+  const v = $('#liftName').value.trim();
+  if (!v) return;
+  st.session.push({name: v, sets: []});
+  $('#liftName').value = '';
+  save(); render();
+}
+
+$('#finishBtn').addEventListener('click', () => {
+  const vol = sessionVol();
+  if (!vol) { toast('Log at least one set first.'); return; }
+  const pr = vol > st.best;
+  if (pr) st.best = vol;
+  const d = new Date();
+  st.history.push({date: (d.getMonth()+1) + '/' + d.getDate(), vol, lifts: st.session.length, pr});
+  if (st.history.length > 40) st.history = st.history.slice(-40);
+  st.session = [];
+  save(); render();
+  toast(pr ? vol.toLocaleString() + ' kg — biggest session yet.' : 'Session closed: ' + vol.toLocaleString() + ' kg.', pr);
+});
+
+render();
 })();
 </script>
 </body>
