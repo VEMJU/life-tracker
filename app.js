@@ -1543,6 +1543,7 @@
   const WidgetManager = (() => {
     let state = Store.get(KEYS.widgetState, {});
     const saveState = () => Store.set(KEYS.widgetState, state);
+    const LOCKED = true;   // layout locked in place — no drag, resize, or move-to-tab controls
 
     const ALL_TABS = ['home','gym','nutrition','finance','goals','reminders'];
     const registry = [];   // {id, el, defaultTabs}
@@ -1636,6 +1637,7 @@
     function wireCard(id, el) {
       if (wired.has(id)) return;
       wired.add(id);
+      if (LOCKED) return;   // frozen layout: skip all drag / resize / move-control wiring
 
       let drag = false, off = {x:0, y:0};
       const head = el.querySelector('.card__head');

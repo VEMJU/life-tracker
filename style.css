@@ -2585,3 +2585,9 @@ body.intro-locked { overflow: hidden; }
   animation: fxBurst .62s var(--ease-out) forwards;
 }
 @keyframes fxBurst { 0% { transform: scale(.35); opacity: 1; } 100% { transform: scale(9); opacity: 0; } }
+
+/* ───────────────── §40  LOCKED LAYOUT (frozen cards · no drag / resize) ───────────────── */
+.wm-mover, .wm-sizes { display: none !important; }
+.card.is-floating { resize: none !important; }
+.card.is-floating::-webkit-resizer { display: none !important; }
+.card__head { cursor: default !important; }
