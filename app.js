@@ -1463,8 +1463,8 @@
       // exercise select
       $('[data-log-exercise]', panel)?.addEventListener('change', () => renderHistory(panel));
 
-      // drag (mousedown on handle)
-      const handle = $('[data-log-drag-handle]', panel);
+      // drag (mousedown on handle) — disabled: layout is locked, panel stays pinned
+      const handle = null && $('[data-log-drag-handle]', panel);
       handle?.addEventListener('mousedown', e => {
         if (e.button!==0) return;
         if (e.target.closest('select, input, button')) return; // don't steal interactive controls

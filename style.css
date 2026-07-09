@@ -3000,3 +3000,79 @@ body.intro-locked { overflow: hidden; }
   .cl-stat b.bump, .cl-ship-out b.bump { animation: none; }
   .cl-item__media img, #modal-clothes .modal__dialog { transition: none; }
 }
+
+/* ───────────────── §43  GLOBAL CRIMSON POLISH II (every tab) ───────────────── */
+
+/* — tab header: cinematic view-head — */
+.view-head { position: relative; align-items: center; }
+.view-head__eyebrow { display: inline-flex; align-items: center; gap: 8px; }
+.view-head__eyebrow::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-bright);
+  box-shadow: 0 0 10px rgba(225,29,56,.8);
+  animation: vhPulse 2.2s ease-in-out infinite;
+}
+@keyframes vhPulse { 50% { opacity: .35; transform: scale(.8); } }
+.view-head__title {
+  background: linear-gradient(180deg, #ffffff 0%, #b9b9b9 115%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.view-head__title.is-decoding {
+  -webkit-text-fill-color: var(--accent-bright);
+  text-shadow: 0 0 18px rgba(225,29,56,.42);
+}
+.view-head::after {
+  content: ""; position: absolute; left: 0; bottom: -1px; height: 1px; width: 100%;
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent) 30%, transparent 85%);
+  transform: scaleX(0); transform-origin: left;
+  opacity: 0;
+}
+.view-head.is-swap::after { animation: vhRule 1s var(--ease-emph) forwards; }
+@keyframes vhRule { 0% { transform: scaleX(0); opacity: 1; } 60% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: .55; } }
+
+/* — inputs: crimson focus ring everywhere — */
+.input:focus {
+  border-color: var(--accent-soft) !important;
+  box-shadow: 0 0 0 3px rgba(196,22,59,.13), 0 0 24px -8px var(--accent-glow) !important;
+}
+
+/* — text selection + scrollbar warm-up — */
+::selection { background: rgba(196,22,59,.45); color: #fff; text-shadow: none; }
+::-webkit-scrollbar-thumb:hover { background: rgba(196,22,59,.55); background-clip: padding-box; }
+
+/* — toast: crimson-edged, lifted — */
+.toast {
+  border: 1px solid rgba(196,22,59,.5) !important;
+  box-shadow: 0 0 30px -6px var(--accent-glow), 0 16px 40px rgba(0,0,0,.6) !important;
+}
+
+/* — primary buttons: crimson edge bloom on hover — */
+.btn--primary:hover { box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 30px -10px var(--accent-glow); }
+
+/* — empty states: breathing icon — */
+.empty__icon { animation: emptyBreath 3.2s ease-in-out infinite; }
+@keyframes emptyBreath { 50% { opacity: .45; transform: translateY(-3px); } }
+
+/* — list rows join the tab-entry stagger (wired in fx.js) — */
+.board.is-entering .exercise,
+.board.is-entering .reminder {
+  opacity: 0; transform: translateY(14px);
+  animation: cardIn .5s var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 45ms + 120ms);
+}
+
+/* — progress log: pinned to its corner, never draggable/resizable — */
+.log-panel {
+  left: auto !important; top: auto !important;
+  right: 24px !important; bottom: 24px !important;
+  resize: none !important;
+}
+.log-panel__header, .log-panel__header:active { cursor: default !important; }
+.log-panel__resize-hint { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .view-head__eyebrow::before, .empty__icon { animation: none; }
+  .view-head.is-swap::after { animation: none; opacity: .55; transform: scaleX(1); }
+  .board.is-entering .exercise, .board.is-entering .reminder { animation: none; opacity: 1; transform: none; }
+}

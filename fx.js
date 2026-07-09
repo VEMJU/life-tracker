@@ -61,9 +61,16 @@
     const panel = document.querySelector(`[data-tab-panel="${view}"]`);
     if (!panel) return;
     panel.querySelectorAll('.card, .goal-card').forEach((c, i) => c.style.setProperty('--i', i % 12));
+    panel.querySelectorAll('.exercise, .reminder').forEach((c, i) => c.style.setProperty('--i', i % 10));
     panel.classList.remove('is-entering');
     void panel.offsetWidth;                         // reflow → restart the stagger
     panel.classList.add('is-entering');
+    const head = document.querySelector('.view-head');
+    if (head) {
+      head.classList.remove('is-swap');
+      void head.offsetWidth;
+      head.classList.add('is-swap');                // replay the crimson rule sweep
+    }
   }
   new MutationObserver((muts) => {
     for (const m of muts) if (m.attributeName === 'data-view') reveal(body.getAttribute('data-view'));
