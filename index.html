@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=13" />
 </head>
 <body data-view="home">
 
@@ -35,6 +35,7 @@
         <button class="intro-tab" data-go="academics" role="listitem"><span class="intro-tab__n">04</span><span class="intro-tab__name">Academics</span><span class="intro-tab__sub">College Prep</span></button>
         <button class="intro-tab" data-go="goals"    role="listitem"><span class="intro-tab__n">05</span><span class="intro-tab__name">Goals</span><span class="intro-tab__sub">The Oath</span></button>
         <button class="intro-tab" data-go="logs"     role="listitem"><span class="intro-tab__n">06</span><span class="intro-tab__name">Logs</span><span class="intro-tab__sub">The Ledger</span></button>
+        <button class="intro-tab" data-go="clothes"  role="listitem"><span class="intro-tab__n">07</span><span class="intro-tab__name">Clothes</span><span class="intro-tab__sub">The Wardrobe</span></button>
       </div>
 
       <button class="intro__enter" id="introEnter" type="button">
@@ -178,6 +179,12 @@
         </svg>
         <span class="navlink__label">Logs</span>
       </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="clothes">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M9 3 5 6 3 10l3 2v9h12v-9l3-2-2-4-4-3-2 2h-2L9 3Z" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Clothes</span>
+      </button>
     </nav>
 
     <p class="sidebar__seal">SOLI · DEO · GLORIA</p>
@@ -207,6 +214,7 @@
       <button class="topbar__link" data-tab="goals">Goals</button>
       <button class="topbar__link" data-tab="reminders">Reminders</button>
       <button class="topbar__link" data-tab="logs">Logs</button>
+      <button class="topbar__link" data-tab="clothes">Clothes</button>
     </nav>
   </header>
 
@@ -430,6 +438,69 @@
         </article>
 
       </main>
+
+      <!-- ───────────────────────────  CLOTHES & ACCESSORIES  ─────────────────────────── -->
+      <section class="board board--clothes" data-tab-panel="clothes" hidden>
+
+        <!-- HAUL COMMAND (stats + shipping estimator) -->
+        <article class="card card--cl-stats reveal" style="--d:.03s">
+          <header class="card__head">
+            <span class="card__tag">I.</span>
+            <h3 class="card__title">Haul Command</h3>
+            <span class="cl-filter-hint" data-cl-scope>all items</span>
+          </header>
+          <div class="cl-stats">
+            <div class="cl-stat">
+              <b data-cl-count>0</b>
+              <span>Total Items</span>
+            </div>
+            <div class="cl-stat">
+              <b data-cl-spent>$0.00</b>
+              <span>Total Spent (USD)</span>
+            </div>
+            <div class="cl-stat">
+              <b data-cl-weight>0 g</b>
+              <span>Total Haul Weight</span>
+            </div>
+            <div class="cl-stat cl-stat--ship">
+              <label class="cl-ship-label" for="cl-ship-rate">Est. Shipping Rate per kg ($)</label>
+              <input class="input input--sm" id="cl-ship-rate" data-cl-shiprate type="number" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 12.5" />
+              <p class="cl-ship-out">Est. Shipping Cost: <b data-cl-shipcost>$0.00</b></p>
+            </div>
+          </div>
+        </article>
+
+        <!-- MY MEASUREMENTS -->
+        <article class="card card--cl-meas reveal" style="--d:.07s">
+          <header class="card__head">
+            <span class="card__tag">II.</span>
+            <h3 class="card__title">My Measurements</h3>
+          </header>
+          <div class="cl-meas" data-cl-meas>
+            <div class="cl-meas__legend"><span></span><span>in</span><span>cm</span></div>
+            <!-- rows injected -->
+          </div>
+        </article>
+
+        <!-- FILTERS + SECTIONS TOOLBAR -->
+        <div class="cl-toolbar reveal" style="--d:.1s">
+          <button class="cl-chip is-active" data-cl-filter="all">Show All</button>
+          <button class="cl-chip" data-cl-filter="high">High Priority 🔥</button>
+          <button class="cl-chip" data-cl-filter="warehouse">In Warehouse 📦</button>
+          <button class="cl-chip" data-cl-filter="arrived">Arrived ✅</button>
+          <select class="input input--sm cl-tagselect" data-cl-tagfilter aria-label="Filter by haul tag">
+            <option value="">All haul tags</option>
+          </select>
+          <span class="cl-toolbar__spring"></span>
+          <button class="btn btn--ghost btn--sm" data-cl-addcat>+ Add New Section</button>
+        </div>
+
+        <div class="cl-banner" data-cl-banner hidden>
+          ⚠️ REMINDER: Instruct your agent to remove all shoeboxes and retail packaging before shipping to maximize weight and volume savings!
+        </div>
+
+        <div class="cl-cats" data-cl-cats><!-- injected --></div>
+      </section>
 
       <!-- ───────────────────────────  GOALS  ─────────────────────────── -->
       <section class="board board--goals-pro" data-tab-panel="goals" hidden>
@@ -978,6 +1049,86 @@
   <!-- ════════════════════  MODALS  ════════════════════ -->
 
   <!-- Countdown modal -->
+  <!-- Clothes item modal -->
+  <div class="modal" id="modal-clothes" aria-hidden="true">
+    <div class="modal__overlay" data-cl-close></div>
+    <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="cl-modal-title">
+      <header class="modal__head">
+        <h3 class="modal__title" id="cl-modal-title" data-cl-modal-title>Add Item</h3>
+        <button class="icon-btn" data-cl-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <form class="form" data-cl-form autocomplete="off">
+        <div class="cl-form-grid">
+          <div class="field cl-span2">
+            <label for="cl-f-name">Item name</label>
+            <input id="cl-f-name" class="input" name="name" maxlength="80" required placeholder="e.g. Heavyweight boxy tee" />
+          </div>
+          <div class="field">
+            <label for="cl-f-cny">Price (¥ CNY)</label>
+            <input id="cl-f-cny" class="input" name="cny" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 199" />
+          </div>
+          <div class="field">
+            <label for="cl-f-weight">Weight (g)</label>
+            <input id="cl-f-weight" class="input" name="weight" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 450" />
+          </div>
+          <div class="field cl-span2">
+            <label for="cl-f-size">Size ordered</label>
+            <input id="cl-f-size" class="input" name="size" maxlength="60" placeholder='e.g. Tag XL / Fits like US M' />
+          </div>
+          <div class="field cl-span2">
+            <label for="cl-f-desc">Short description</label>
+            <input id="cl-f-desc" class="input" name="desc" maxlength="140" placeholder="Fabric, colorway, batch notes…" />
+          </div>
+          <div class="field cl-span2">
+            <label for="cl-f-img">Image URL</label>
+            <input id="cl-f-img" class="input" name="img" maxlength="600" placeholder="https://…  (or upload below)" />
+            <input class="cl-file" type="file" accept="image/*" data-cl-file />
+          </div>
+          <div class="field">
+            <label for="cl-f-store">Store link</label>
+            <input id="cl-f-store" class="input" name="store" maxlength="600" placeholder="taobao.com/…" />
+          </div>
+          <div class="field">
+            <label for="cl-f-agent">Agent link</label>
+            <input id="cl-f-agent" class="input" name="agent" maxlength="600" placeholder="agent order URL" />
+          </div>
+          <div class="field">
+            <label for="cl-f-tag">Haul tag</label>
+            <input id="cl-f-tag" class="input" name="tag" maxlength="30" placeholder='e.g. Haul #1' />
+          </div>
+          <div class="field">
+            <label for="cl-f-priority">Priority / desire</label>
+            <select id="cl-f-priority" class="input" name="priority">
+              <option value="high">High (Really want it)</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cl-f-status">Status</label>
+            <select id="cl-f-status" class="input" name="status" data-cl-status>
+              <option value="wishlist" selected>Wishlist</option>
+              <option value="ordered">Ordered</option>
+              <option value="warehouse">In Warehouse</option>
+              <option value="shipped">Shipped</option>
+              <option value="arrived">Arrived</option>
+            </select>
+          </div>
+          <div class="field" data-cl-trackwrap hidden>
+            <label for="cl-f-tracking">Tracking number</label>
+            <input id="cl-f-tracking" class="input" name="tracking" maxlength="60" placeholder="e.g. LP00123456789CN" />
+          </div>
+        </div>
+        <div class="form__actions form__actions--split">
+          <button type="button" class="btn btn--ghost" data-cl-close>Cancel</button>
+          <button type="submit" class="btn btn--primary" data-cl-save>Save Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal" id="modal-countdown" aria-hidden="true">
     <div class="modal__overlay" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="cd-modal-title">
@@ -1156,7 +1307,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=6" defer></script>
+  <script src="app.js?v=7" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=3" defer></script>
   <script src="intro.js?v=4" defer></script>

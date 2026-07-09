@@ -145,8 +145,9 @@
     academics: {eyebrow:'College Prep · Class of 2027', title:'Academics'},
     vision:    {eyebrow:'Module',title:'Vision',   desc:'North-star outcomes and dated milestones. Module reserved.'},
     logs:      {eyebrow:'Daily Vitals · The Ledger', title:'Logs'},
+    clothes:   {eyebrow:'The Wardrobe · Fits & Freight', title:'Clothes & Accessories'},
   };
-  const REAL_PANELS = ['home','gym','goals','reminders','nutrition','finance','photos','academics','logs'];
+  const REAL_PANELS = ['home','gym','goals','reminders','nutrition','finance','photos','academics','logs','clothes'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {
@@ -4782,6 +4783,351 @@
     return { init, renderAll };
   })();
 
+  /* ═══════════════════  CLOTHES & ACCESSORIES (haul tracker · closet)  ═══════════════════ */
+  const Clothes = (() => {
+    const KEY = 'nv.clothes';
+    const CNY_USD = 0.147;
+    const STATUS_LABEL = {wishlist:'Wishlist', ordered:'Ordered', warehouse:'In Warehouse', shipped:'Shipped', arrived:'Arrived'};
+    const MEAS_FIELDS = ['Chest','Shoulders','Sleeve','Waist','Inseam','Wrist'];
+
+    const DEFAULT = () => ({
+      cats: [
+        {id: uid(), name: 'Shirts'},
+        {id: uid(), name: 'Jeans'},
+        {id: uid(), name: 'Watches'},
+        {id: uid(), name: 'Accessories'},
+      ],
+      items: [],
+      meas: {},          // {chest:{in,cm}, …}
+      shipRate: 0,
+      filter: 'all',
+      tagFilter: '',
+    });
+
+    let st = null;
+    const save = () => Store.set(KEY, st);
+    const usd  = (it) => num(it.cny) * CNY_USD;
+    const fmt$ = (n) => '$' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const safeUrl = (u) => {
+      u = String(u || '').trim();
+      if (!u) return '';
+      if (/^javascript:/i.test(u)) return '';
+      return /^https?:\/\//i.test(u) ? u : 'https://' + u;
+    };
+
+    /* ── filtering ── */
+    function visible() {
+      return st.items.filter(it => {
+        if (st.filter === 'high'      && it.priority !== 'high')     return false;
+        if (st.filter === 'warehouse' && it.status   !== 'warehouse') return false;
+        if (st.filter === 'arrived'   && it.status   !== 'arrived')   return false;
+        if (st.tagFilter && (it.tag || '') !== st.tagFilter)          return false;
+        return true;
+      });
+    }
+
+    /* ── stats + shipping estimator ── */
+    function renderStats() {
+      const items = visible();
+      const spent  = items.reduce((s, it) => s + usd(it), 0);
+      const weight = items.reduce((s, it) => s + num(it.weight), 0);
+      const cost   = (weight / 1000) * num(st.shipRate);
+      $('[data-cl-count]').textContent  = items.length;
+      $('[data-cl-spent]').textContent  = fmt$(spent);
+      $('[data-cl-weight]').textContent = weight.toLocaleString() + ' g';
+      $('[data-cl-shipcost]').textContent = fmt$(cost);
+      const scoped = st.filter !== 'all' || st.tagFilter;
+      $('[data-cl-scope]').textContent = scoped ? 'filtered view' : 'all items';
+    }
+
+    /* ── measurements card ── */
+    function renderMeas() {
+      const wrap = $('[data-cl-meas]');
+      wrap.querySelectorAll('.cl-meas__row').forEach(r => r.remove());
+      MEAS_FIELDS.forEach(label => {
+        const k = label.toLowerCase();
+        const m = st.meas[k] || {};
+        const row = document.createElement('div');
+        row.className = 'cl-meas__row';
+        row.innerHTML =
+          `<span class="cl-meas__name">${label}</span>` +
+          `<input class="input input--sm" type="number" min="0" step="0.1" inputmode="decimal" data-meas-in="${k}" value="${m.in ?? ''}" placeholder="—" aria-label="${label} in inches">` +
+          `<input class="input input--sm" type="number" min="0" step="0.1" inputmode="decimal" data-meas-cm="${k}" value="${m.cm ?? ''}" placeholder="—" aria-label="${label} in centimeters">`;
+        wrap.appendChild(row);
+      });
+    }
+
+    /* ── item card ── */
+    function itemCard(it) {
+      const cpw = it.status === 'arrived'
+        ? (it.wears > 0 ? usd(it) / it.wears : usd(it))
+        : null;
+      const links = [];
+      if (it.store) links.push(`<a class="cl-link" href="${esc(safeUrl(it.store))}" target="_blank" rel="noopener noreferrer">Store ↗</a>`);
+      if (it.agent) links.push(`<a class="cl-link" href="${esc(safeUrl(it.agent))}" target="_blank" rel="noopener noreferrer">Agent ↗</a>`);
+      if (it.status === 'shipped' && it.tracking)
+        links.push(`<a class="cl-link cl-link--track" href="https://www.17track.net/en/track?nums=${encodeURIComponent(it.tracking)}" target="_blank" rel="noopener noreferrer">📦 ${esc(it.tracking)}</a>`);
+
+      return `<article class="cl-item ${it.priority === 'high' ? 'is-high' : ''}" data-cl-item="${it.id}">
+        <div class="cl-item__media">
+          ${it.img
+            ? `<img src="${esc(it.img.startsWith('data:image/') ? it.img : safeUrl(it.img))}" alt="" loading="lazy">`
+            : `<span class="cl-item__noimg" aria-hidden="true">
+                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3 5 6 3 10l3 2v9h12v-9l3-2-2-4-4-3-2 2h-2L9 3Z" stroke-linejoin="round"/></svg>
+               </span>`}
+          ${it.priority === 'high' ? '<span class="cl-badge">HIGH 🔥</span>' : ''}
+          <span class="cl-status cl-status--${esc(it.status)}">${STATUS_LABEL[it.status] || it.status}</span>
+        </div>
+        <div class="cl-item__body">
+          <p class="cl-item__name">${esc(it.name)}</p>
+          <p class="cl-item__price">
+            <b>${fmt$(usd(it))}</b>${num(it.cny) ? ` <span>¥${num(it.cny).toLocaleString()}</span>` : ''}
+            ${num(it.weight) ? `<span class="cl-item__wt">${num(it.weight).toLocaleString()} g</span>` : ''}
+          </p>
+          ${it.size ? `<p class="cl-item__meta">${esc(it.size)}</p>` : ''}
+          ${it.desc ? `<p class="cl-item__desc">${esc(it.desc)}</p>` : ''}
+          ${it.tag  ? `<span class="cl-tag">${esc(it.tag)}</span>` : ''}
+          ${links.length ? `<div class="cl-item__links">${links.join('')}</div>` : ''}
+          ${it.status === 'arrived' ? `
+            <div class="cl-wear">
+              <button class="btn btn--ghost btn--sm" data-cl-wear="${it.id}">+1 Log Wear</button>
+              <span class="cl-wear__stats">
+                <b>${it.wears || 0}</b> worn · CPW <b>${fmt$(cpw)}</b>
+              </span>
+            </div>` : ''}
+        </div>
+        <div class="cl-item__actions">
+          <button class="icon-btn" data-cl-edit="${it.id}" aria-label="Edit item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="icon-btn" data-cl-del="${it.id}" aria-label="Delete item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </article>`;
+    }
+
+    /* ── categories grid ── */
+    function renderCats() {
+      const wrap = $('[data-cl-cats]');
+      const vis = visible();
+      wrap.innerHTML = st.cats.map(cat => {
+        const items = vis.filter(it => it.catId === cat.id);
+        return `<article class="card cl-cat" data-cl-cat="${cat.id}">
+          <header class="card__head">
+            <span class="card__tag">§</span>
+            <h3 class="card__title">${esc(cat.name)}</h3>
+            <span class="card__count">${items.length}</span>
+            <button class="btn btn--ghost btn--sm" data-cl-additem="${cat.id}">+ Add Item</button>
+            <button class="icon-btn" data-cl-delcat="${cat.id}" aria-label="Delete section ${esc(cat.name)}">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+            </button>
+          </header>
+          ${items.length
+            ? `<div class="cl-grid">${items.map(itemCard).join('')}</div>`
+            : `<p class="cl-cat__empty">Nothing here${st.filter !== 'all' || st.tagFilter ? ' under this filter' : ''} — add an item.</p>`}
+        </article>`;
+      }).join('');
+    }
+
+    function renderFilters() {
+      $$('[data-cl-filter]').forEach(b => b.classList.toggle('is-active', b.dataset.clFilter === st.filter));
+      $('[data-cl-banner]').hidden = st.filter !== 'warehouse';
+      const sel = $('[data-cl-tagfilter]');
+      const tags = [...new Set(st.items.map(it => (it.tag || '').trim()).filter(Boolean))].sort();
+      const cur = st.tagFilter;
+      sel.innerHTML = '<option value="">All haul tags</option>' +
+        tags.map(t => `<option value="${esc(t)}" ${t === cur ? 'selected' : ''}>${esc(t)}</option>`).join('');
+      if (cur && !tags.includes(cur)) { st.tagFilter = ''; }
+    }
+
+    function render() {
+      renderFilters();
+      renderStats();
+      renderCats();
+    }
+
+    /* ── modal ── */
+    let editingId = null, pendingCatId = null;
+    const modal = () => $('#modal-clothes');
+    function openModal(catId, item) {
+      editingId = item ? item.id : null;
+      pendingCatId = catId;
+      const f = $('[data-cl-form]');
+      f.reset();
+      $('[data-cl-modal-title]').textContent = item ? 'Edit Item' : 'Add Item';
+      if (item) {
+        f.name.value = item.name;   f.cny.value = item.cny ?? '';
+        f.weight.value = item.weight ?? ''; f.size.value = item.size || '';
+        f.desc.value = item.desc || ''; f.img.value = item.img && !item.img.startsWith('data:image/') ? item.img : '';
+        f.store.value = item.store || ''; f.agent.value = item.agent || '';
+        f.tag.value = item.tag || ''; f.priority.value = item.priority || 'medium';
+        f.status.value = item.status || 'wishlist'; f.tracking.value = item.tracking || '';
+      }
+      pendingImg = item ? (item.img && item.img.startsWith('data:image/') ? item.img : null) : null;
+      $('[data-cl-trackwrap]').hidden = f.status.value !== 'shipped';
+      modal().classList.add('is-open');
+      modal().setAttribute('aria-hidden', 'false');
+      setTimeout(() => f.name.focus(), 60);
+    }
+    function closeModal() {
+      modal().classList.remove('is-open');
+      modal().setAttribute('aria-hidden', 'true');
+      editingId = pendingCatId = null;
+      pendingImg = null;
+    }
+
+    /* file upload → compressed dataURL (kept small for localStorage) */
+    let pendingImg = null;
+    function readFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 360;
+        const k = Math.min(1, MAX / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k);
+        c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        pendingImg = c.toDataURL('image/jpeg', 0.72);
+        URL.revokeObjectURL(img.src);
+        toast('Image attached');
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function submit(e) {
+      e.preventDefault();
+      const f = e.target;
+      const name = f.name.value.trim();
+      if (!name) return;
+      const urlImg = f.img.value.trim();
+      const data = {
+        name,
+        cny: num(f.cny.value), weight: num(f.weight.value),
+        size: f.size.value.trim(), desc: f.desc.value.trim(),
+        img: urlImg || pendingImg || '',
+        store: f.store.value.trim(), agent: f.agent.value.trim(),
+        tag: f.tag.value.trim(),
+        priority: f.priority.value, status: f.status.value,
+        tracking: f.tracking.value.trim(),
+      };
+      if (editingId) {
+        const it = st.items.find(i => i.id === editingId);
+        if (it) Object.assign(it, data);
+        toast('Item updated');
+      } else {
+        st.items.push(Object.assign({id: uid(), catId: pendingCatId, wears: 0}, data));
+        toast('Item added');
+      }
+      save(); closeModal(); render();
+    }
+
+    /* ── events (single delegated listener on the panel) ── */
+    function wire() {
+      const panel = $('[data-tab-panel="clothes"]');
+
+      panel.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-cl-filter]');
+        if (chip) { st.filter = chip.dataset.clFilter; save(); render(); return; }
+
+        const addCat = e.target.closest('[data-cl-addcat]');
+        if (addCat) {
+          const name = (prompt('Name for the new section:') || '').trim();
+          if (name) { st.cats.push({id: uid(), name}); save(); render(); }
+          return;
+        }
+        const delCat = e.target.closest('[data-cl-delcat]');
+        if (delCat) {
+          const cat = st.cats.find(c => c.id === delCat.dataset.clDelcat);
+          if (!cat) return;
+          const n = st.items.filter(i => i.catId === cat.id).length;
+          if (!confirm(`Delete section "${cat.name}"${n ? ` and its ${n} item(s)` : ''}?`)) return;
+          st.items = st.items.filter(i => i.catId !== cat.id);
+          st.cats  = st.cats.filter(c => c.id !== cat.id);
+          save(); render(); return;
+        }
+        const addItem = e.target.closest('[data-cl-additem]');
+        if (addItem) { openModal(addItem.dataset.clAdditem, null); return; }
+
+        const edit = e.target.closest('[data-cl-edit]');
+        if (edit) {
+          const it = st.items.find(i => i.id === edit.dataset.clEdit);
+          if (it) openModal(it.catId, it);
+          return;
+        }
+        const del = e.target.closest('[data-cl-del]');
+        if (del) {
+          const it = st.items.find(i => i.id === del.dataset.clDel);
+          if (it && confirm(`Delete "${it.name}"?`)) {
+            st.items = st.items.filter(i => i.id !== it.id);
+            save(); render();
+          }
+          return;
+        }
+        const wear = e.target.closest('[data-cl-wear]');
+        if (wear) {
+          const it = st.items.find(i => i.id === wear.dataset.clWear);
+          if (it) { it.wears = (it.wears || 0) + 1; save(); render(); }
+          return;
+        }
+      });
+
+      panel.addEventListener('input', (e) => {
+        const t = e.target;
+        if (t.matches('[data-cl-shiprate]')) { st.shipRate = num(t.value); save(); renderStats(); return; }
+        if (t.matches('[data-cl-tagfilter]')) { st.tagFilter = t.value; save(); render(); return; }
+        const inKey = t.getAttribute('data-meas-in'), cmKey = t.getAttribute('data-meas-cm');
+        if (inKey) {
+          const v = num(t.value);
+          st.meas[inKey] = {in: t.value === '' ? '' : v, cm: t.value === '' ? '' : Math.round(v * 25.4) / 10};
+          const cmEl = panel.querySelector(`[data-meas-cm="${inKey}"]`);
+          if (cmEl) cmEl.value = st.meas[inKey].cm;
+          save(); return;
+        }
+        if (cmKey) {
+          const v = num(t.value);
+          st.meas[cmKey] = {in: t.value === '' ? '' : Math.round(v / 2.54 * 10) / 10, cm: t.value === '' ? '' : v};
+          const inEl = panel.querySelector(`[data-meas-in="${cmKey}"]`);
+          if (inEl) inEl.value = st.meas[cmKey].in;
+          save(); return;
+        }
+      });
+
+      /* modal wiring */
+      const m = modal();
+      m.addEventListener('click', (e) => { if (e.target.closest('[data-cl-close]')) closeModal(); });
+      $('[data-cl-form]').addEventListener('submit', submit);
+      $('[data-cl-status]').addEventListener('change', (e) => {
+        $('[data-cl-trackwrap]').hidden = e.target.value !== 'shipped';
+      });
+      $('[data-cl-file]').addEventListener('change', (e) => readFile(e.target.files[0]));
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && m.classList.contains('is-open')) closeModal();
+      });
+    }
+
+    /* ── init ── */
+    let booted = false;
+    function init() {
+      if (!booted) {
+        booted = true;
+        st = Store.get(KEY, null);
+        if (!st || !Array.isArray(st.cats)) st = DEFAULT();
+        // heal any missing fields from older saves
+        st.meas = st.meas || {}; st.items = st.items || [];
+        st.filter = st.filter || 'all'; st.tagFilter = st.tagFilter || '';
+        save();
+        $('[data-cl-shiprate]').value = st.shipRate || '';
+        renderMeas();
+        wire();
+      }
+      render();
+    }
+
+    return {init};
+  })();
+
   /* ═══════════════════  DAYFLOW (goal ticker · day ring · to-do)  ═══════════════════ */
   const DayFlow = (() => {
     const DAY_PREFIX = 'nv.day.';
@@ -5085,6 +5431,7 @@
         if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
         if (name==='academics') Academics.init();
         if (name==='logs')      Logs.init();
+        if (name==='clothes')   Clothes.init();
       } else {
         const ph   = $('[data-tab-panel="placeholder"]');
         const meta = TAB_META[name]||{eyebrow:'Module',title:name,desc:'Module reserved.'};
