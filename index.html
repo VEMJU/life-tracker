@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=15" />
+  <link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body data-view="home">
 
@@ -36,6 +36,8 @@
         <button class="intro-tab" data-go="goals"    role="listitem"><span class="intro-tab__n">05</span><span class="intro-tab__name">Goals</span><span class="intro-tab__sub">The Oath</span></button>
         <button class="intro-tab" data-go="logs"     role="listitem"><span class="intro-tab__n">06</span><span class="intro-tab__name">Logs</span><span class="intro-tab__sub">The Ledger</span></button>
         <button class="intro-tab" data-go="clothes"  role="listitem"><span class="intro-tab__n">07</span><span class="intro-tab__name">Clothes</span><span class="intro-tab__sub">The Wardrobe</span></button>
+        <button class="intro-tab" data-go="sports"   role="listitem"><span class="intro-tab__n">08</span><span class="intro-tab__name">Sports</span><span class="intro-tab__sub">The Arena</span></button>
+        <button class="intro-tab" data-go="calendar" role="listitem"><span class="intro-tab__n">09</span><span class="intro-tab__name">Calendar</span><span class="intro-tab__sub">The Chronicle</span></button>
       </div>
 
       <button class="intro__enter" id="introEnter" type="button">
@@ -185,6 +187,18 @@
         </svg>
         <span class="navlink__label">Clothes</span>
       </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="sports">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="12" cy="12" r="9"/><path d="M12 3c3 2.5 3 15.5 0 18M3.5 9h17M3.5 15h17" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Sports</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="calendar">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Calendar</span>
+      </button>
     </nav>
 
     <p class="sidebar__seal">SOLI · DEO · GLORIA</p>
@@ -215,6 +229,8 @@
       <button class="topbar__link" data-tab="reminders">Reminders</button>
       <button class="topbar__link" data-tab="logs">Logs</button>
       <button class="topbar__link" data-tab="clothes">Clothes</button>
+      <button class="topbar__link" data-tab="sports">Sports</button>
+      <button class="topbar__link" data-tab="calendar">Calendar</button>
     </nav>
   </header>
 
@@ -511,6 +527,65 @@
         </div>
 
         <div class="cl-cats" data-cl-cats><!-- injected --></div>
+      </section>
+
+      <!-- ───────────────────────────  SPORTS  ─────────────────────────── -->
+      <section class="board board--sports" data-tab-panel="sports" hidden>
+        <div class="sp-tabs reveal" data-sp-tabs style="--d:.02s"><!-- sport pills injected --></div>
+        <div class="sp-body" data-sp-body><!-- active sport injected --></div>
+      </section>
+
+      <!-- ───────────────────────────  CALENDAR  ─────────────────────────── -->
+      <section class="board board--calendar" data-tab-panel="calendar" hidden>
+
+        <article class="card card--cal reveal" style="--d:.02s">
+          <header class="card__head">
+            <span class="card__tag">I.</span>
+            <h3 class="card__title" data-cal-title>Calendar</h3>
+            <button class="btn btn--ghost btn--sm" data-cal-today>Today</button>
+            <button class="icon-btn" data-cal-prev aria-label="Previous month">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="icon-btn" data-cal-next aria-label="Next month">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </header>
+          <div class="cal-grid" data-cal-grid><!-- injected --></div>
+          <p class="cal-legend">
+            <span class="cal-cross cal-cross--white">✝</span> day fully completed
+            <span class="cal-legend__gap"></span>
+            <span class="cal-cross cal-cross--red">✝</span> day fell short
+          </p>
+        </article>
+
+        <article class="card card--cal-day reveal" style="--d:.06s">
+          <header class="card__head">
+            <span class="card__tag">II.</span>
+            <h3 class="card__title" data-cal-daytitle>Pick a day</h3>
+          </header>
+          <div class="cal-daybody" data-cal-daybody><!-- injected --></div>
+        </article>
+
+        <article class="card card--cal-watch reveal" style="--d:.1s">
+          <header class="card__head">
+            <span class="card__tag">III.</span>
+            <h3 class="card__title">Chronicle Clock</h3>
+          </header>
+          <div class="chrono" data-cal-watch></div>
+          <p class="sp-hint">Counts through days, weeks, months — until you say reset.</p>
+        </article>
+
+        <button class="cal-drawer-tab" data-cal-drawertab type="button" aria-label="Toggle progress panel">Progress</button>
+        <aside class="cal-drawer" data-cal-drawer>
+          <header class="card__head">
+            <span class="card__tag">✦</span>
+            <h3 class="card__title">The Reckoning</h3>
+            <button class="icon-btn" data-cal-drawertab aria-label="Close">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+            </button>
+          </header>
+          <div data-cal-drawerbody></div>
+        </aside>
       </section>
 
       <!-- ───────────────────────────  GOALS  ─────────────────────────── -->
@@ -1318,7 +1393,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=9" defer></script>
+  <script src="app.js?v=10" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=4" defer></script>
   <script src="intro.js?v=4" defer></script>

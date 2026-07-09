@@ -146,8 +146,10 @@
     vision:    {eyebrow:'Module',title:'Vision',   desc:'North-star outcomes and dated milestones. Module reserved.'},
     logs:      {eyebrow:'Daily Vitals · The Ledger', title:'Logs'},
     clothes:   {eyebrow:'The Wardrobe · Fits & Freight', title:'Clothes & Accessories'},
+    sports:    {eyebrow:'The Arena · Iron Sharpens Iron', title:'Sports'},
+    calendar:  {eyebrow:'The Chronicle · Ordered Days', title:'Calendar'},
   };
-  const REAL_PANELS = ['home','gym','goals','reminders','nutrition','finance','photos','academics','logs','clothes'];
+  const REAL_PANELS = ['home','gym','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {
@@ -5161,6 +5163,600 @@
     return {init};
   })();
 
+  /* ═══════════════════  CHRONO — forever-stopwatches (HH:MM:SS → Day → Week → Year)  ═══════════════════ */
+  const Chrono = (() => {
+    const watches = [];   // {el, get, set}
+    function fmt(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const hh = pad(Math.floor((s % 86400) / 3600));
+      const mm = pad(Math.floor((s % 3600) / 60));
+      const ss = pad(s % 60);
+      const days = Math.floor(s / 86400);
+      if (!days) return hh + ':' + mm + ':' + ss;
+      const years = Math.floor(days / 365);
+      const weeks = Math.floor((days % 365) / 7);
+      const d = (days % 365) % 7;
+      const parts = [];
+      if (years) parts.push('Year ' + years);
+      if (weeks) parts.push('Week ' + weeks);
+      if (d || (!years && !weeks)) parts.push('Day ' + d);
+      parts.push(hh + ':' + mm);
+      return parts.join(' · ');
+    }
+    const elapsed = (w) => (w.acc || 0) + (w.startedAt ? Date.now() - w.startedAt : 0);
+    function paint(reg) {
+      const w = reg.get() || {};
+      reg.el.querySelector('[data-ch-time]').textContent = fmt(elapsed(w));
+      const btn = reg.el.querySelector('[data-ch-toggle]');
+      btn.textContent = w.startedAt ? 'Pause' : (w.acc ? 'Resume' : 'Start');
+      reg.el.classList.toggle('is-running', !!w.startedAt);
+    }
+    function mount(el, get, set) {
+      el.innerHTML =
+        '<span class="chrono__time" data-ch-time>00:00:00</span>' +
+        '<span class="chrono__ctrl">' +
+        '<button class="btn-bracket" data-ch-toggle type="button"><span>[</span>&nbsp;Start&nbsp;<span>]</span></button>' +
+        '<button class="btn-bracket" data-ch-reset type="button"><span>[</span>&nbsp;Reset&nbsp;<span>]</span></button></span>';
+      const reg = {el, get, set};
+      el.querySelector('[data-ch-toggle]').addEventListener('click', () => {
+        const w = Object.assign({acc: 0, startedAt: null}, get());
+        if (w.startedAt) { w.acc += Date.now() - w.startedAt; w.startedAt = null; }
+        else w.startedAt = Date.now();
+        set(w); paint(reg);
+      });
+      el.querySelector('[data-ch-reset]').addEventListener('click', () => {
+        if (!confirm('Reset this stopwatch to zero?')) return;
+        set({acc: 0, startedAt: null}); paint(reg);
+      });
+      watches.push(reg);
+      paint(reg);
+    }
+    setInterval(() => {
+      if (document.hidden) return;
+      watches.forEach(reg => { if (document.body.contains(reg.el)) paint(reg); });
+    }, 1000);
+    return {mount};
+  })();
+
+  /* tiny SVG line chart (crimson, filled) — pts = numbers */
+  function svgLine(pts, w = 280, h = 72) {
+    if (!pts || pts.length < 2) return '<p class="chart-empty">Log a few days to grow the line.</p>';
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const span = (max - min) || 1;
+    const step = w / (pts.length - 1);
+    const xy = pts.map((v, i) => [i * step, h - 6 - ((v - min) / span) * (h - 14)]);
+    const line = xy.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const last = xy[xy.length - 1];
+    const up = pts[pts.length - 1] >= pts[0];
+    return `<svg class="linechart ${up ? 'is-up' : 'is-down'}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="lcg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(225,29,56,.35)"/><stop offset="100%" stop-color="rgba(225,29,56,0)"/>
+      </linearGradient></defs>
+      <polygon points="0,${h} ${line} ${w},${h}" fill="url(#lcg)"/>
+      <polyline points="${line}" fill="none" stroke="#E11D38" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.4" fill="#fff"/>
+    </svg>`;
+  }
+
+  /* ═══════════════════  SPORTS — 6-month plans · logs · charts · stopwatches  ═══════════════════ */
+  const Sports = (() => {
+    const KEY = 'nv.sports';
+    const PLANS = {
+      climbing: {
+        name: 'Rock Climbing', metrics: [{k: 'grade', l: 'Top grade', u: 'V'}, {k: 'mins', l: 'Session', u: 'min'}],
+        plan: [
+          {t: 'Movement & Footwork', w: ['Climb 2–3×/wk, easy grades — silent feet drill every warm-up', 'Straight-arm climbing: hang on the skeleton, not the biceps', 'Flag/drop-knee drills on 10 easy problems per session', 'TEST: max flash grade + 10 problems in a session — record it']},
+          {t: 'Volume Base', w: ['3 sessions — 20+ problems each, 2 grades under max', 'Traverse endurance: 10 min continuous climbing ×2', 'Down-climb everything you send this week', 'Deload · 1 easy session + antagonist push-ups/band work']},
+          {t: 'Technique Under Fatigue', w: ['4×4s: 4 problems back-to-back, 4 rounds, rest 4 min', 'Overhang week — hips to the wall, toe hooks', 'Slab week — trust the rubber, no hands where possible', 'TEST: repeat Month 1 flash test — should be +1 grade']},
+          {t: 'Strength Intro', w: ['Hangboard 2×/wk (open hand, 7:3 repeaters) — ONLY if elbows healthy', 'Limit bouldering: 5 max attempts on a project grade', 'Core: front lever progressions + toes-to-bar 3×/wk', 'Deload · easy mileage + mobility for hips/shoulders']},
+          {t: 'Power & Projects', w: ['Campus/dyno session 1×/wk — explosive, full rest', 'Project week: pick 2 problems at max+1, work the beta', 'Repeat 4×4s — compare pump vs Month 3', 'Deload · technique games, no grades']},
+          {t: 'Send Season', w: ['Project burns: 3 quality attempts/session, film them', 'Volume day + project day alternating', 'Mini-taper: half volume, keep intensity', 'TEST WEEK: max grade attempt — compare Month 1']},
+        ],
+      },
+      soccer: {
+        name: 'Soccer', metrics: [{k: 'touches', l: 'Touches', u: 'min'}, {k: 'juggles', l: 'Juggle PR', u: ''}],
+        plan: [
+          {t: 'First Touch & Control', w: ['15 min daily wall passes — both feet, 2-touch', 'Juggling ladder: set a baseline PR, beat it 3×', 'Cone dribbling 10 min/day — inside/outside/sole', 'TEST: juggle PR + 20 wall passes without miss']},
+          {t: 'Ball Mastery', w: ['La Croqueta + body feints — 20 reps each side daily', '1v1 moves: pick 3, drill to instinct', 'Weak foot only week — passing, shooting, dribbling', 'Deload · free play / futsal touch']},
+          {t: 'Passing & Vision', w: ['Driven + lofted passes 30/day against wall or partner', 'Rondo or small-sided games 2×/wk', 'Scan habit: look over shoulder before every touch', 'TEST: repeat Month 1 tests — compare']},
+          {t: 'Shooting & Finishing', w: ['50 shots/wk — placement over power, both feet', 'First-time finishes from cutbacks', 'Volleys + half-volleys session', 'Deload · juggling + wall work only']},
+          {t: 'Speed & Engine', w: ['Sprints: 6×30 m + 4×60 m, full recovery, 2×/wk', 'Change-of-direction ladder + 5-10-5 drill', 'Interval runs: 8×1 min hard / 1 min easy', 'Deload · technical maintenance']},
+          {t: 'Game Sharpness', w: ['Pickup/organized games 2–3×/wk — one focus per game', 'Film yourself once — count giveaways', 'Set-piece week: corners, free kicks, PKs', 'TEST WEEK: all benchmarks + honest self-review']},
+        ],
+      },
+      basketball: {
+        name: 'Basketball', metrics: [{k: 'mins', l: 'Practice', u: 'min'}, {k: 'makes', l: 'Makes /100', u: ''}],
+        plan: [
+          {t: 'Foundations & Handle', w: ['Daily 15-min dribble routine — 2-ball + cones', 'Form shooting: 100 close-range makes/day', 'Layup package: 50 each hand, both sides', 'TEST: 50 free throws — record your %']},
+          {t: 'Shooting Mechanics', w: ['Catch-&-shoot 150/day, mid-range', 'Off-the-dribble pull-ups 100/day', '3PT from both corners, 100/day', 'Deload + repeat the FT test']},
+          {t: 'Game Moves', w: ['Triple-threat + explosive first step drills', 'Pick-&-roll reads — 30 min film/week', 'Live 1v1 reps, 3 sessions', 'BENCHMARK: chart your shooting % vs Month 1']},
+          {t: 'Athleticism', w: ['Plyometrics 2×/wk + core circuit', 'Lateral quickness — ladder + slides', 'Vertical work + finishing through contact', 'Deload · light skill maintenance']},
+          {t: 'Live Play', w: ['Pickup 3×/wk — count turnovers & assists', 'Scrimmage focus: defensive stance every play', 'Conditioning: 17s under 66 seconds', 'Deload + FT test again']},
+          {t: 'Polish & Prove', w: ['Weakness week — attack your worst stat', 'Full workout circuit 5×/wk', 'Filmed games / mini-tournament', 'TEST WEEK: repeat every Month 1 benchmark']},
+        ],
+      },
+      swimming: {
+        name: 'Swimming', metrics: [{k: 'laps', l: 'Laps', u: ''}, {k: 'time100', l: '100m time', u: 's'}],
+        plan: [
+          {t: 'Water Comfort & Breath', w: ['2–3 swims — bilateral breathing every 3 strokes', 'Kickboard sets: 8×25 m, streamline focus', 'Exhale-underwater drills — never hold your breath', 'TEST: 100 m freestyle timed, easy effort']},
+          {t: 'Freestyle Technique', w: ['Catch-up drill + fingertip drag, 6×50 m each', 'High-elbow catch: single-arm freestyle 8×25 m', 'Body rotation: 6-kick switch drill', 'Deload · easy 20-min continuous swim']},
+          {t: 'Endurance Base', w: ['Ladder: 4×100 m with 20 s rest', 'Continuous 400 m — even pace', 'Pull buoy sets for catch strength 6×50 m', 'TEST: 100 m timed — compare Month 1']},
+          {t: 'Other Strokes', w: ['Backstroke week — 50% of volume', 'Breaststroke timing: kick-glide-pull', 'IM order intro: 4×100 m one stroke each', 'Deload · choice swim + flip-turn practice']},
+          {t: 'Speed Work', w: ['8×25 m sprint, full rest — count strokes', '4×50 m descend (each faster)', 'Broken 100s: 4×(4×25 m) at target pace', 'Deload · drills + easy aerobic']},
+          {t: 'Test Distance', w: ['Race-pace 100s: 5×100 m at goal', 'Open turns + streamlines under fatigue', 'Mini-taper — half volume, sharp 25s', 'TEST WEEK: 100 m + 400 m all-out — compare every benchmark']},
+        ],
+      },
+      mma: {
+        name: 'MMA', metrics: [{k: 'rounds', l: 'Rounds', u: ''}, {k: 'mins', l: 'Training', u: 'min'}],
+        plan: [
+          {t: 'Stance & Fundamentals', w: ['Stance + footwork 15 min/day — mirror work', 'Jab-cross mechanics: 200 quality reps/day', 'Sprawl + level-change drill 3×/wk', 'TEST: 3×3 min shadowbox rounds — film it']},
+          {t: 'Striking Base', w: ['Add hooks + elbows — combos off the jab', 'Kicks: teep + low kick technique, 50/side/day', 'Heavy bag 3 rounds, focus on form not power', 'Deload · shadowbox + mobility (hips!)']},
+          {t: 'Grappling Base', w: ['Takedown entries: double/single, 20 reps/day', 'Guard fundamentals: shrimp, bridge, stand-up in base', 'Positional escapes — mount + side control', 'TEST: film 3 rounds — compare Month 1 footage']},
+          {t: 'Defense & Head Movement', w: ['Slip-roll-pivot patterns 10 min/day', 'Check kicks + catch-counter drills', 'Wall wrestling / cage work basics', 'Deload · light technique + neck work']},
+          {t: 'Live Rounds', w: ['Light sparring 2×/wk IF coached — control ego', 'Grappling rounds 3×/wk — survive, then attack', 'Conditioning: 5×3 min bag rounds, 1 min rest', 'Deload · drill your best weapons only']},
+          {t: 'Fight Simulation', w: ['MMA rounds: strike→shot→ground flow', 'Weakness camp — attack your worst area', 'Hard conditioning week: assault bike + rounds', 'TEST WEEK: 5×5 min sim rounds + film review']},
+        ],
+      },
+    };
+
+    let st = null;
+    const save = () => Store.set(KEY, st);
+    const active = () => st.sports.find(s => s.id === st.activeId) || st.sports[0];
+    const SCORE = {full: 2, partial: 1, miss: -1};
+
+    function seed() {
+      const mk = (key) => ({id: uid(), name: PLANS[key].name, tpl: key,
+                            startDate: localDateKey(), logs: [], watch: {acc: 0, startedAt: null}});
+      return {sports: ['climbing', 'soccer', 'basketball', 'swimming', 'mma'].map(mk), activeId: null};
+    }
+
+    function weekPos(s) {
+      const [y, m, d] = s.startDate.split('-').map(Number);
+      const days = Math.max(0, Math.floor((Date.now() - new Date(y, m - 1, d)) / 86400000));
+      const week = Math.min(23, Math.floor(days / 7));
+      return {month: Math.floor(week / 4) + 1, week: (week % 4) + 1, weekAbs: week + 1};
+    }
+
+    function render() {
+      const tabs = $('[data-sp-tabs]');
+      tabs.innerHTML = st.sports.map(s =>
+        `<button class="cl-chip ${s.id === active().id ? 'is-active' : ''}" data-sp-pick="${s.id}">${esc(s.name)}</button>`).join('') +
+        `<button class="cl-chip" data-sp-add>+ Add Sport</button>`;
+
+      const s = active(); if (!s) return;
+      const tpl = PLANS[s.tpl] || PLANS.climbing;
+      const pos = weekPos(s);
+      const today = localDateKey();
+      const todayLog = s.logs.find(l => l.date === today);
+      let acc = 0;
+      const pts = s.logs.slice(-42).map(l => (acc += (SCORE[l.completed] ?? 0)));
+
+      $('[data-sp-body]').innerHTML = `
+        <article class="card sp-card--now reveal" style="--d:.02s">
+          <header class="card__head"><span class="card__tag">I.</span><h3 class="card__title">Where You Stand</h3>
+            <span class="card__count">Month ${pos.month} · Week ${pos.week}</span></header>
+          <p class="sp-now__theme">${esc(tpl.plan[pos.month - 1].t)}</p>
+          <p class="sp-now__focus">${esc(tpl.plan[pos.month - 1].w[pos.week - 1])}</p>
+        </article>
+
+        <article class="card sp-card--watch reveal" style="--d:.05s">
+          <header class="card__head"><span class="card__tag">II.</span><h3 class="card__title">${esc(s.name)} Clock</h3></header>
+          <div class="chrono" data-sp-watch></div>
+          <p class="sp-hint">Runs for days, weeks, months — it keeps counting until you reset it.</p>
+        </article>
+
+        <article class="card sp-card--log reveal" style="--d:.08s">
+          <header class="card__head"><span class="card__tag">III.</span><h3 class="card__title">Log Today</h3>
+            ${todayLog ? '<span class="card__count">logged ✓</span>' : ''}</header>
+          <div class="sp-log">
+            <div class="sp-log__row">
+              <button class="cl-chip ${todayLog?.completed === 'full' ? 'is-active' : ''}" data-sp-done="full">Did the work</button>
+              <button class="cl-chip ${todayLog?.completed === 'partial' ? 'is-active' : ''}" data-sp-done="partial">Partial</button>
+              <button class="cl-chip ${todayLog?.completed === 'miss' ? 'is-active' : ''}" data-sp-done="miss">Missed</button>
+            </div>
+            <div class="sp-log__metrics">
+              ${tpl.metrics.map(m => `<label class="sp-metric"><span>${esc(m.l)}${m.u ? ' (' + m.u + ')' : ''}</span>
+                <input class="input input--sm" type="number" step="0.1" min="0" inputmode="decimal"
+                  data-sp-metric="${m.k}" value="${todayLog?.metrics?.[m.k] ?? ''}" placeholder="—"></label>`).join('')}
+            </div>
+          </div>
+        </article>
+
+        <article class="card sp-card--chart reveal" style="--d:.11s">
+          <header class="card__head"><span class="card__tag">IV.</span><h3 class="card__title">Progress</h3>
+            <span class="card__count">${s.logs.length} days logged</span></header>
+          ${svgLine(pts)}
+          <p class="sp-hint">Every "did the work" pushes the line up (+2), partial +1, missed −1. Protect the climb.</p>
+        </article>
+
+        <article class="card sp-card--plan reveal" style="--d:.14s">
+          <header class="card__head"><span class="card__tag">V.</span><h3 class="card__title">6-Month Plan</h3>
+            <button class="icon-btn" data-sp-delsport aria-label="Remove this sport">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+            </button></header>
+          <div class="sp-plan">
+            ${tpl.plan.map((mo, mi) => `
+              <details class="sp-month ${mi + 1 === pos.month ? 'is-now' : ''}" ${mi + 1 === pos.month ? 'open' : ''}>
+                <summary><b>Month ${mi + 1}</b> — ${esc(mo.t)}${mi + 1 === pos.month ? ' <span class="sp-nowtag">NOW</span>' : ''}</summary>
+                <ol class="sp-weeks">
+                  ${mo.w.map((wk, wi) => `<li class="${mi + 1 === pos.month && wi + 1 === pos.week ? 'is-now' : ''}">
+                    <span class="sp-wk">W${wi + 1}</span> ${esc(wk)}</li>`).join('')}
+                </ol>
+              </details>`).join('')}
+          </div>
+        </article>`;
+
+      Chrono.mount($('[data-sp-watch]'), () => active().watch,
+        (w) => { active().watch = w; save(); });
+    }
+
+    function logToday(patch) {
+      const s = active();
+      const today = localDateKey();
+      let log = s.logs.find(l => l.date === today);
+      if (!log) { log = {date: today, completed: null, metrics: {}}; s.logs.push(log); }
+      Object.assign(log, patch);
+      s.logs.sort((a, b) => a.date < b.date ? -1 : 1);
+      save();
+    }
+
+    let booted = false;
+    function wire() {
+      const panel = $('[data-tab-panel="sports"]');
+      panel.addEventListener('click', (e) => {
+        const pick = e.target.closest('[data-sp-pick]');
+        if (pick) { st.activeId = pick.dataset.spPick; save(); render(); return; }
+        if (e.target.closest('[data-sp-add]')) {
+          const name = (prompt('Sport name? (I will attach a general athletic plan — tell Claude the sport and he will write a real 6-month plan for it.)') || '').trim();
+          if (!name) return;
+          st.sports.push({id: uid(), name, tpl: 'climbing', startDate: localDateKey(), logs: [], watch: {acc: 0, startedAt: null}});
+          st.activeId = st.sports[st.sports.length - 1].id;
+          save(); render(); return;
+        }
+        if (e.target.closest('[data-sp-delsport]')) {
+          const s = active();
+          if (st.sports.length <= 1) { toast('Keep at least one sport.'); return; }
+          if (!confirm(`Remove ${s.name} and its logs?`)) return;
+          st.sports = st.sports.filter(x => x.id !== s.id);
+          st.activeId = st.sports[0].id;
+          save(); render(); return;
+        }
+        const done = e.target.closest('[data-sp-done]');
+        if (done) {
+          logToday({completed: done.dataset.spDone});
+          const r = done.getBoundingClientRect();
+          if (done.dataset.spDone === 'full') window.lifeFX?.burst?.(r.left + r.width / 2, r.top + r.height / 2);
+          render(); return;
+        }
+      });
+      panel.addEventListener('input', (e) => {
+        const m = e.target.getAttribute('data-sp-metric');
+        if (!m) return;
+        const s = active();
+        const today = localDateKey();
+        let log = s.logs.find(l => l.date === today);
+        if (!log) { log = {date: today, completed: null, metrics: {}}; s.logs.push(log); }
+        log.metrics = log.metrics || {};
+        log.metrics[m] = e.target.value === '' ? '' : num(e.target.value);
+        save();
+      });
+    }
+
+    function init() {
+      if (!booted) {
+        booted = true;
+        st = Store.get(KEY, null);
+        if (!st || !Array.isArray(st.sports) || !st.sports.length) st = seed();
+        if (!st.activeId) st.activeId = st.sports[0].id;
+        save();
+        wire();
+      }
+      render();
+    }
+    return {init};
+  })();
+
+  /* ═══════════════════  CALENDAR — years ahead · crosses · auto to-dos · progress drawer  ═══════════════════ */
+  const Cal = (() => {
+    const KEY = 'nv.cal';
+    const DAY_PREFIX = 'nv.day.';
+    const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let st = null, view = null, selected = null;
+    const save = () => Store.set(KEY, st);
+    const dk = (d) => localDateKey(d);
+    const getDayRec = (ds) => Store.get(DAY_PREFIX + ds, []);
+    const setDayRec = (ds, goals) => { Store.set(DAY_PREFIX + ds, goals); window.dispatchEvent(new CustomEvent('nv-day-changed')); };
+
+    /* Auto-plan rules start EMPTY on purpose — the layout ships first;
+       the user's real goals get wired in (with exact times) during a
+       dedicated planning session. The engine below is ready and waiting. */
+    function seedRules() { return []; }
+    function ruleHits(rule, date) {
+      const wd = date.getDay();
+      switch (rule.freq) {
+        case 'daily':    return true;
+        case 'weekdays': return wd >= 1 && wd <= 5;
+        case 'weekend':  return wd === 0 || wd === 6;
+        case 'sat':      return wd === 6;
+        case 'sun':      return wd === 0;
+        default:         return false;
+      }
+    }
+    /* write matching auto-rules into a day's to-do record (today/future only) */
+    function materialize(ds) {
+      const today = dk(new Date());
+      if (ds < today) return;
+      const [y, m, d] = ds.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const goals = getDayRec(ds);
+      let dirty = false;
+      st.rules.filter(r => r.active && ruleHits(r, date)).forEach(r => {
+        if (!goals.some(g => g.text === r.text)) { goals.push({text: r.text, done: false, auto: true}); dirty = true; }
+      });
+      if (dirty) setDayRec(ds, goals);
+    }
+
+    /* cross state for a day: 'white' (all done), 'red' (incomplete + past), null */
+    function crossFor(ds, today) {
+      const goals = getDayRec(ds);
+      if (!goals.length) return null;
+      const allDone = goals.every(g => g.done);
+      if (allDone) return 'white';
+      return ds < today ? 'red' : null;
+    }
+
+    function renderMonth() {
+      const y = view.getFullYear(), mo = view.getMonth();
+      $('[data-cal-title]').textContent = view.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+      const first = new Date(y, mo, 1);
+      const days = new Date(y, mo + 1, 0).getDate();
+      const today = dk(new Date());
+      let html = WD.map(w => `<span class="cal-wd">${w}</span>`).join('');
+      for (let i = 0; i < first.getDay(); i++) html += '<span class="cal-cell is-void"></span>';
+      for (let d = 1; d <= days; d++) {
+        const ds = `${y}-${pad(mo + 1)}-${pad(d)}`;
+        const cross = crossFor(ds, today);
+        html += `<button class="cal-cell ${ds === today ? 'is-today' : ''} ${ds === selected ? 'is-selected' : ''}" data-cal-day="${ds}">
+          <span class="cal-cell__n">${d}</span>
+          ${cross ? `<span class="cal-cross cal-cross--${cross}" aria-label="${cross === 'white' ? 'day completed' : 'day incomplete'}">✝</span>` : ''}
+        </button>`;
+      }
+      $('[data-cal-grid]').innerHTML = html;
+    }
+
+    /* ── day timeline: Morning / Afternoon / Evening / Night with an hour rail.
+         Each to-do can carry a time (editable → it moves between sections).
+         Recommendation implemented: the WHOLE day stays visible; each
+         section collapses/expands so you can focus without losing context. ── */
+    const SECTIONS = [
+      {name: 'Morning',   from: 5,  to: 12},
+      {name: 'Afternoon', from: 12, to: 17},
+      {name: 'Evening',   from: 17, to: 21},
+      {name: 'Night',     from: 21, to: 29},   // 9 PM → 5 AM
+    ];
+    const hourLabel = (h) => { const hh = h % 24; const t = hh % 12 || 12; return t + (hh < 12 ? ' AM' : ' PM'); };
+    function sectionOf(at) {
+      if (!at) return -1;                       // Anytime
+      let h = parseInt(at.slice(0, 2), 10);
+      if (h < 5) h += 24;
+      return SECTIONS.findIndex(s => h >= s.from && h < s.to);
+    }
+    const fmtAt = (at) => { if (!at) return ''; let [h, m] = at.split(':').map(Number); const t = h % 12 || 12; return t + ':' + pad(m) + (h < 12 ? ' AM' : ' PM'); };
+
+    function goalRow(g, i) {
+      return `<li class="td-row cal-trow ${g.done ? 'is-done' : ''}">
+        <input class="cal-time" type="time" value="${g.at || ''}" data-cal-time="${i}" aria-label="Scheduled time">
+        <label class="td-check"><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
+        <span class="td-text">${esc(g.text)}${g.auto ? ' <em class="cal-auto">auto</em>' : ''}</span>
+        <button class="td-del" data-cal-delgoal="${i}" aria-label="Delete">×</button></li>`;
+    }
+
+    function renderDay() {
+      const wrap = $('[data-cal-daybody]');
+      if (!selected) { wrap.innerHTML = '<p class="cl-cat__empty">Pick a day on the calendar.</p>'; return; }
+      materialize(selected);
+      const [y, m, d] = selected.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const today = dk(new Date());
+      const goals = getDayRec(selected);
+      const notes = (st.notes[selected] || []);
+      const rems = Store.get(KEYS.reminders, []).filter(r => r.when && dk(new Date(r.when)) === selected);
+      const rel = selected === today ? 'Today' : (selected === dk(new Date(Date.now() + 86400000)) ? 'Tomorrow' : '');
+
+      $('[data-cal-daytitle]').textContent =
+        (rel ? rel + ' — ' : '') + date.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'});
+
+      /* bucket goals by section, keep original indices for handlers */
+      const buckets = SECTIONS.map(() => []);
+      const anytime = [];
+      goals.forEach((g, i) => {
+        const si = sectionOf(g.at);
+        (si < 0 ? anytime : buckets[si]).push([g, i]);
+      });
+      buckets.forEach(b => b.sort((a, b2) => (a[0].at || '') < (b2[0].at || '') ? -1 : 1));
+
+      wrap.innerHTML = `
+        ${anytime.length ? `
+        <details class="cal-sect" open>
+          <summary><b>Anytime</b><span class="cal-sect__count">${anytime.length}</span></summary>
+          <div class="cal-sect__body cal-sect__body--norail">
+            <ul class="td-list">${anytime.map(([g, i]) => goalRow(g, i)).join('')}</ul>
+          </div>
+        </details>` : ''}
+
+        ${SECTIONS.map((s, si) => `
+        <details class="cal-sect" open>
+          <summary><b>${s.name}</b><span class="cal-sect__hours">${hourLabel(s.from)} – ${hourLabel(s.to)}</span>
+            <span class="cal-sect__count">${buckets[si].length}</span></summary>
+          <div class="cal-sect__body">
+            <div class="cal-rail" aria-hidden="true">
+              ${Array.from({length: s.to - s.from}, (_, k) => `<span>${hourLabel(s.from + k)}</span>`).join('')}
+            </div>
+            <ul class="td-list cal-sect__list">
+              ${buckets[si].length
+                ? buckets[si].map(([g, i]) => goalRow(g, i)).join('')
+                : '<li class="cal-sect__empty">—</li>'}
+            </ul>
+          </div>
+        </details>`).join('')}
+
+        <div class="td-add cal-add">
+          <input class="cal-time cal-time--new" type="time" data-cal-newtime aria-label="Time (optional)">
+          <input class="input" type="text" data-cal-newgoal placeholder="Add a to-do… (time optional)" />
+          <button class="btn btn--primary btn--sm" data-cal-addgoal>+ Add</button>
+        </div>
+
+        <p class="cal-sec">Notes from Claude</p>
+        <ul class="cal-notes">
+          ${notes.filter(n => n.from === 'claude').map(n => `<li class="cal-note cal-note--claude">${esc(n.text)}</li>`).join('')
+            || '<li class="cal-note">Nothing yet — once we plan your goals together, guidance for each day lands here.</li>'}
+        </ul>
+
+        <p class="cal-sec">My notes</p>
+        <ul class="cal-notes">
+          ${notes.filter(n => n.from !== 'claude').map(n =>
+            `<li class="cal-note">${esc(n.text)} <button class="td-del" data-cal-delnote="${n.id}" aria-label="Delete note">×</button></li>`).join('') || '<li class="cal-note">—</li>'}
+        </ul>
+        <div class="td-add">
+          <input class="input" type="text" data-cal-newnote placeholder="Write a note for this day…" />
+          <button class="btn btn--ghost btn--sm" data-cal-addnote>+ Note</button>
+        </div>
+
+        ${rems.length ? `<p class="cal-sec">Reminders</p>
+        <ul class="cal-notes">${rems.map(r => `<li class="cal-note ${r.done ? 'is-done' : ''}">⏰ ${esc(r.text)}</li>`).join('')}</ul>` : ''}`;
+    }
+
+    /* progress drawer: completion % line + white-vs-red cross scale (last 30 days) */
+    function renderDrawer() {
+      const today = new Date();
+      const todayStr = dk(today);
+      const pts = [];
+      let white = 0, red = 0, tracked = 0;
+      for (let i = 29; i >= 0; i--) {
+        const ds = dk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
+        const goals = getDayRec(ds);
+        if (!goals.length) { pts.push(pts.length ? pts[pts.length - 1] : 0); continue; }
+        tracked++;
+        const pct = Math.round(goals.filter(g => g.done).length / goals.length * 100);
+        pts.push(pct);
+        if (pct === 100) white++;
+        else if (ds < todayStr) red++;
+      }
+      /* streak: consecutive fully-done days ending today/yesterday */
+      let streak = 0;
+      for (let i = 0; i < 366; i++) {
+        const ds = dk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
+        const goals = getDayRec(ds);
+        const fullDay = goals.length > 0 && goals.every(g => g.done);
+        if (fullDay) { streak++; continue; }
+        if (i === 0) continue;              // today still in progress — don't break the streak
+        break;
+      }
+      const ratio = (white + red) ? Math.round(white / (white + red) * 100) : 0;
+      $('[data-cal-drawerbody]').innerHTML = `
+        ${svgLine(pts, 280, 90)}
+        <p class="sp-hint">Daily completion % — last 30 days. White-cross days hit 100.</p>
+
+        <p class="cal-sec">The Scale · white vs red</p>
+        <div class="cal-scale" role="img" aria-label="${white} white-cross days versus ${red} red-cross days">
+          <span class="cal-scale__side cal-scale__side--white">✝ ${white}</span>
+          <span class="cal-scale__bar"><i style="width:${ratio}%"></i></span>
+          <span class="cal-scale__side cal-scale__side--red">${red} ✝</span>
+        </div>
+        <p class="sp-hint">${ratio}% of your judged days ended in a white cross.</p>
+
+        <div class="cl-stats" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="cl-stat"><b>${streak}</b><span>Streak</span></div>
+          <div class="cl-stat"><b>${white}</b><span>White /30</span></div>
+          <div class="cl-stat"><b>${tracked}</b><span>Tracked</span></div>
+        </div>`;
+    }
+
+    let booted = false;
+    function wire() {
+      const panel = $('[data-tab-panel="calendar"]');
+      panel.addEventListener('click', (e) => {
+        if (e.target.closest('[data-cal-prev]')) { view.setMonth(view.getMonth() - 1); renderMonth(); return; }
+        if (e.target.closest('[data-cal-next]')) { view.setMonth(view.getMonth() + 1); renderMonth(); return; }
+        if (e.target.closest('[data-cal-today]')) { view = new Date(); selected = dk(new Date()); renderMonth(); renderDay(); return; }
+        const cell = e.target.closest('[data-cal-day]');
+        if (cell) { selected = cell.dataset.calDay; renderMonth(); renderDay(); return; }
+        if (e.target.closest('[data-cal-addgoal]')) {
+          const inp = $('[data-cal-newgoal]');
+          const v = (inp.value || '').trim(); if (!v) return;
+          const at = ($('[data-cal-newtime]')?.value || '') || undefined;
+          const goals = getDayRec(selected); goals.push({text: v, done: false, at});
+          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+        }
+        const delGoal = e.target.closest('[data-cal-delgoal]');
+        if (delGoal) {
+          const goals = getDayRec(selected); goals.splice(+delGoal.dataset.calDelgoal, 1);
+          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+        }
+        if (e.target.closest('[data-cal-addnote]')) {
+          const inp = $('[data-cal-newnote]');
+          const v = (inp.value || '').trim(); if (!v) return;
+          (st.notes[selected] = st.notes[selected] || []).push({id: uid(), text: v, from: 'me'});
+          save(); renderDay(); return;
+        }
+        const delNote = e.target.closest('[data-cal-delnote]');
+        if (delNote) {
+          st.notes[selected] = (st.notes[selected] || []).filter(n => n.id !== delNote.dataset.calDelnote);
+          save(); renderDay(); return;
+        }
+        if (e.target.closest('[data-cal-drawertab]')) {
+          $('[data-cal-drawer]').classList.toggle('is-open');
+          renderDrawer(); return;
+        }
+      });
+      panel.addEventListener('change', (e) => {
+        const chk = e.target.closest('[data-cal-check]');
+        if (chk) {
+          const goals = getDayRec(selected);
+          const g = goals[+chk.dataset.calCheck];
+          if (g) { g.done = chk.checked; if (chk.checked) g.doneAt = Date.now(); else delete g.doneAt; }
+          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+        }
+        const tm = e.target.closest('[data-cal-time]');
+        if (tm) {                            // re-time a to-do → it moves to the right section
+          const goals = getDayRec(selected);
+          const g = goals[+tm.dataset.calTime];
+          if (g) { g.at = tm.value || undefined; }
+          setDayRec(selected, goals); renderDay();
+        }
+      });
+      panel.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (e.target.matches('[data-cal-newgoal]')) $('[data-cal-addgoal]').click();
+        if (e.target.matches('[data-cal-newnote]')) $('[data-cal-addnote]').click();
+      });
+      Chrono.mount($('[data-cal-watch]'), () => st.watch, (w) => { st.watch = w; save(); });
+    }
+
+    function materializeToday() {
+      if (!st) {
+        st = Store.get(KEY, null);
+        if (!st || !Array.isArray(st.rules)) st = {rules: seedRules(), notes: {}, watch: {acc: 0, startedAt: null}};
+        save();
+      }
+      materialize(dk(new Date()));
+    }
+
+    function init() {
+      if (!booted) {
+        booted = true;
+        materializeToday();          // ensures st exists + today is populated
+        view = new Date();
+        selected = dk(new Date());
+        wire();
+      }
+      renderMonth();
+      renderDay();
+      renderDrawer();
+    }
+    return {init, materializeToday};
+  })();
+
   /* ═══════════════════  DAYFLOW (goal ticker · day ring · to-do)  ═══════════════════ */
   const DayFlow = (() => {
     const DAY_PREFIX = 'nv.day.';
@@ -5194,7 +5790,9 @@
       return out.sort();
     }
 
-    /* ── rollover: pull undone goals from past days into today ── */
+    /* ── rollover: pull undone goals from past days into today.
+         Past records are KEPT (calendar history / crosses) — copied
+         items get a `rolled` flag so they only move once. ── */
     function rollover() {
       const today = activeDate();
       const todays = getDay(today);
@@ -5202,10 +5800,13 @@
       listDayKeys().forEach(ds => {
         if (ds >= today) return;
         const old = getDay(ds);
-        old.filter(g => !g.done).forEach(g => {
+        let dirty = false;
+        old.forEach(g => {
+          if (g.done || g.rolled) return;
           if (!todays.some(t => t.text === g.text)) { todays.push({text: g.text, done: false}); moved = true; }
+          g.rolled = true; dirty = true;
         });
-        Store.remove(dayKey(ds));
+        if (dirty) Store.set(dayKey(ds), old);
       });
       if (moved) setDay(today, todays);
     }
@@ -5465,6 +6066,8 @@
         if (name==='academics') Academics.init();
         if (name==='logs')      Logs.init();
         if (name==='clothes')   Clothes.init();
+        if (name==='sports')    Sports.init();
+        if (name==='calendar')  Cal.init();
       } else {
         const ph   = $('[data-tab-panel="placeholder"]');
         const meta = TAB_META[name]||{eyebrow:'Module',title:name,desc:'Module reserved.'};
@@ -5539,6 +6142,7 @@
     Photos.initWidget();
     Photos.initPins();
     DayFlow.init();
+    Cal.materializeToday();   // auto-plan rules → today's list (dormant until rules exist)
 
     // Widget manager — home cards init first (home is default visible tab)
     WidgetManager.initHomeCards();
