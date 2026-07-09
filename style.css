@@ -2939,11 +2939,64 @@ body.intro-locked { overflow: hidden; }
   font: 600 11px var(--ff-sans);
 }
 
+/* chip groups (Priority · Status) */
+.cl-group {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 6px 4px 12px; border-radius: 999px;
+  border: 1px solid var(--hairline); background: rgba(255,255,255,.015);
+}
+.cl-group i {
+  font: 700 8.5px/1 var(--ff-mono); font-style: normal;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--c-mid);
+  margin-right: 2px;
+}
+
+/* priority badges — every level shows, each with its own weight */
+.cl-badge--high   { background: var(--accent); color: #fff; box-shadow: 0 0 14px var(--accent-glow); }
+.cl-badge--medium { background: rgba(0,0,0,.6); color: var(--c-bone); border: 1px solid var(--border-strong); backdrop-filter: blur(6px); }
+.cl-badge--low    { background: rgba(0,0,0,.55); color: var(--c-fog); border: 1px solid var(--border); backdrop-filter: blur(6px); }
+
+/* extra status chip tones */
+.cl-status--wishlist { color: var(--c-fog); font-style: italic; }
+.cl-status--ordered  { color: var(--c-paper); border-color: var(--border-strong); }
+
+/* item entrance — staggered rise on every render */
+.cl-item {
+  opacity: 0; transform: translateY(14px);
+  animation: clItemIn .5s var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes clItemIn { to { opacity: 1; transform: none; } }
+
+/* image zoom on hover */
+.cl-item__media img { transition: transform .5s var(--ease-out); }
+.cl-item:hover .cl-item__media img { transform: scale(1.06); }
+
+/* stat pop when a number changes */
+.cl-stat b, .cl-ship-out b { display: inline-block; }
+.cl-stat b.bump, .cl-ship-out b.bump { animation: clBump .38s var(--ease-emph); }
+@keyframes clBump {
+  40% { transform: scale(1.14); color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
+}
+
+/* modal entrance — soft pop */
+#modal-clothes .modal__dialog {
+  transform: translateY(12px) scale(.97); opacity: 0;
+  transition: transform .32s var(--ease-emph), opacity .32s var(--ease-out);
+}
+#modal-clothes.is-open .modal__dialog { transform: none; opacity: 1; }
+
 @media (max-width: 920px) {
   .board--clothes { grid-template-columns: 1fr; }
   .card--cl-stats, .card--cl-meas { grid-column: 1; }
   .cl-stats { grid-template-columns: 1fr 1fr; }
   .cl-tagselect { max-width: none; flex: 1 1 100%; }
+  .cl-group { flex-wrap: wrap; border-radius: var(--r-lg); }
   .cl-form-grid { grid-template-columns: 1fr; }
   .cl-span2 { grid-column: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-item { animation: none; opacity: 1; transform: none; }
+  .cl-stat b.bump, .cl-ship-out b.bump { animation: none; }
+  .cl-item__media img, #modal-clothes .modal__dialog { transition: none; }
 }

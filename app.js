@@ -4800,7 +4800,8 @@
       items: [],
       meas: {},          // {chest:{in,cm}, …}
       shipRate: 0,
-      filter: 'all',
+      pFilter: '',       // '' | high | medium | low
+      sFilter: '',       // '' | wishlist | ordered | warehouse | shipped | arrived
       tagFilter: '',
     });
 
@@ -4815,29 +4816,36 @@
       return /^https?:\/\//i.test(u) ? u : 'https://' + u;
     };
 
-    /* ── filtering ── */
+    /* ── filtering (priority + status + tag combine) ── */
+    const anyFilter = () => !!(st.pFilter || st.sFilter || st.tagFilter);
     function visible() {
       return st.items.filter(it => {
-        if (st.filter === 'high'      && it.priority !== 'high')     return false;
-        if (st.filter === 'warehouse' && it.status   !== 'warehouse') return false;
-        if (st.filter === 'arrived'   && it.status   !== 'arrived')   return false;
-        if (st.tagFilter && (it.tag || '') !== st.tagFilter)          return false;
+        if (st.pFilter && (it.priority || 'medium') !== st.pFilter) return false;
+        if (st.sFilter && it.status !== st.sFilter)                 return false;
+        if (st.tagFilter && (it.tag || '') !== st.tagFilter)        return false;
         return true;
       });
     }
 
     /* ── stats + shipping estimator ── */
+    function setStat(sel, text) {
+      const el = $(sel);
+      if (el.textContent === text) return;
+      el.textContent = text;
+      el.classList.remove('bump');
+      void el.offsetWidth;               // restart the pop animation
+      el.classList.add('bump');
+    }
     function renderStats() {
       const items = visible();
       const spent  = items.reduce((s, it) => s + usd(it), 0);
       const weight = items.reduce((s, it) => s + num(it.weight), 0);
       const cost   = (weight / 1000) * num(st.shipRate);
-      $('[data-cl-count]').textContent  = items.length;
-      $('[data-cl-spent]').textContent  = fmt$(spent);
-      $('[data-cl-weight]').textContent = weight.toLocaleString() + ' g';
-      $('[data-cl-shipcost]').textContent = fmt$(cost);
-      const scoped = st.filter !== 'all' || st.tagFilter;
-      $('[data-cl-scope]').textContent = scoped ? 'filtered view' : 'all items';
+      setStat('[data-cl-count]',  String(items.length));
+      setStat('[data-cl-spent]',  fmt$(spent));
+      setStat('[data-cl-weight]', weight.toLocaleString() + ' g');
+      setStat('[data-cl-shipcost]', fmt$(cost));
+      $('[data-cl-scope]').textContent = anyFilter() ? 'filtered view' : 'all items';
     }
 
     /* ── measurements card ── */
@@ -4858,7 +4866,8 @@
     }
 
     /* ── item card ── */
-    function itemCard(it) {
+    const PRIO_LABEL = {high: 'HIGH 🔥', medium: 'MEDIUM', low: 'LOW'};
+    function itemCard(it, idx) {
       const cpw = it.status === 'arrived'
         ? (it.wears > 0 ? usd(it) / it.wears : usd(it))
         : null;
@@ -4868,14 +4877,15 @@
       if (it.status === 'shipped' && it.tracking)
         links.push(`<a class="cl-link cl-link--track" href="https://www.17track.net/en/track?nums=${encodeURIComponent(it.tracking)}" target="_blank" rel="noopener noreferrer">📦 ${esc(it.tracking)}</a>`);
 
-      return `<article class="cl-item ${it.priority === 'high' ? 'is-high' : ''}" data-cl-item="${it.id}">
+      const prio = it.priority || 'medium';
+      return `<article class="cl-item ${prio === 'high' ? 'is-high' : ''}" data-cl-item="${it.id}" style="--i:${(idx || 0) % 12}">
         <div class="cl-item__media">
           ${it.img
             ? `<img src="${esc(it.img.startsWith('data:image/') ? it.img : safeUrl(it.img))}" alt="" loading="lazy">`
             : `<span class="cl-item__noimg" aria-hidden="true">
                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3 5 6 3 10l3 2v9h12v-9l3-2-2-4-4-3-2 2h-2L9 3Z" stroke-linejoin="round"/></svg>
                </span>`}
-          ${it.priority === 'high' ? '<span class="cl-badge">HIGH 🔥</span>' : ''}
+          <span class="cl-badge cl-badge--${esc(prio)}">${PRIO_LABEL[prio] || prio}</span>
           <span class="cl-status cl-status--${esc(it.status)}">${STATUS_LABEL[it.status] || it.status}</span>
         </div>
         <div class="cl-item__body">
@@ -4924,15 +4934,17 @@
             </button>
           </header>
           ${items.length
-            ? `<div class="cl-grid">${items.map(itemCard).join('')}</div>`
-            : `<p class="cl-cat__empty">Nothing here${st.filter !== 'all' || st.tagFilter ? ' under this filter' : ''} — add an item.</p>`}
+            ? `<div class="cl-grid">${items.map((it, i) => itemCard(it, i)).join('')}</div>`
+            : `<p class="cl-cat__empty">Nothing here${anyFilter() ? ' under this filter' : ''} — add an item.</p>`}
         </article>`;
       }).join('');
     }
 
     function renderFilters() {
-      $$('[data-cl-filter]').forEach(b => b.classList.toggle('is-active', b.dataset.clFilter === st.filter));
-      $('[data-cl-banner]').hidden = st.filter !== 'warehouse';
+      $('[data-cl-showall]').classList.toggle('is-active', !anyFilter());
+      $$('[data-cl-pfilter]').forEach(b => b.classList.toggle('is-active', b.dataset.clPfilter === st.pFilter));
+      $$('[data-cl-sfilter]').forEach(b => b.classList.toggle('is-active', b.dataset.clSfilter === st.sFilter));
+      $('[data-cl-banner]').hidden = st.sFilter !== 'warehouse';
       const sel = $('[data-cl-tagfilter]');
       const tags = [...new Set(st.items.map(it => (it.tag || '').trim()).filter(Boolean))].sort();
       const cur = st.tagFilter;
@@ -5028,8 +5040,19 @@
       const panel = $('[data-tab-panel="clothes"]');
 
       panel.addEventListener('click', (e) => {
-        const chip = e.target.closest('[data-cl-filter]');
-        if (chip) { st.filter = chip.dataset.clFilter; save(); render(); return; }
+        if (e.target.closest('[data-cl-showall]')) {
+          st.pFilter = st.sFilter = st.tagFilter = ''; save(); render(); return;
+        }
+        const pChip = e.target.closest('[data-cl-pfilter]');
+        if (pChip) {   // click again to clear
+          st.pFilter = st.pFilter === pChip.dataset.clPfilter ? '' : pChip.dataset.clPfilter;
+          save(); render(); return;
+        }
+        const sChip = e.target.closest('[data-cl-sfilter]');
+        if (sChip) {
+          st.sFilter = st.sFilter === sChip.dataset.clSfilter ? '' : sChip.dataset.clSfilter;
+          save(); render(); return;
+        }
 
         const addCat = e.target.closest('[data-cl-addcat]');
         if (addCat) {
@@ -5068,7 +5091,12 @@
         const wear = e.target.closest('[data-cl-wear]');
         if (wear) {
           const it = st.items.find(i => i.id === wear.dataset.clWear);
-          if (it) { it.wears = (it.wears || 0) + 1; save(); render(); }
+          if (it) {
+            it.wears = (it.wears || 0) + 1;
+            const r = wear.getBoundingClientRect();
+            window.lifeFX?.burst?.(r.left + r.width / 2, r.top + r.height / 2);
+            save(); render();
+          }
           return;
         }
       });
@@ -5114,9 +5142,14 @@
         booted = true;
         st = Store.get(KEY, null);
         if (!st || !Array.isArray(st.cats)) st = DEFAULT();
-        // heal any missing fields from older saves
+        // heal any missing fields from older saves + migrate the old single filter
         st.meas = st.meas || {}; st.items = st.items || [];
-        st.filter = st.filter || 'all'; st.tagFilter = st.tagFilter || '';
+        st.pFilter = st.pFilter || ''; st.sFilter = st.sFilter || ''; st.tagFilter = st.tagFilter || '';
+        if (st.filter) {
+          if (st.filter === 'high') st.pFilter = 'high';
+          if (st.filter === 'warehouse' || st.filter === 'arrived') st.sFilter = st.filter;
+          delete st.filter;
+        }
         save();
         $('[data-cl-shiprate]').value = st.shipRate || '';
         renderMeas();

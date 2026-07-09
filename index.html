@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body data-view="home">
 
@@ -484,10 +484,21 @@
 
         <!-- FILTERS + SECTIONS TOOLBAR -->
         <div class="cl-toolbar reveal" style="--d:.1s">
-          <button class="cl-chip is-active" data-cl-filter="all">Show All</button>
-          <button class="cl-chip" data-cl-filter="high">High Priority 🔥</button>
-          <button class="cl-chip" data-cl-filter="warehouse">In Warehouse 📦</button>
-          <button class="cl-chip" data-cl-filter="arrived">Arrived ✅</button>
+          <button class="cl-chip is-active" data-cl-showall>Show All</button>
+          <span class="cl-group" role="group" aria-label="Filter by priority">
+            <i>Priority</i>
+            <button class="cl-chip" data-cl-pfilter="high">High 🔥</button>
+            <button class="cl-chip" data-cl-pfilter="medium">Medium</button>
+            <button class="cl-chip" data-cl-pfilter="low">Low</button>
+          </span>
+          <span class="cl-group" role="group" aria-label="Filter by status">
+            <i>Status</i>
+            <button class="cl-chip" data-cl-sfilter="wishlist">Wishlist</button>
+            <button class="cl-chip" data-cl-sfilter="ordered">Ordered</button>
+            <button class="cl-chip" data-cl-sfilter="warehouse">In Warehouse 📦</button>
+            <button class="cl-chip" data-cl-sfilter="shipped">Shipped 🚚</button>
+            <button class="cl-chip" data-cl-sfilter="arrived">Arrived ✅</button>
+          </span>
           <select class="input input--sm cl-tagselect" data-cl-tagfilter aria-label="Filter by haul tag">
             <option value="">All haul tags</option>
           </select>
@@ -1307,7 +1318,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=7" defer></script>
+  <script src="app.js?v=8" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=3" defer></script>
   <script src="intro.js?v=4" defer></script>
