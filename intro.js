@@ -103,7 +103,11 @@
     }
     intro.classList.add('is-leaving');
     document.body.classList.remove('intro-locked');
-    setTimeout(() => { intro.style.display = 'none'; stopCanvas(); }, 900);
+    setTimeout(() => {
+      intro.style.display = 'none'; stopCanvas();
+      // the tab rendered behind the fade — replay its entrance now that it's visible
+      window.dispatchEvent(new CustomEvent('nv-intro-hidden'));
+    }, 900);
   }
 
   function replay() {                              // restart the reveal animations
@@ -120,8 +124,11 @@
     document.body.classList.add('intro-locked');
     startCanvas();
     replay();
+    setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 350);
   }
   window.lifeHub = { open };
+  // boot: let the lettering decode as the cards rise
+  setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
 
   /* ---------- wiring ---------- */
   intro.addEventListener('click', (e) => {

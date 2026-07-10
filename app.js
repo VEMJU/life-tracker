@@ -5544,11 +5544,19 @@
     const fmtAt = (at) => { if (!at) return ''; let [h, m] = at.split(':').map(Number); const t = h % 12 || 12; return t + ':' + pad(m) + (h < 12 ? ' AM' : ' PM'); };
 
     function goalRow(g, i) {
-      return `<li class="td-row cal-trow ${g.done ? 'is-done' : ''}">
+      return `<li class="td-row cal-trow ${g.done ? 'is-done' : ''}" draggable="true" data-cal-drag="${i}">
+        <span class="cal-grip" aria-hidden="true">⋮⋮</span>
         <input class="cal-time" type="time" value="${g.at || ''}" data-cal-time="${i}" aria-label="Scheduled time">
         <label class="td-check"><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
         <span class="td-text">${esc(g.text)}${g.auto ? ' <em class="cal-auto">auto</em>' : ''}</span>
         <button class="td-del" data-cal-delgoal="${i}" aria-label="Delete">×</button></li>`;
+    }
+    let expandedHour = null;   // which hour shows its minute strip
+    function minuteStrip(h) {
+      return `<div class="cal-mins">` + Array.from({length: 12}, (_, k) => {
+        const mm = k * 5;
+        return `<button class="cal-min" data-cal-min="${pad(h % 24)}:${pad(mm)}" type="button">:${pad(mm)}</button>`;
+      }).join('') + `</div>`;
     }
 
     function renderDay() {
@@ -5577,28 +5585,32 @@
 
       wrap.innerHTML = `
         ${anytime.length ? `
-        <details class="cal-sect" open>
-          <summary><b>Anytime</b><span class="cal-sect__count">${anytime.length}</span></summary>
+        <div class="cal-sect">
+          <div class="cal-sect__head"><b>Anytime</b><span class="cal-sect__count">${anytime.length}</span></div>
           <div class="cal-sect__body cal-sect__body--norail">
             <ul class="td-list">${anytime.map(([g, i]) => goalRow(g, i)).join('')}</ul>
           </div>
-        </details>` : ''}
+        </div>` : ''}
 
         ${SECTIONS.map((s, si) => `
-        <details class="cal-sect" open>
-          <summary><b>${s.name}</b><span class="cal-sect__hours">${hourLabel(s.from)} – ${hourLabel(s.to)}</span>
-            <span class="cal-sect__count">${buckets[si].length}</span></summary>
+        <div class="cal-sect">
+          <div class="cal-sect__head"><b>${s.name}</b><span class="cal-sect__hours">${hourLabel(s.from)} – ${hourLabel(s.to)}</span>
+            <span class="cal-sect__count">${buckets[si].length}</span></div>
           <div class="cal-sect__body">
-            <div class="cal-rail" aria-hidden="true">
-              ${Array.from({length: s.to - s.from}, (_, k) => `<span>${hourLabel(s.from + k)}</span>`).join('')}
+            <div class="cal-rail">
+              ${Array.from({length: s.to - s.from}, (_, k) => {
+                const h = s.from + k;
+                return `<button class="cal-hour" data-cal-hour="${h}" type="button">${hourLabel(h)}</button>`
+                     + (expandedHour === h ? minuteStrip(h) : '');
+              }).join('')}
             </div>
             <ul class="td-list cal-sect__list">
               ${buckets[si].length
                 ? buckets[si].map(([g, i]) => goalRow(g, i)).join('')
-                : '<li class="cal-sect__empty">—</li>'}
+                : '<li class="cal-sect__empty">drop a goal here or use the time box</li>'}
             </ul>
           </div>
-        </details>`).join('')}
+        </div>`).join('')}
 
         <div class="td-add cal-add">
           <input class="cal-time cal-time--new" type="time" data-cal-newtime aria-label="Time (optional)">
@@ -5672,29 +5684,52 @@
         </div>`;
     }
 
-    let booted = false;
+    /* ── fullscreen day modal ── */
+    const dayModal = () => $('#modal-calday');
+    function openDay()  { const m = dayModal(); m.classList.add('is-open'); m.setAttribute('aria-hidden', 'false'); }
+    function closeDay() { const m = dayModal(); m.classList.remove('is-open'); m.setAttribute('aria-hidden', 'true'); expandedHour = null; }
+
+    let booted = false, dragIdx = null;
     function wire() {
       const panel = $('[data-tab-panel="calendar"]');
+
+      /* month grid + drawer live on the panel */
       panel.addEventListener('click', (e) => {
         if (e.target.closest('[data-cal-prev]')) { view.setMonth(view.getMonth() - 1); renderMonth(); return; }
         if (e.target.closest('[data-cal-next]')) { view.setMonth(view.getMonth() + 1); renderMonth(); return; }
-        if (e.target.closest('[data-cal-today]')) { view = new Date(); selected = dk(new Date()); renderMonth(); renderDay(); return; }
+        if (e.target.closest('[data-cal-today]')) { view = new Date(); selected = dk(new Date()); renderMonth(); renderDay(); openDay(); return; }
         const cell = e.target.closest('[data-cal-day]');
-        if (cell) { selected = cell.dataset.calDay; renderMonth(); renderDay(); return; }
+        if (cell) { selected = cell.dataset.calDay; expandedHour = null; renderMonth(); renderDay(); openDay(); return; }
+        if (e.target.closest('[data-cal-drawertab]')) {
+          $('[data-cal-drawer]').classList.toggle('is-open');
+          renderDrawer(); return;
+        }
+      });
+
+      /* everything inside the day lives on the modal */
+      const M = dayModal();
+      M.addEventListener('click', (e) => {
+        if (e.target.closest('[data-calday-close]')) { closeDay(); renderMonth(); renderDrawer(); return; }
+        const hour = e.target.closest('[data-cal-hour]');
+        if (hour) {                          // click 9 PM → its minute strip pops open
+          const h = +hour.dataset.calHour;
+          expandedHour = expandedHour === h ? null : h;
+          renderDay(); return;
+        }
         if (e.target.closest('[data-cal-addgoal]')) {
-          const inp = $('[data-cal-newgoal]');
+          const inp = $('[data-cal-newgoal]', M);
           const v = (inp.value || '').trim(); if (!v) return;
-          const at = ($('[data-cal-newtime]')?.value || '') || undefined;
+          const at = ($('[data-cal-newtime]', M)?.value || '') || undefined;
           const goals = getDayRec(selected); goals.push({text: v, done: false, at});
-          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+          setDayRec(selected, goals); renderDay(); return;
         }
         const delGoal = e.target.closest('[data-cal-delgoal]');
         if (delGoal) {
           const goals = getDayRec(selected); goals.splice(+delGoal.dataset.calDelgoal, 1);
-          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+          setDayRec(selected, goals); renderDay(); return;
         }
         if (e.target.closest('[data-cal-addnote]')) {
-          const inp = $('[data-cal-newnote]');
+          const inp = $('[data-cal-newnote]', M);
           const v = (inp.value || '').trim(); if (!v) return;
           (st.notes[selected] = st.notes[selected] || []).push({id: uid(), text: v, from: 'me'});
           save(); renderDay(); return;
@@ -5704,32 +5739,106 @@
           st.notes[selected] = (st.notes[selected] || []).filter(n => n.id !== delNote.dataset.calDelnote);
           save(); renderDay(); return;
         }
-        if (e.target.closest('[data-cal-drawertab]')) {
-          $('[data-cal-drawer]').classList.toggle('is-open');
-          renderDrawer(); return;
-        }
       });
-      panel.addEventListener('change', (e) => {
+      M.addEventListener('change', (e) => {
         const chk = e.target.closest('[data-cal-check]');
         if (chk) {
           const goals = getDayRec(selected);
           const g = goals[+chk.dataset.calCheck];
           if (g) { g.done = chk.checked; if (chk.checked) g.doneAt = Date.now(); else delete g.doneAt; }
-          setDayRec(selected, goals); renderDay(); renderMonth(); renderDrawer(); return;
+          setDayRec(selected, goals); renderDay(); return;
         }
         const tm = e.target.closest('[data-cal-time]');
-        if (tm) {                            // re-time a to-do → it moves to the right section
+        if (tm) {
           const goals = getDayRec(selected);
           const g = goals[+tm.dataset.calTime];
           if (g) { g.at = tm.value || undefined; }
           setDayRec(selected, goals); renderDay();
         }
       });
-      panel.addEventListener('keydown', (e) => {
+      M.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
-        if (e.target.matches('[data-cal-newgoal]')) $('[data-cal-addgoal]').click();
-        if (e.target.matches('[data-cal-newnote]')) $('[data-cal-addnote]').click();
+        if (e.target.matches('[data-cal-newgoal]')) $('[data-cal-addgoal]', M).click();
+        if (e.target.matches('[data-cal-newnote]')) $('[data-cal-addnote]', M).click();
       });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && M.classList.contains('is-open')) { closeDay(); renderMonth(); renderDrawer(); }
+      });
+
+      /* drag a goal onto an hour (HH:00) or an exact minute slot */
+      M.addEventListener('dragstart', (e) => {
+        const row = e.target.closest('[data-cal-drag]');
+        if (!row) return;
+        dragIdx = +row.dataset.calDrag;
+        row.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', String(dragIdx)); } catch {}
+      });
+      M.addEventListener('dragend', (e) => {
+        dragIdx = null;
+        M.querySelectorAll('.is-dragging, .is-over').forEach(el => el.classList.remove('is-dragging', 'is-over'));
+      });
+      M.addEventListener('dragover', (e) => {
+        const zone = e.target.closest('[data-cal-hour], [data-cal-min]');
+        if (zone && dragIdx != null) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          M.querySelectorAll('.is-over').forEach(el => el.classList.remove('is-over'));
+          zone.classList.add('is-over');
+        }
+      });
+      M.addEventListener('drop', (e) => {
+        const zone = e.target.closest('[data-cal-hour], [data-cal-min]');
+        if (!zone || dragIdx == null) return;
+        e.preventDefault();
+        const goals = getDayRec(selected);
+        const g = goals[dragIdx];
+        if (g) {
+          g.at = zone.dataset.calMin ? zone.dataset.calMin : pad((+zone.dataset.calHour) % 24) + ':00';
+          setDayRec(selected, goals);
+        }
+        dragIdx = null;
+        renderDay();
+      });
+
+      /* floating stopwatch: drag anywhere, lock in place */
+      const float = $('[data-cal-watchfloat]');
+      const bar   = $('[data-cal-watchdrag]');
+      const lockBtn = $('[data-cal-watchlock]');
+      function applyWatchPos() {
+        const p = st.watchPos || {};
+        float.classList.toggle('is-locked', !!p.locked);
+        if (p.x != null) {
+          float.style.left = clamp(p.x, 0, window.innerWidth - 120) + 'px';
+          float.style.top  = clamp(p.y, 0, window.innerHeight - 60) + 'px';
+          float.style.right = 'auto'; float.style.bottom = 'auto';
+        }
+      }
+      let wDrag = null;
+      bar.addEventListener('pointerdown', (e) => {
+        if (st.watchPos?.locked) return;
+        if (e.target.closest('button')) return;
+        const r = float.getBoundingClientRect();
+        wDrag = {dx: e.clientX - r.left, dy: e.clientY - r.top};
+        bar.setPointerCapture(e.pointerId);
+        float.classList.add('is-moving');
+      });
+      bar.addEventListener('pointermove', (e) => {
+        if (!wDrag) return;
+        st.watchPos = Object.assign({}, st.watchPos, {x: e.clientX - wDrag.dx, y: e.clientY - wDrag.dy});
+        applyWatchPos();
+      });
+      bar.addEventListener('pointerup', () => {
+        if (!wDrag) return;
+        wDrag = null; float.classList.remove('is-moving'); save();
+      });
+      lockBtn.addEventListener('click', () => {
+        st.watchPos = Object.assign({}, st.watchPos, {locked: !st.watchPos?.locked});
+        save(); applyWatchPos();
+        toast(st.watchPos.locked ? 'Clock locked in place' : 'Clock unlocked — drag it anywhere');
+      });
+      applyWatchPos();
+
       Chrono.mount($('[data-cal-watch]'), () => st.watch, (w) => { st.watch = w; save(); });
     }
 

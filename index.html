@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=16" />
+  <link rel="stylesheet" href="style.css?v=17" />
 </head>
 <body data-view="home">
 
@@ -558,22 +558,18 @@
           </p>
         </article>
 
-        <article class="card card--cal-day reveal" style="--d:.06s">
-          <header class="card__head">
-            <span class="card__tag">II.</span>
-            <h3 class="card__title" data-cal-daytitle>Pick a day</h3>
-          </header>
-          <div class="cal-daybody" data-cal-daybody><!-- injected --></div>
-        </article>
-
-        <article class="card card--cal-watch reveal" style="--d:.1s">
-          <header class="card__head">
-            <span class="card__tag">III.</span>
-            <h3 class="card__title">Chronicle Clock</h3>
-          </header>
+        <!-- floating, draggable, lockable stopwatch -->
+        <div class="cal-watch-float" data-cal-watchfloat>
+          <div class="cal-watch-float__bar" data-cal-watchdrag>
+            <span class="cal-watch-float__title">Chronicle Clock</span>
+            <button class="icon-btn" data-cal-watchlock aria-label="Lock / unlock position" title="Lock position">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" data-lock-icon>
+                <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
           <div class="chrono" data-cal-watch></div>
-          <p class="sp-hint">Counts through days, weeks, months — until you say reset.</p>
-        </article>
+        </div>
 
         <button class="cal-drawer-tab" data-cal-drawertab type="button" aria-label="Toggle progress panel">Progress</button>
         <aside class="cal-drawer" data-cal-drawer>
@@ -1135,6 +1131,20 @@
   <!-- ════════════════════  MODALS  ════════════════════ -->
 
   <!-- Countdown modal -->
+  <!-- Calendar day modal (fullscreen day timeline) -->
+  <div class="modal" id="modal-calday" aria-hidden="true">
+    <div class="modal__overlay" data-calday-close></div>
+    <div class="modal__dialog modal__dialog--full" role="dialog" aria-modal="true" aria-labelledby="calday-title">
+      <header class="modal__head">
+        <h3 class="modal__title" id="calday-title" data-cal-daytitle>Day</h3>
+        <button class="icon-btn" data-calday-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="cal-daybody" data-cal-daybody><!-- injected --></div>
+    </div>
+  </div>
+
   <!-- Clothes item modal -->
   <div class="modal" id="modal-clothes" aria-hidden="true">
     <div class="modal__overlay" data-cl-close></div>
@@ -1393,9 +1403,9 @@
     </div>
   </div>
 
-  <script src="app.js?v=10" defer></script>
+  <script src="app.js?v=11" defer></script>
   <script src="bg.js?v=2" defer></script>
-  <script src="fx.js?v=4" defer></script>
-  <script src="intro.js?v=4" defer></script>
+  <script src="fx.js?v=6" defer></script>
+  <script src="intro.js?v=6" defer></script>
 </body>
 </html>

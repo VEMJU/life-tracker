@@ -71,10 +71,53 @@
       void head.offsetWidth;
       head.classList.add('is-swap');                // replay the crimson rule sweep
     }
+    // hyper-text: every entry re-decodes the title + the card titles
+    window.lifeFX?.scrambleTitle?.();
+    panel.querySelectorAll('.card__title').forEach((el, i) => {
+      if (i < 14) window.lifeFX?.scrambleEl?.(el);
+    });
   }
   new MutationObserver((muts) => {
     for (const m of muts) if (m.attributeName === 'data-view') reveal(body.getAttribute('data-view'));
   }).observe(body, { attributes: true, attributeFilter: ['data-view'] });
+  // when the hub finishes fading out, the tab is finally visible — replay its entrance
+  window.addEventListener('nv-intro-hidden', () => reveal(body.getAttribute('data-view')));
+})();
+
+/* ---------- generic hyper-text scrambler (any element, spaces preserved) ---------- */
+(() => {
+  'use strict';
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#%&*';
+  const live = new WeakSet();
+  function scrambleEl(el) {
+    if (!el || live.has(el)) return;
+    const final = el.textContent;
+    if (!final || !final.trim()) return;
+    live.add(el);
+    const dur = Math.max(14, Math.min(40, final.length * 2.4));
+    let f = 0;
+    (function step() {
+      f++;
+      const reveal = Math.floor((f / dur) * final.length);
+      let out = '';
+      for (let i = 0; i < final.length; i++) {
+        const ch = final[i];
+        out += /\s/.test(ch) || ch === ' ' ? ch
+             : i < reveal ? ch
+             : CHARS[(Math.random() * CHARS.length) | 0];
+      }
+      el.textContent = out;
+      if (f <= dur) requestAnimationFrame(step);
+      else { el.textContent = final; live.delete(el); }
+    })();
+  }
+  window.lifeFX = Object.assign(window.lifeFX || {}, {scrambleEl});
+
+  // the hub decodes its lettering every time it opens (and at boot)
+  window.addEventListener('nv-hub-open', () => {
+    document.querySelectorAll('.intro__w, .intro-tab__name, .intro-tab__sub').forEach(scrambleEl);
+  });
 })();
 
 /* ---------- crimson celebration burst when you complete something ---------- */
