@@ -5524,39 +5524,26 @@
       $('[data-cal-grid]').innerHTML = html;
     }
 
-    /* ── day timeline: Morning / Afternoon / Evening / Night with an hour rail.
-         Each to-do can carry a time (editable → it moves between sections).
-         Recommendation implemented: the WHOLE day stays visible; each
-         section collapses/expands so you can focus without losing context. ── */
-    const SECTIONS = [
-      {name: 'Morning',   from: 5,  to: 12},
-      {name: 'Afternoon', from: 12, to: 17},
-      {name: 'Evening',   from: 17, to: 21},
-      {name: 'Night',     from: 21, to: 29},   // 9 PM → 5 AM
-    ];
+    /* ── Command Center day grid: fixed 30-minute time blocks, 5 AM → 5 AM.
+         Goals snap into slots; drag between slots; click a block to open
+         its drawer (description · sub-tasks · reminder alert). ── */
+    const SLOT_START = 5, SLOT_END = 29;        // 29 = 5 AM next day
     const hourLabel = (h) => { const hh = h % 24; const t = hh % 12 || 12; return t + (hh < 12 ? ' AM' : ' PM'); };
-    function sectionOf(at) {
-      if (!at) return -1;                       // Anytime
-      let h = parseInt(at.slice(0, 2), 10);
-      if (h < 5) h += 24;
-      return SECTIONS.findIndex(s => h >= s.from && h < s.to);
-    }
     const fmtAt = (at) => { if (!at) return ''; let [h, m] = at.split(':').map(Number); const t = h % 12 || 12; return t + ':' + pad(m) + (h < 12 ? ' AM' : ' PM'); };
-
-    function goalRow(g, i) {
-      return `<li class="td-row cal-trow ${g.done ? 'is-done' : ''}" draggable="true" data-cal-drag="${i}">
-        <span class="cal-grip" aria-hidden="true">⋮⋮</span>
-        <input class="cal-time" type="time" value="${g.at || ''}" data-cal-time="${i}" aria-label="Scheduled time">
-        <label class="td-check"><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
-        <span class="td-text">${esc(g.text)}${g.auto ? ' <em class="cal-auto">auto</em>' : ''}</span>
-        <button class="td-del" data-cal-delgoal="${i}" aria-label="Delete">×</button></li>`;
+    function snapOf(at) {                        // 'HH:MM' → its 30-min slot key
+      let [h, m] = at.split(':').map(Number);
+      if (h < SLOT_START % 24) h += 24;
+      return pad(h % 24) + ':' + (m >= 30 ? '30' : '00');
     }
-    let expandedHour = null;   // which hour shows its minute strip
-    function minuteStrip(h) {
-      return `<div class="cal-mins">` + Array.from({length: 12}, (_, k) => {
-        const mm = k * 5;
-        return `<button class="cal-min" data-cal-min="${pad(h % 24)}:${pad(mm)}" type="button">:${pad(mm)}</button>`;
-      }).join('') + `</div>`;
+    function blockHTML(g, i) {
+      return `<div class="cal-block ${g.done ? 'is-done' : ''} ${g.alert ? 'has-alert' : ''}"
+        draggable="true" data-cal-drag="${i}" data-cal-block="${i}" role="button" tabindex="0">
+        <label class="td-check" data-no-open><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
+        <b class="cal-block__at">${fmtAt(g.at)}</b>
+        <span class="cal-block__txt">${esc(g.text)}</span>
+        ${g.subs?.length ? `<span class="cal-block__subs">${g.subs.filter(s => s.done).length}/${g.subs.length}</span>` : ''}
+        ${g.alert ? '<span class="cal-block__bell" aria-hidden="true">⏰</span>' : ''}
+      </div>`;
     }
 
     function renderDay() {
@@ -5574,43 +5561,43 @@
       $('[data-cal-daytitle]').textContent =
         (rel ? rel + ' — ' : '') + date.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'});
 
-      /* bucket goals by section, keep original indices for handlers */
-      const buckets = SECTIONS.map(() => []);
+      /* bucket goals into 30-min slots; untimed goals wait in the tray */
+      const bySlot = {};
       const anytime = [];
       goals.forEach((g, i) => {
-        const si = sectionOf(g.at);
-        (si < 0 ? anytime : buckets[si]).push([g, i]);
+        if (!g.at) { anytime.push([g, i]); return; }
+        const k = snapOf(g.at);
+        (bySlot[k] = bySlot[k] || []).push([g, i]);
       });
-      buckets.forEach(b => b.sort((a, b2) => (a[0].at || '') < (b2[0].at || '') ? -1 : 1));
+      Object.values(bySlot).forEach(b => b.sort((a, b2) => (a[0].at) < (b2[0].at) ? -1 : 1));
+      const done = goals.filter(g => g.done).length;
+      const pct = goals.length ? Math.round(done / goals.length * 100) : 0;
+
+      let gridRows = '';
+      for (let h = SLOT_START; h < SLOT_END; h++) {
+        for (const half of ['00', '30']) {
+          const key = pad(h % 24) + ':' + half;
+          const blocks = bySlot[key] || [];
+          gridRows += `<div class="cal-hrow ${half === '30' ? 'is-half' : ''} ${blocks.length ? 'has-blocks' : ''}">
+            <span class="cal-hlabel">${half === '00' ? hourLabel(h) : ''}</span>
+            <div class="cal-slot" data-cal-slot="${key}">${blocks.map(([g, i]) => blockHTML(g, i)).join('')}</div>
+          </div>`;
+        }
+      }
 
       wrap.innerHTML = `
+        <div class="cal-prog">
+          <span class="cal-prog__label">Daily Progress: <b>${pct}%</b> <i>· ${done}/${goals.length || 0} done</i></span>
+          <div class="cal-prog__bar"><i style="width:${pct}%"></i></div>
+        </div>
+
         ${anytime.length ? `
-        <div class="cal-sect">
-          <div class="cal-sect__head"><b>Anytime</b><span class="cal-sect__count">${anytime.length}</span></div>
-          <div class="cal-sect__body cal-sect__body--norail">
-            <ul class="td-list">${anytime.map(([g, i]) => goalRow(g, i)).join('')}</ul>
-          </div>
+        <div class="cal-tray">
+          <span class="cal-tray__label">Anytime — drag onto the grid</span>
+          ${anytime.map(([g, i]) => blockHTML(g, i)).join('')}
         </div>` : ''}
 
-        ${SECTIONS.map((s, si) => `
-        <div class="cal-sect">
-          <div class="cal-sect__head"><b>${s.name}</b><span class="cal-sect__hours">${hourLabel(s.from)} – ${hourLabel(s.to)}</span>
-            <span class="cal-sect__count">${buckets[si].length}</span></div>
-          <div class="cal-sect__body">
-            <div class="cal-rail">
-              ${Array.from({length: s.to - s.from}, (_, k) => {
-                const h = s.from + k;
-                return `<button class="cal-hour" data-cal-hour="${h}" type="button">${hourLabel(h)}</button>`
-                     + (expandedHour === h ? minuteStrip(h) : '');
-              }).join('')}
-            </div>
-            <ul class="td-list cal-sect__list">
-              ${buckets[si].length
-                ? buckets[si].map(([g, i]) => goalRow(g, i)).join('')
-                : '<li class="cal-sect__empty">drop a goal here or use the time box</li>'}
-            </ul>
-          </div>
-        </div>`).join('')}
+        <div class="cal-timegrid">${gridRows}</div>
 
         <div class="td-add cal-add">
           <input class="cal-time cal-time--new" type="time" data-cal-newtime aria-label="Time (optional)">
@@ -5687,7 +5674,117 @@
     /* ── fullscreen day modal ── */
     const dayModal = () => $('#modal-calday');
     function openDay()  { const m = dayModal(); m.classList.add('is-open'); m.setAttribute('aria-hidden', 'false'); }
-    function closeDay() { const m = dayModal(); m.classList.remove('is-open'); m.setAttribute('aria-hidden', 'true'); expandedHour = null; }
+    function closeDay() { const m = dayModal(); m.classList.remove('is-open'); m.setAttribute('aria-hidden', 'true'); closeDrawer(); }
+
+    /* ── goal drawer (slides from the right): description · sub-tasks · alert ── */
+    let drawerIdx = null;
+    const gDrawer = () => $('[data-cal-gdrawer]');
+    function openDrawer(i) {
+      const goals = getDayRec(selected);
+      const g = goals[i]; if (!g) return;
+      drawerIdx = i;
+      const D = gDrawer();
+      $('[data-gd-title]', D).value = g.text;
+      $('[data-gd-time]', D).value = g.at || '';
+      $('[data-gd-desc]', D).value = g.desc || '';
+      $('[data-gd-alert]', D).checked = !!g.alert;
+      renderSubs(g);
+      D.classList.add('is-open');
+      D.setAttribute('aria-hidden', 'false');
+    }
+    function closeDrawer() {
+      const D = gDrawer(); if (!D) return;
+      D.classList.remove('is-open');
+      D.setAttribute('aria-hidden', 'true');
+      drawerIdx = null;
+    }
+    function renderSubs(g) {
+      $('[data-gd-subs]', gDrawer()).innerHTML = (g.subs || []).map((s, si) =>
+        `<li class="gd-sub ${s.done ? 'is-done' : ''}">
+          <label class="td-check"><input type="checkbox" data-gd-subchk="${si}" ${s.done ? 'checked' : ''}><i></i></label>
+          <span>${esc(s.text)}</span>
+          <button class="td-del" data-gd-subdel="${si}" aria-label="Delete sub-task">×</button>
+        </li>`).join('') || '<li class="gd-sub gd-sub--empty">No sub-tasks yet.</li>';
+    }
+    function drawerGoal() {
+      if (drawerIdx == null) return null;
+      const goals = getDayRec(selected);
+      return goals[drawerIdx] ? {goals, g: goals[drawerIdx]} : null;
+    }
+    function wireDrawer() {
+      const D = gDrawer();
+      D.addEventListener('click', (e) => {
+        if (e.target.closest('[data-gd-close]')) { closeDrawer(); return; }
+        if (e.target.closest('[data-gd-addsub]')) {
+          const ctx = drawerGoal(); if (!ctx) return;
+          const inp = $('[data-gd-newsub]', D);
+          const v = (inp.value || '').trim(); if (!v) return;
+          (ctx.g.subs = ctx.g.subs || []).push({text: v, done: false});
+          inp.value = '';
+          setDayRec(selected, ctx.goals); renderSubs(ctx.g); renderDay();
+          return;
+        }
+        const sd = e.target.closest('[data-gd-subdel]');
+        if (sd) {
+          const ctx = drawerGoal(); if (!ctx) return;
+          ctx.g.subs.splice(+sd.dataset.gdSubdel, 1);
+          setDayRec(selected, ctx.goals); renderSubs(ctx.g); renderDay();
+          return;
+        }
+        if (e.target.closest('[data-gd-del]')) {
+          const ctx = drawerGoal(); if (!ctx) return;
+          if (!confirm('Delete this goal?')) return;
+          ctx.goals.splice(drawerIdx, 1);
+          setDayRec(selected, ctx.goals);
+          closeDrawer(); renderDay(); renderMonth(); renderDrawer();
+          return;
+        }
+      });
+      D.addEventListener('change', (e) => {
+        const ctx = drawerGoal(); if (!ctx) return;
+        const sc = e.target.closest('[data-gd-subchk]');
+        if (sc) {
+          ctx.g.subs[+sc.dataset.gdSubchk].done = sc.checked;
+          setDayRec(selected, ctx.goals); renderSubs(ctx.g); renderDay();
+          return;
+        }
+        if (e.target.matches('[data-gd-time]'))  { ctx.g.at = e.target.value || undefined; setDayRec(selected, ctx.goals); renderDay(); return; }
+        if (e.target.matches('[data-gd-alert]')) {
+          ctx.g.alert = e.target.checked; delete ctx.g.alerted;
+          setDayRec(selected, ctx.goals); renderDay();
+          toast(ctx.g.alert ? 'Reminder set — fires while the app is open' : 'Reminder off');
+          return;
+        }
+      });
+      D.addEventListener('input', (e) => {
+        const ctx = drawerGoal(); if (!ctx) return;
+        if (e.target.matches('[data-gd-title]')) {
+          const v = e.target.value.trim();
+          if (v) { ctx.g.text = v; setDayRec(selected, ctx.goals); }
+          return;
+        }
+        if (e.target.matches('[data-gd-desc]')) { ctx.g.desc = e.target.value; setDayRec(selected, ctx.goals); return; }
+      });
+      D.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.matches('[data-gd-newsub]')) $('[data-gd-addsub]', D).click();
+      });
+    }
+
+    /* reminder alerts — fire while the app is open */
+    function checkAlerts() {
+      const today = dk(new Date());
+      const now = new Date();
+      const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
+      const goals = getDayRec(today);
+      let dirty = false;
+      goals.forEach(g => {
+        if (g.alert && g.at && !g.done && !g.alerted && hhmm >= g.at) {
+          toast('⏰ ' + g.text + ' — it is time.');
+          g.alerted = true; dirty = true;
+        }
+      });
+      if (dirty) Store.set(DAY_PREFIX + today, goals);
+    }
 
     let booted = false, dragIdx = null;
     function wire() {
@@ -5710,11 +5807,10 @@
       const M = dayModal();
       M.addEventListener('click', (e) => {
         if (e.target.closest('[data-calday-close]')) { closeDay(); renderMonth(); renderDrawer(); return; }
-        const hour = e.target.closest('[data-cal-hour]');
-        if (hour) {                          // click 9 PM → its minute strip pops open
-          const h = +hour.dataset.calHour;
-          expandedHour = expandedHour === h ? null : h;
-          renderDay(); return;
+        const block = e.target.closest('[data-cal-block]');
+        if (block && !e.target.closest('[data-no-open]')) {   // open the goal drawer
+          openDrawer(+block.dataset.calBlock);
+          return;
         }
         if (e.target.closest('[data-cal-addgoal]')) {
           const inp = $('[data-cal-newgoal]', M);
@@ -5746,14 +5842,8 @@
           const goals = getDayRec(selected);
           const g = goals[+chk.dataset.calCheck];
           if (g) { g.done = chk.checked; if (chk.checked) g.doneAt = Date.now(); else delete g.doneAt; }
-          setDayRec(selected, goals); renderDay(); return;
-        }
-        const tm = e.target.closest('[data-cal-time]');
-        if (tm) {
-          const goals = getDayRec(selected);
-          const g = goals[+tm.dataset.calTime];
-          if (g) { g.at = tm.value || undefined; }
-          setDayRec(selected, goals); renderDay();
+          setDayRec(selected, goals);
+          renderDay(); renderMonth(); renderDrawer();   // 100% → white cross lands instantly
         }
       });
       M.addEventListener('keydown', (e) => {
@@ -5779,7 +5869,7 @@
         M.querySelectorAll('.is-dragging, .is-over').forEach(el => el.classList.remove('is-dragging', 'is-over'));
       });
       M.addEventListener('dragover', (e) => {
-        const zone = e.target.closest('[data-cal-hour], [data-cal-min]');
+        const zone = e.target.closest('[data-cal-slot]');
         if (zone && dragIdx != null) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
@@ -5788,15 +5878,12 @@
         }
       });
       M.addEventListener('drop', (e) => {
-        const zone = e.target.closest('[data-cal-hour], [data-cal-min]');
+        const zone = e.target.closest('[data-cal-slot]');
         if (!zone || dragIdx == null) return;
         e.preventDefault();
         const goals = getDayRec(selected);
         const g = goals[dragIdx];
-        if (g) {
-          g.at = zone.dataset.calMin ? zone.dataset.calMin : pad((+zone.dataset.calHour) % 24) + ':00';
-          setDayRec(selected, goals);
-        }
+        if (g) { g.at = zone.dataset.calSlot; setDayRec(selected, goals); }
         dragIdx = null;
         renderDay();
       });
@@ -5840,6 +5927,9 @@
       applyWatchPos();
 
       Chrono.mount($('[data-cal-watch]'), () => st.watch, (w) => { st.watch = w; save(); });
+      wireDrawer();
+      checkAlerts();
+      setInterval(checkAlerts, 30000);
     }
 
     function materializeToday() {

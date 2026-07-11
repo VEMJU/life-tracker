@@ -11,7 +11,8 @@
   if (!el || reduce) return;
 
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#%&*';
-  let scrambling = false, raf = 0, final = (el.textContent || '').trim();
+  let scrambling = false, raf = 0, pending = null;
+  let final = (el.textContent || '').trim();   // the one true title — never read mid-scramble junk
 
   function setText(s) {
     obs.disconnect();
@@ -19,15 +20,31 @@
     obs.observe(el, { childList: true, characterData: true, subtree: true });
   }
 
+  let failsafe = 0;
   function scramble(text) {
     final = text;
     scrambling = true;
     el.classList.add('is-decoding');
     const dur = Math.max(16, text.length * 3);
-    let f = 0;
+    let f = 0, done = false;
     cancelAnimationFrame(raf);
+    clearTimeout(failsafe);
+    const finish = () => {                   // idempotent — ALWAYS lands on the target string
+      if (done || final !== text) return;
+      done = true;
+      clearTimeout(failsafe);
+      setText(text);
+      scrambling = false;
+      el.classList.remove('is-decoding');
+      if (pending && pending !== final) { const p = pending; pending = null; scramble(p); }
+      else pending = null;
+    };
+    // rAF pauses in background tabs — this guarantees the text still resolves
+    failsafe = setTimeout(finish, 1200);
     (function step() {
+      if (done || final !== text) return;    // superseded — the newer run owns the element
       f++;
+      if (f > dur) { finish(); return; }
       const reveal = Math.floor((f / dur) * text.length);
       let out = '';
       for (let i = 0; i < text.length; i++) {
@@ -36,20 +53,20 @@
              : CHARS[(Math.random() * CHARS.length) | 0];
       }
       setText(out);
-      if (f <= dur) { raf = requestAnimationFrame(step); }
-      else { setText(text); scrambling = false; el.classList.remove('is-decoding'); }
+      raf = requestAnimationFrame(step);
     })();
   }
 
   const obs = new MutationObserver(() => {
-    if (scrambling) return;
     const t = (el.textContent || '').trim();
-    if (t && t !== final) scramble(t);
+    if (!t || t === final) return;
+    if (scrambling) { pending = t; setText(final); return; }  // queue it; keep the current run clean
+    scramble(t);
   });
   obs.observe(el, { childList: true, characterData: true, subtree: true });
 
-  // expose for manual triggers (e.g. on hub → tab entry)
-  window.lifeFX = { scrambleTitle: () => scramble((el.textContent || '').trim()) };
+  // manual re-trigger always decodes toward the STORED title, never mid-flight garbage
+  window.lifeFX = { scrambleTitle: () => { if (!scrambling) scramble(final); } };
 })();
 
 /* ---------- staggered blur-in of cards each time a tab opens ---------- */
@@ -96,9 +113,19 @@
     if (!final || !final.trim()) return;
     live.add(el);
     const dur = Math.max(14, Math.min(40, final.length * 2.4));
-    let f = 0;
+    let f = 0, done = false;
+    const finish = () => {                   // guaranteed landing, even in background tabs
+      if (done) return;
+      done = true;
+      clearTimeout(failsafe);
+      el.textContent = final;
+      live.delete(el);
+    };
+    const failsafe = setTimeout(finish, 1100);
     (function step() {
+      if (done) return;
       f++;
+      if (f > dur) { finish(); return; }
       const reveal = Math.floor((f / dur) * final.length);
       let out = '';
       for (let i = 0; i < final.length; i++) {
@@ -108,8 +135,7 @@
              : CHARS[(Math.random() * CHARS.length) | 0];
       }
       el.textContent = out;
-      if (f <= dur) requestAnimationFrame(step);
-      else { el.textContent = final; live.delete(el); }
+      requestAnimationFrame(step);
     })();
   }
   window.lifeFX = Object.assign(window.lifeFX || {}, {scrambleEl});

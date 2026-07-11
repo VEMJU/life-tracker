@@ -2485,7 +2485,8 @@ body.intro-locked { overflow: hidden; }
 .intro-tab:nth-child(1){animation-delay:1.5s} .intro-tab:nth-child(2){animation-delay:1.62s}
 .intro-tab:nth-child(3){animation-delay:1.74s} .intro-tab:nth-child(4){animation-delay:1.86s}
 .intro-tab:nth-child(5){animation-delay:1.98s} .intro-tab:nth-child(6){animation-delay:2.1s}
-.intro-tab:nth-child(7){animation-delay:2.22s}
+.intro-tab:nth-child(7){animation-delay:2.22s} .intro-tab:nth-child(8){animation-delay:2.34s}
+.intro-tab:nth-child(9){animation-delay:2.46s} .intro-tab:nth-child(n+10){animation-delay:2.58s}
 .intro-tab:hover {
   transform: translateY(-4px); border-color: var(--accent-soft);
   box-shadow: var(--glass-shadow-hover), 0 0 0 1px var(--accent-soft), 0 20px 50px -20px rgba(196,22,59,.5);
@@ -3336,9 +3337,105 @@ body[data-view="calendar"] .cal-drawer { display: block; }
 .cal-watch-float .chrono { padding: 10px 0 2px; }
 .cal-watch-float .chrono__time { font-size: 20px; }
 
+/* — Command Center day grid — */
+.cal-prog { display: grid; gap: 8px; margin-bottom: 14px; }
+.cal-prog__label { font: 400 12px var(--ff-mono); letter-spacing: .06em; color: var(--c-stone); }
+.cal-prog__label b { color: var(--c-blanc); font-size: 15px; }
+.cal-prog__label i { font-style: normal; color: var(--c-fog); }
+.cal-prog__bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; }
+.cal-prog__bar i {
+  display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--wine), var(--accent-bright));
+  box-shadow: 0 0 14px rgba(225,29,56,.5);
+  transition: width .6s var(--ease-emph);
+}
+
+.cal-tray {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 12px; margin-bottom: 12px;
+  border: 1px dashed var(--border-strong); border-radius: var(--r-md);
+  background: rgba(255,255,255,.02);
+}
+.cal-tray__label { font: 700 9px var(--ff-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--c-fog); flex-basis: 100%; }
+
+.cal-timegrid { border: 1px solid var(--hairline); border-radius: var(--r-md); overflow: hidden; background: rgba(8,8,8,.35); }
+.cal-hrow {
+  display: grid; grid-template-columns: 72px 1fr; align-items: stretch;
+  min-height: 30px; border-top: 1px solid rgba(255,255,255,.03);
+}
+.cal-hrow:first-child { border-top: 0; }
+.cal-hrow:not(.is-half) { border-top: 1px solid rgba(255,255,255,.08); }
+.cal-hlabel {
+  font: 500 10px/1 var(--ff-mono); letter-spacing: .06em; color: #fff; opacity: .8;
+  padding: 8px 10px 0 0; text-align: right;
+  border-right: 1px solid var(--hairline);
+}
+.cal-slot { padding: 3px 6px; display: grid; gap: 3px; align-content: start; transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.cal-slot.is-over { background: rgba(196,22,59,.16); box-shadow: inset 0 0 0 1px var(--accent-soft), inset 0 0 22px -8px var(--accent-glow); }
+
+.cal-block {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 9px; border-radius: 8px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(196,22,59,.16), rgba(196,22,59,.06));
+  border: 1px solid rgba(196,22,59,.35);
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), opacity .3s;
+}
+.cal-block:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 20px -10px var(--accent-glow); }
+.cal-block.is-done { opacity: .45; }
+.cal-block.is-done .cal-block__txt { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.4); }
+.cal-block.is-dragging { opacity: .35; }
+.cal-block__at { font: 700 9.5px var(--ff-mono); letter-spacing: .04em; color: #fff; white-space: nowrap; }
+.cal-block__txt { flex: 1; font-size: 12.5px; color: var(--c-paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-block__subs { font: 700 9px var(--ff-mono); color: var(--c-bone); border: 1px solid var(--border); border-radius: 999px; padding: 2px 7px; }
+.cal-block__bell { font-size: 10px; }
+.cal-tray .cal-block { flex: 0 1 auto; }
+
+/* — goal drawer — */
+.cal-gdrawer {
+  position: fixed; right: 0; top: 0; bottom: 0; z-index: 120;
+  width: min(360px, 92vw); padding: 18px; overflow-y: auto;
+  background: rgba(9,9,9,.96);
+  border-left: 1px solid var(--border-strong);
+  backdrop-filter: blur(26px) saturate(130%);
+  box-shadow: -30px 0 80px rgba(0,0,0,.75);
+  transform: translateX(103%);
+  transition: transform .4s var(--ease-emph);
+}
+.cal-gdrawer.is-open { transform: translateX(0); }
+.gd-title { flex: 1; font-weight: 600; }
+.gd-desc { width: 100%; resize: vertical; min-height: 110px; font-family: var(--ff-sans); line-height: 1.55; }
+.gd-subs { display: grid; gap: 5px; }
+.gd-sub {
+  display: flex; align-items: center; gap: 10px; list-style: none;
+  padding: 8px 10px; border-radius: 10px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--hairline);
+  font-size: 12.5px; color: var(--c-paper);
+}
+.gd-sub.is-done span { text-decoration: line-through; opacity: .5; }
+.gd-sub .td-del { margin-left: auto; }
+.gd-sub--empty { font-style: italic; color: var(--c-fog); border: 0; background: none; }
+.gd-switch { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 12px; color: var(--c-bone); }
+.gd-switch small { display: block; color: var(--c-fog); }
+.gd-switch input { position: absolute; opacity: 0; }
+.gd-switch i {
+  flex: none; width: 38px; height: 21px; border-radius: 999px; position: relative;
+  background: rgba(255,255,255,.08); border: 1px solid var(--border-strong);
+  transition: background-color .25s var(--ease-out), border-color .25s;
+}
+.gd-switch i::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--c-bone); transition: transform .25s var(--ease-emph), background-color .25s;
+}
+.gd-switch input:checked + i { background: rgba(196,22,59,.5); border-color: var(--accent); }
+.gd-switch input:checked + i::after { transform: translateX(17px); background: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+.gd-del { width: 100%; margin-top: 18px; color: var(--c-fog); }
+.gd-del:hover { color: var(--accent-bright); }
+
 @media (prefers-reduced-motion: reduce) {
   .cal-drawer { transition: none; }
   .cal-scale__bar i { transition: none; }
+  .cal-gdrawer { transition: none; }
+  .cal-prog__bar i { transition: none; }
 }
 
 /* hub fits on phones: scroll + tighter spacing */
