@@ -3460,6 +3460,71 @@ body[data-view="calendar"] .cal-drawer { display: block; }
 .gd-times { display: flex; gap: 12px; flex-wrap: wrap; }
 .gd-times label { display: grid; gap: 4px; font: 400 10px var(--ff-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c-fog); }
 
+/* — Structured-style day flow (Plan view) — */
+.cal-dayswitch { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.cal-viewtoggle { margin-left: auto; display: inline-flex; gap: 4px; }
+.flow { position: relative; padding: 6px 0 10px; }
+.flow::before {
+  content: ""; position: absolute; left: 112px; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04));
+}
+.flow-item {
+  position: relative; display: grid; grid-template-columns: 88px 48px 1fr;
+  align-items: flex-start; margin-bottom: 10px; cursor: pointer;
+}
+.flow-time { text-align: right; padding: 10px 6px 0 0; font: 600 11.5px/1.35 var(--ff-mono); color: #fff; }
+.flow-time small { display: block; font-weight: 400; font-size: 10px; color: var(--c-fog); }
+.flow-node { display: grid; place-items: center; padding-top: 8px; position: relative; z-index: 1; }
+.flow-card {
+  background: rgba(255,255,255,.035); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 10px 14px; min-width: 0;
+  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), opacity .3s;
+}
+.flow-item:hover .flow-card { border-color: var(--border-strong); transform: translateX(3px); }
+.flow-item.is-now .flow-card {
+  border-color: var(--accent-soft);
+  background: linear-gradient(180deg, rgba(196,22,59,.15), rgba(196,22,59,.05));
+  box-shadow: 0 0 26px -10px var(--accent-glow);
+}
+.flow-item.is-now .flow-node .td-check i { box-shadow: 0 0 0 3px rgba(196,22,59,.3), 0 0 16px var(--accent-glow); }
+.flow-item.is-done .flow-card { opacity: .5; }
+.flow-item.is-done .flow-card__title { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.4); }
+.flow-card__title { font-size: 13.5px; font-weight: 600; color: var(--c-paper); line-height: 1.4; }
+.flow-card__desc { font-size: 11.5px; color: var(--c-fog); margin-top: 3px; line-height: 1.5; }
+.flow-card__meta { font: 500 10px var(--ff-mono); letter-spacing: .06em; color: var(--c-stone); margin-top: 5px; }
+.flow-gap {
+  display: flex; align-items: center; gap: 10px; margin: 2px 0 12px 136px;
+  font: 400 10px var(--ff-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c-mid);
+}
+.flow-gap i { width: 26px; height: 1px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 4px, transparent 4px 8px); }
+
+/* Reminders-style circular checks (whole app) */
+.td-check i { width: 24px; height: 24px; border-radius: 50%; }
+.td-check input:checked + i::after { margin-top: -1px; }
+
+/* Apple-tinted event blocks on the zoom timeline */
+.cal-block { border-radius: 8px; border-left: 3px solid var(--accent-bright); }
+
+/* the red now-line (zoom timeline) */
+.cal-nowline {
+  position: absolute; left: 58px; right: 0; height: 2px; z-index: 6; pointer-events: none;
+  background: var(--accent-bright);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+.cal-nowline i {
+  position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent-bright); box-shadow: 0 0 12px var(--accent-glow);
+}
+.cal-nowline span {
+  position: absolute; right: 8px; top: -15px;
+  font: 700 9px var(--ff-mono); letter-spacing: .08em; color: var(--accent-bright);
+}
+@media (max-width: 720px) {
+  .flow::before { left: 92px; }
+  .flow-item { grid-template-columns: 68px 48px 1fr; }
+  .flow-gap { margin-left: 116px; }
+}
+
 /* — goal drawer — */
 .cal-gdrawer {
   position: fixed; right: 0; top: 0; bottom: 0; z-index: 120;

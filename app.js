@@ -5533,6 +5533,7 @@
     const SLOT_START = 5;                        // day starts 5 AM
     const DAY_MIN = 24 * 60;
     let pxPerMin = 1, cvScroll = null;           // zoom state + scroll restore
+    let vmode = 'flow';                          // 'flow' = Structured-style plan · 'zoom' = precision timeline
     const hourLabel = (h) => { const hh = h % 24; const t = hh % 12 || 12; return t + (hh < 12 ? ' AM' : ' PM'); };
     const fmtAt = (at) => { if (!at) return ''; let [h, m] = at.split(':').map(Number); const t = h % 12 || 12; return t + ':' + pad(m) + (h < 12 ? ' AM' : ' PM'); };
     const minutesOf = (at) => { let [h, m] = at.split(':').map(Number); if (h < SLOT_START) h += 24; return (h - SLOT_START) * 60 + m; };
@@ -5557,8 +5558,8 @@
       return `<div class="cal-block ${positioned ? 'cal-block--cv' : ''} ${g.done ? 'is-done' : ''} ${g.alert ? 'has-alert' : ''}"
         ${style} draggable="true" data-cal-drag="${i}" data-cal-block="${i}" role="button" tabindex="0">
         <label class="td-check" data-no-open><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
-        <b class="cal-block__at">${fmtAt(g.at)}${g.end ? '–' + fmtAt(g.end) : ''}</b>
         <span class="cal-block__txt">${esc(g.text)}</span>
+        <b class="cal-block__at">${fmtAt(g.at)}${g.end ? '–' + fmtAt(g.end) : ''}</b>
         ${g.subs?.length ? `<span class="cal-block__subs">${g.subs.filter(s => s.done).length}/${g.subs.length}</span>` : ''}
         ${g.alert ? '<span class="cal-block__bell" aria-hidden="true">⏰</span>' : ''}
       </div>`;
@@ -5595,7 +5596,41 @@
           labels += `<span class="cal-cv-q" style="top:${((h * 60 + q) * pxPerMin).toFixed(1)}px">:${q}</span>`;
       }
 
+      /* Structured-style flow: cards on a spine with free-time gaps */
+      let flowHTML = '';
+      if (vmode === 'flow') {
+        const rowsF = timed.map(([g, i]) => ({g, i, start: minutesOf(g.at), end: g.end ? minutesOf(g.end) : minutesOf(g.at) + 30}));
+        const nowD = new Date();
+        const nowMin = selected === today ? minutesOf(pad(nowD.getHours()) + ':' + pad(nowD.getMinutes())) : -1;
+        flowHTML = rowsF.map((r, k) => {
+          const prev = rowsF[k - 1];
+          const gap = prev ? r.start - prev.end : 0;
+          const isNow = nowMin >= 0 && nowMin >= r.start && nowMin < r.end && !r.g.done;
+          const gapTxt = gap >= 60 ? Math.floor(gap / 60) + ' h ' + (gap % 60 ? (gap % 60) + ' min' : '') : gap + ' min';
+          return (gap >= 15 ? `<div class="flow-gap"><i></i>${gapTxt} free<i></i></div>` : '') +
+          `<div class="flow-item ${r.g.done ? 'is-done' : ''} ${isNow ? 'is-now' : ''}" data-cal-block="${r.i}" role="button" tabindex="0">
+            <span class="flow-time"><b>${fmtAt(r.g.at)}</b>${r.g.end ? `<small>${fmtAt(r.g.end)}</small>` : ''}</span>
+            <span class="flow-node" data-no-open><label class="td-check"><input type="checkbox" data-cal-check="${r.i}" ${r.g.done ? 'checked' : ''}><i></i></label></span>
+            <div class="flow-card">
+              <p class="flow-card__title">${esc(r.g.text)}</p>
+              ${r.g.desc ? `<p class="flow-card__desc">${esc(r.g.desc.slice(0, 90))}${r.g.desc.length > 90 ? '…' : ''}</p>` : ''}
+              ${(r.g.subs?.length || r.g.alert) ? `<p class="flow-card__meta">${r.g.subs?.length ? r.g.subs.filter(s => s.done).length + '/' + r.g.subs.length + ' steps' : ''}${r.g.alert ? ' · ⏰' : ''}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('') || '<p class="td-empty">Nothing scheduled yet — add below, then tap a card to plan it.</p>';
+      }
+
       wrap.innerHTML = `
+        <div class="cal-dayswitch">
+          <button class="icon-btn" data-cal-dprev aria-label="Previous day" type="button">‹</button>
+          <button class="cl-chip ${selected === today ? 'is-active' : ''}" data-cal-dtoday type="button">Today</button>
+          <button class="icon-btn" data-cal-dnext aria-label="Next day" type="button">›</button>
+          <span class="cal-viewtoggle">
+            <button class="cl-chip ${vmode === 'flow' ? 'is-active' : ''}" data-cal-vmode="flow" type="button">Plan</button>
+            <button class="cl-chip ${vmode === 'zoom' ? 'is-active' : ''}" data-cal-vmode="zoom" type="button">Timeline</button>
+          </span>
+        </div>
+
         <div class="cal-prog">
           <span class="cal-prog__label">Daily Progress: <b>${pct}%</b> <i>· ${done}/${goals.length || 0} done</i></span>
           <div class="cal-prog__bar"><i style="width:${pct}%"></i></div>
@@ -5603,10 +5638,11 @@
 
         ${anytime.length ? `
         <div class="cal-tray">
-          <span class="cal-tray__label">Anytime — drag onto the timeline</span>
+          <span class="cal-tray__label">Inbox — unscheduled</span>
           ${anytime.map(([g, i]) => blockHTML(g, i, false)).join('')}
         </div>` : ''}
 
+        ${vmode === 'flow' ? `<div class="flow">${flowHTML}</div>` : `
         <div class="cal-zoombar">
           <button class="icon-btn" data-cal-zoomout aria-label="Zoom out" type="button">−</button>
           <button class="icon-btn" data-cal-zoomin aria-label="Zoom in" type="button">+</button>
@@ -5615,9 +5651,14 @@
         <div class="cal-cvwrap" data-cal-cvwrap>
           <div class="cal-canvas" data-cal-canvas style="height:${(DAY_MIN * pxPerMin).toFixed(0)}px;background-image:${canvasBG()}">
             ${labels}
+            ${selected === today ? (() => {
+              const now = new Date();
+              const nm = minutesOf(pad(now.getHours()) + ':' + pad(now.getMinutes()));
+              return `<div class="cal-nowline" style="top:${(nm * pxPerMin).toFixed(1)}px"><i></i><span>${fmtAt(pad(now.getHours()) + ':' + pad(now.getMinutes()))}</span></div>`;
+            })() : ''}
             ${timed.map(([g, i]) => blockHTML(g, i, true)).join('')}
           </div>
-        </div>
+        </div>`}
 
         <div class="td-add cal-add">
           <input class="cal-time cal-time--new" type="time" data-cal-newtime aria-label="Time (optional)">
@@ -5808,11 +5849,17 @@
       });
     }
 
-    /* reminder alerts — fire while the app is open */
+    /* reminder alerts — fire while the app is open (also nudges the now-line) */
     function checkAlerts() {
       const today = dk(new Date());
       const now = new Date();
       const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
+      const nl = document.querySelector('.cal-nowline');
+      if (nl && selected === today) {
+        nl.style.top = (minutesOf(hhmm) * pxPerMin).toFixed(1) + 'px';
+        const lbl = nl.querySelector('span');
+        if (lbl) lbl.textContent = fmtAt(hhmm);
+      }
       const goals = getDayRec(today);
       let dirty = false;
       goals.forEach(g => {
@@ -5845,6 +5892,16 @@
       const M = dayModal();
       M.addEventListener('click', (e) => {
         if (e.target.closest('[data-calday-close]')) { closeDay(); renderMonth(); renderDrawer(); return; }
+        const dprev = e.target.closest('[data-cal-dprev]'), dnext = e.target.closest('[data-cal-dnext]'), dtoday = e.target.closest('[data-cal-dtoday]');
+        if (dprev || dnext || dtoday) {           // Structured-style day hopping inside the planner
+          if (dtoday) selected = dk(new Date());
+          else { const [y2, m2, d2] = selected.split('-').map(Number); selected = dk(new Date(y2, m2 - 1, d2 + (dnext ? 1 : -1))); }
+          const [vy, vm2] = selected.split('-').map(Number);
+          view = new Date(vy, vm2 - 1, 1);
+          closeDrawer(); renderMonth(); renderDay(); return;
+        }
+        const vmBtn = e.target.closest('[data-cal-vmode]');
+        if (vmBtn) { vmode = vmBtn.dataset.calVmode; renderDay(); return; }
         const block = e.target.closest('[data-cal-block]');
         if (block && !e.target.closest('[data-no-open]')) {   // open the goal drawer
           openDrawer(+block.dataset.calBlock);
