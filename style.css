@@ -3390,6 +3390,40 @@ body[data-view="calendar"] .cal-drawer { display: block; }
 .cal-block__bell { font-size: 10px; }
 .cal-tray .cal-block { flex: 0 1 auto; }
 
+/* — Apple-style month grid (desktop + phone) — */
+.cal-grid { gap: 2px 4px; }
+.cal-wd { font: 600 11px/1 var(--ff-sans); letter-spacing: .06em; color: var(--c-fog); padding: 8px 0 10px; }
+.cal-cell {
+  aspect-ratio: auto; min-height: 62px;
+  background: none; border: none; box-shadow: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 4px; padding-top: 4px; border-radius: var(--r-sm);
+}
+.cal-cell:hover { background: none; transform: none; }
+.cal-cell__n {
+  width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%;
+  font: 500 15px/1 var(--ff-sans); font-variant-numeric: tabular-nums; color: var(--c-paper);
+  transition: background-color .18s var(--ease-out), color .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.cal-cell:hover .cal-cell__n { background: rgba(255,255,255,.09); }
+.cal-cell.is-today .cal-cell__n {
+  background: var(--accent); color: #fff; font-weight: 700;
+  box-shadow: 0 0 18px -4px var(--accent-glow);
+}
+.cal-cell.is-selected { border: none; box-shadow: none; }
+.cal-cell.is-selected:not(.is-today) .cal-cell__n { background: #fff; color: #0a0a0a; font-weight: 600; }
+.cal-cell.is-selected.is-today .cal-cell__n { box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 18px -4px var(--accent-glow); }
+.cal-dots { display: flex; gap: 3px; height: 5px; }
+.cal-dots i { width: 4.5px; height: 4.5px; border-radius: 50%; background: var(--c-stone); }
+.cal-cell .cal-cross { top: 1px; right: 6px; font-size: 9.5px; }
+@media (max-width: 720px) {
+  .card--cal { padding: var(--sp-4) var(--sp-2); }
+  .cal-grid { gap: 0 1px; }
+  .cal-cell { min-height: 52px; gap: 3px; }
+  .cal-cell__n { width: 31px; height: 31px; font-size: 13.5px; }
+  .cal-wd { font-size: 10px; }
+}
+
 /* — zoomable timeline canvas — */
 .cal-zoombar { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
 .cal-zoombar .icon-btn { font-size: 16px; font-weight: 700; border-color: var(--border); }

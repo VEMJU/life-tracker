@@ -5511,13 +5511,15 @@
       const first = new Date(y, mo, 1);
       const days = new Date(y, mo + 1, 0).getDate();
       const today = dk(new Date());
-      let html = WD.map(w => `<span class="cal-wd">${w}</span>`).join('');
+      let html = WD.map(w => `<span class="cal-wd">${w.slice(0, 1)}</span>`).join('');
       for (let i = 0; i < first.getDay(); i++) html += '<span class="cal-cell is-void"></span>';
       for (let d = 1; d <= days; d++) {
         const ds = `${y}-${pad(mo + 1)}-${pad(d)}`;
         const cross = crossFor(ds, today);
+        const nGoals = Math.min(3, getDayRec(ds).length);
         html += `<button class="cal-cell ${ds === today ? 'is-today' : ''} ${ds === selected ? 'is-selected' : ''}" data-cal-day="${ds}">
           <span class="cal-cell__n">${d}</span>
+          <span class="cal-dots" aria-hidden="true">${'<i></i>'.repeat(nGoals)}</span>
           ${cross ? `<span class="cal-cross cal-cross--${cross}" aria-label="${cross === 'white' ? 'day completed' : 'day incomplete'}">✝</span>` : ''}
         </button>`;
       }
@@ -5832,7 +5834,7 @@
         if (e.target.closest('[data-cal-next]')) { view.setMonth(view.getMonth() + 1); renderMonth(); return; }
         if (e.target.closest('[data-cal-today]')) { view = new Date(); selected = dk(new Date()); renderMonth(); renderDay(); openDay(); return; }
         const cell = e.target.closest('[data-cal-day]');
-        if (cell) { selected = cell.dataset.calDay; expandedHour = null; renderMonth(); renderDay(); openDay(); return; }
+        if (cell) { selected = cell.dataset.calDay; renderMonth(); renderDay(); openDay(); return; }
         if (e.target.closest('[data-cal-drawertab]')) {
           $('[data-cal-drawer]').classList.toggle('is-open');
           renderDrawer(); return;
