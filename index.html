@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="stylesheet" href="style.css?v=19" />
 </head>
 <body data-view="home">
 
@@ -1155,7 +1155,10 @@
       </header>
 
       <p class="cal-sec">Scheduled</p>
-      <input class="cal-time" type="time" data-gd-time aria-label="Scheduled time" />
+      <div class="gd-times">
+        <label>Starts <input class="cal-time" type="time" data-gd-time aria-label="Start time" /></label>
+        <label>Ends <input class="cal-time" type="time" data-gd-end aria-label="End time (optional)" /></label>
+      </div>
 
       <p class="cal-sec">What to do</p>
       <textarea class="input gd-desc" data-gd-desc rows="6" placeholder="Detailed instructions, notes, markdown — whatever helps future you…"></textarea>
@@ -1436,7 +1439,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=12" defer></script>
+  <script src="app.js?v=13" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=6" defer></script>

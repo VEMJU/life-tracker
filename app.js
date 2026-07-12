@@ -5524,22 +5524,38 @@
       $('[data-cal-grid]').innerHTML = html;
     }
 
-    /* ── Command Center day grid: fixed 30-minute time blocks, 5 AM → 5 AM.
-         Goals snap into slots; drag between slots; click a block to open
-         its drawer (description · sub-tasks · reminder alert). ── */
-    const SLOT_START = 5, SLOT_END = 29;        // 29 = 5 AM next day
+    /* ── Command Center day timeline: minute-precise canvas, 5 AM → 5 AM.
+         Mouse-wheel zooms (anchored at the cursor); gridlines are CSS
+         gradients so 1-minute precision costs zero DOM; blocks position
+         absolutely by minute; snapping tightens as you zoom in. ── */
+    const SLOT_START = 5;                        // day starts 5 AM
+    const DAY_MIN = 24 * 60;
+    let pxPerMin = 1, cvScroll = null;           // zoom state + scroll restore
     const hourLabel = (h) => { const hh = h % 24; const t = hh % 12 || 12; return t + (hh < 12 ? ' AM' : ' PM'); };
     const fmtAt = (at) => { if (!at) return ''; let [h, m] = at.split(':').map(Number); const t = h % 12 || 12; return t + ':' + pad(m) + (h < 12 ? ' AM' : ' PM'); };
-    function snapOf(at) {                        // 'HH:MM' → its 30-min slot key
-      let [h, m] = at.split(':').map(Number);
-      if (h < SLOT_START % 24) h += 24;
-      return pad(h % 24) + ':' + (m >= 30 ? '30' : '00');
+    const minutesOf = (at) => { let [h, m] = at.split(':').map(Number); if (h < SLOT_START) h += 24; return (h - SLOT_START) * 60 + m; };
+    const minToAt = (min) => { const t = clamp(Math.round(min), 0, DAY_MIN - 1) + SLOT_START * 60; return pad(Math.floor(t / 60) % 24) + ':' + pad(t % 60); };
+    const snapStep = () => pxPerMin >= 6 ? 1 : pxPerMin >= 2 ? 5 : pxPerMin >= 1.2 ? 15 : 30;
+    function canvasBG() {
+      const p = pxPerMin;
+      const layers = [`repeating-linear-gradient(to bottom, rgba(255,255,255,.10) 0, rgba(255,255,255,.10) 1px, transparent 1px, transparent ${60 * p}px)`];
+      if (p >= 1.2) layers.push(`repeating-linear-gradient(to bottom, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent ${15 * p}px)`);
+      if (p >= 3)   layers.push(`repeating-linear-gradient(to bottom, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent ${5 * p}px)`);
+      if (p >= 6)   layers.push(`repeating-linear-gradient(to bottom, rgba(255,255,255,.03) 0, rgba(255,255,255,.03) 1px, transparent 1px, transparent ${p}px)`);
+      return layers.join(',');
     }
-    function blockHTML(g, i) {
-      return `<div class="cal-block ${g.done ? 'is-done' : ''} ${g.alert ? 'has-alert' : ''}"
-        draggable="true" data-cal-drag="${i}" data-cal-block="${i}" role="button" tabindex="0">
+    function blockHTML(g, i, positioned) {
+      let style = '';
+      if (positioned && g.at) {
+        const top = minutesOf(g.at) * pxPerMin;
+        const endMin = g.end ? Math.max(minutesOf(g.end), minutesOf(g.at) + 5) : minutesOf(g.at) + 30;
+        const h = Math.max(23, (endMin - minutesOf(g.at)) * pxPerMin);
+        style = `style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px"`;
+      }
+      return `<div class="cal-block ${positioned ? 'cal-block--cv' : ''} ${g.done ? 'is-done' : ''} ${g.alert ? 'has-alert' : ''}"
+        ${style} draggable="true" data-cal-drag="${i}" data-cal-block="${i}" role="button" tabindex="0">
         <label class="td-check" data-no-open><input type="checkbox" data-cal-check="${i}" ${g.done ? 'checked' : ''}><i></i></label>
-        <b class="cal-block__at">${fmtAt(g.at)}</b>
+        <b class="cal-block__at">${fmtAt(g.at)}${g.end ? '–' + fmtAt(g.end) : ''}</b>
         <span class="cal-block__txt">${esc(g.text)}</span>
         ${g.subs?.length ? `<span class="cal-block__subs">${g.subs.filter(s => s.done).length}/${g.subs.length}</span>` : ''}
         ${g.alert ? '<span class="cal-block__bell" aria-hidden="true">⏰</span>' : ''}
@@ -5561,28 +5577,20 @@
       $('[data-cal-daytitle]').textContent =
         (rel ? rel + ' — ' : '') + date.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'});
 
-      /* bucket goals into 30-min slots; untimed goals wait in the tray */
-      const bySlot = {};
-      const anytime = [];
-      goals.forEach((g, i) => {
-        if (!g.at) { anytime.push([g, i]); return; }
-        const k = snapOf(g.at);
-        (bySlot[k] = bySlot[k] || []).push([g, i]);
-      });
-      Object.values(bySlot).forEach(b => b.sort((a, b2) => (a[0].at) < (b2[0].at) ? -1 : 1));
+      /* timed goals live on the canvas; untimed wait in the tray */
+      const prevWrap = $('[data-cal-cvwrap]');
+      const keepScroll = prevWrap ? prevWrap.scrollTop : null;
+      const anytime = [], timed = [];
+      goals.forEach((g, i) => { (g.at ? timed : anytime).push([g, i]); });
+      timed.sort((a, b2) => a[0].at < b2[0].at ? -1 : 1);
       const done = goals.filter(g => g.done).length;
       const pct = goals.length ? Math.round(done / goals.length * 100) : 0;
 
-      let gridRows = '';
-      for (let h = SLOT_START; h < SLOT_END; h++) {
-        for (const half of ['00', '30']) {
-          const key = pad(h % 24) + ':' + half;
-          const blocks = bySlot[key] || [];
-          gridRows += `<div class="cal-hrow ${half === '30' ? 'is-half' : ''} ${blocks.length ? 'has-blocks' : ''}">
-            <span class="cal-hlabel">${half === '00' ? hourLabel(h) : ''}</span>
-            <div class="cal-slot" data-cal-slot="${key}">${blocks.map(([g, i]) => blockHTML(g, i)).join('')}</div>
-          </div>`;
-        }
+      let labels = '';
+      for (let h = 0; h < 24; h++) {
+        labels += `<span class="cal-cv-hour" style="top:${(h * 60 * pxPerMin).toFixed(1)}px">${hourLabel(h + SLOT_START)}</span>`;
+        if (pxPerMin >= 3) for (const q of [15, 30, 45])
+          labels += `<span class="cal-cv-q" style="top:${((h * 60 + q) * pxPerMin).toFixed(1)}px">:${q}</span>`;
       }
 
       wrap.innerHTML = `
@@ -5593,11 +5601,21 @@
 
         ${anytime.length ? `
         <div class="cal-tray">
-          <span class="cal-tray__label">Anytime — drag onto the grid</span>
-          ${anytime.map(([g, i]) => blockHTML(g, i)).join('')}
+          <span class="cal-tray__label">Anytime — drag onto the timeline</span>
+          ${anytime.map(([g, i]) => blockHTML(g, i, false)).join('')}
         </div>` : ''}
 
-        <div class="cal-timegrid">${gridRows}</div>
+        <div class="cal-zoombar">
+          <button class="icon-btn" data-cal-zoomout aria-label="Zoom out" type="button">−</button>
+          <button class="icon-btn" data-cal-zoomin aria-label="Zoom in" type="button">+</button>
+          <span class="cal-zoombar__hint">scroll to zoom · drag to schedule · snapping to ${snapStep()} min</span>
+        </div>
+        <div class="cal-cvwrap" data-cal-cvwrap>
+          <div class="cal-canvas" data-cal-canvas style="height:${(DAY_MIN * pxPerMin).toFixed(0)}px;background-image:${canvasBG()}">
+            ${labels}
+            ${timed.map(([g, i]) => blockHTML(g, i, true)).join('')}
+          </div>
+        </div>
 
         <div class="td-add cal-add">
           <input class="cal-time cal-time--new" type="time" data-cal-newtime aria-label="Time (optional)">
@@ -5623,6 +5641,14 @@
 
         ${rems.length ? `<p class="cal-sec">Reminders</p>
         <ul class="cal-notes">${rems.map(r => `<li class="cal-note ${r.done ? 'is-done' : ''}">⏰ ${esc(r.text)}</li>`).join('')}</ul>` : ''}`;
+
+      /* keep (or set) the timeline scroll position across re-renders */
+      const cw = $('[data-cal-cvwrap]');
+      if (cw) {
+        const s = cvScroll != null ? cvScroll : keepScroll;
+        if (s != null) cw.scrollTop = s;
+        cvScroll = null;
+      }
     }
 
     /* progress drawer: completion % line + white-vs-red cross scale (last 30 days) */
@@ -5673,7 +5699,11 @@
 
     /* ── fullscreen day modal ── */
     const dayModal = () => $('#modal-calday');
-    function openDay()  { const m = dayModal(); m.classList.add('is-open'); m.setAttribute('aria-hidden', 'false'); }
+    function openDay()  {
+      const m = dayModal(); m.classList.add('is-open'); m.setAttribute('aria-hidden', 'false');
+      cvScroll = Math.max(0, 7 * 60 * pxPerMin - 40);   // land the view around noon
+      renderDay();
+    }
     function closeDay() { const m = dayModal(); m.classList.remove('is-open'); m.setAttribute('aria-hidden', 'true'); closeDrawer(); }
 
     /* ── goal drawer (slides from the right): description · sub-tasks · alert ── */
@@ -5686,6 +5716,7 @@
       const D = gDrawer();
       $('[data-gd-title]', D).value = g.text;
       $('[data-gd-time]', D).value = g.at || '';
+      $('[data-gd-end]', D).value = g.end || '';
       $('[data-gd-desc]', D).value = g.desc || '';
       $('[data-gd-alert]', D).checked = !!g.alert;
       renderSubs(g);
@@ -5749,6 +5780,11 @@
           return;
         }
         if (e.target.matches('[data-gd-time]'))  { ctx.g.at = e.target.value || undefined; setDayRec(selected, ctx.goals); renderDay(); return; }
+        if (e.target.matches('[data-gd-end]')) {
+          const v = e.target.value || undefined;
+          if (v && ctx.g.at && minutesOf(v) <= minutesOf(ctx.g.at)) { toast('End must be after the start.'); e.target.value = ctx.g.end || ''; return; }
+          ctx.g.end = v; setDayRec(selected, ctx.goals); renderDay(); return;
+        }
         if (e.target.matches('[data-gd-alert]')) {
           ctx.g.alert = e.target.checked; delete ctx.g.alerted;
           setDayRec(selected, ctx.goals); renderDay();
@@ -5869,22 +5905,52 @@
         M.querySelectorAll('.is-dragging, .is-over').forEach(el => el.classList.remove('is-dragging', 'is-over'));
       });
       M.addEventListener('dragover', (e) => {
-        const zone = e.target.closest('[data-cal-slot]');
-        if (zone && dragIdx != null) {
+        const cv = e.target.closest('[data-cal-canvas]');
+        if (cv && dragIdx != null) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          M.querySelectorAll('.is-over').forEach(el => el.classList.remove('is-over'));
-          zone.classList.add('is-over');
+          cv.classList.add('is-over');
         }
       });
       M.addEventListener('drop', (e) => {
-        const zone = e.target.closest('[data-cal-slot]');
-        if (!zone || dragIdx == null) return;
+        const cv = e.target.closest('[data-cal-canvas]');
+        if (!cv || dragIdx == null) return;
         e.preventDefault();
+        const y = e.clientY - cv.getBoundingClientRect().top;
+        const step = snapStep();
+        const min = Math.round((y / pxPerMin) / step) * step;
         const goals = getDayRec(selected);
         const g = goals[dragIdx];
-        if (g) { g.at = zone.dataset.calSlot; setDayRec(selected, goals); }
+        if (g) {
+          const dur = (g.at && g.end) ? minutesOf(g.end) - minutesOf(g.at) : null;
+          g.at = minToAt(min);
+          if (dur && dur > 0) g.end = minToAt(min + dur);   // dragging keeps the block's length
+          setDayRec(selected, goals);
+        }
         dragIdx = null;
+        renderDay();
+      });
+
+      /* mouse-wheel zoom, anchored at the cursor (passive:false so we own the scroll) */
+      M.addEventListener('wheel', (e) => {
+        const cv = e.target.closest('[data-cal-canvas]');
+        if (!cv) return;
+        e.preventDefault();
+        const wrapEl = cv.parentElement;
+        const yIn = e.clientY - wrapEl.getBoundingClientRect().top;
+        const minuteAt = (wrapEl.scrollTop + yIn) / pxPerMin;
+        pxPerMin = clamp(pxPerMin * (e.deltaY < 0 ? 1.25 : 0.8), 0.45, 8);
+        cvScroll = Math.max(0, minuteAt * pxPerMin - yIn);
+        renderDay();
+      }, {passive: false});
+      M.addEventListener('click', (e) => {          // +/- buttons for touch screens
+        const zin = e.target.closest('[data-cal-zoomin]'), zout = e.target.closest('[data-cal-zoomout]');
+        if (!zin && !zout) return;
+        const wrapEl = $('[data-cal-cvwrap]', M);
+        const mid = wrapEl ? wrapEl.clientHeight / 2 : 200;
+        const minuteAt = wrapEl ? (wrapEl.scrollTop + mid) / pxPerMin : 0;
+        pxPerMin = clamp(pxPerMin * (zin ? 1.5 : 1 / 1.5), 0.45, 8);
+        cvScroll = Math.max(0, minuteAt * pxPerMin - mid);
         renderDay();
       });
 
