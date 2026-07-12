@@ -3460,6 +3460,92 @@ body[data-view="calendar"] .cal-drawer { display: block; }
 .gd-times { display: flex; gap: 12px; flex-wrap: wrap; }
 .gd-times label { display: grid; gap: 4px; font: 400 10px var(--ff-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c-fog); }
 
+/* ───────────────── §47  GYM · WORKOUT LOGGER (1:1 site chassis) ───────────────── */
+.board--gym { display: block !important; max-width: 640px; margin: 0 auto; }
+body[data-view="gym"] .log-panel { display: none !important; }   /* old floating panel retired */
+.gym-legacy { display: none !important; }
+
+.gl { color: #fff; }
+.gl-day-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; margin-bottom: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 999px; color: rgba(255,255,255,0.6);
+  font: 700 11px/1 var(--ff-mono); letter-spacing: 0.10em; text-transform: uppercase;
+}
+.gl-sep { color: rgba(255,255,255,0.25); }
+.gl-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.gl-title { font: 700 22px/1.2 var(--ff-sans); letter-spacing: -0.015em; margin: 0; color: #fff; }
+.gl-subtitle { font-size: 12.5px; color: rgba(255,255,255,0.4); margin: 0 0 18px; }
+.gl-finish, .gl-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e8e5dd 100%);
+  color: #0a0a0b; border: none; border-radius: 12px; cursor: pointer;
+  font: 700 13px var(--ff-sans); padding: 11px 18px; white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 14px rgba(0,0,0,0.40);
+  transition: transform .15s;
+}
+.gl-finish:hover, .gl-primary:hover { transform: translateY(-1px); }
+.gl-finish:active, .gl-primary:active { transform: scale(.98); }
+.gl-card {
+  background: #111113; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px; padding: 20px; margin-bottom: 14px;
+}
+.gl-vol-label { font-size: 10px; letter-spacing: 0.20em; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 8px; text-transform: uppercase; }
+.gl-vol-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gl-vol-num { font: 700 44px/1 var(--ff-sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: #fff; }
+.gl-vol-num small { font-size: 15px; color: rgba(255,255,255,0.4); font-weight: 500; margin-left: 6px; }
+.gl-best {
+  font: 700 10px var(--ff-mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+}
+.gl-best.is-pr { color: var(--accent-bright); border-color: rgba(225,29,56,0.35); background: rgba(225,29,56,0.08); }
+.gl-divider { display: flex; align-items: center; gap: 16px; margin: 18px 0 14px; }
+.gl-divider::before, .gl-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.10); }
+.gl-divider span { font-size: 11px; letter-spacing: 0.22em; font-weight: 600; color: rgba(255,255,255,0.85); text-transform: uppercase; }
+.gl-lift { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.gl-lift__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.gl-lift__name { font: 700 15px var(--ff-sans); letter-spacing: -0.01em; flex: 1; color: #fff; }
+.gl-del { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 16px; padding: 4px 6px; opacity: .6; transition: color .18s, opacity .18s; }
+.gl-del:hover { color: #ff8a8a; opacity: 1; }
+.gl-set {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 5px;
+  background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+  font: 400 12.5px var(--ff-mono); font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.6);
+}
+.gl-set b { font-weight: 700; color: #fff; }
+.gl-set__n { color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; width: 42px; }
+.gl-x { color: rgba(255,255,255,0.25); }
+.gl-set__vol { margin-left: auto; color: rgba(255,255,255,0.4); font-size: 10.5px; }
+.gl-setadd { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; }
+.gl-setadd input, .gl-add input {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px; color: #fff; font: 600 13px var(--ff-mono); outline: none;
+  transition: border-color .18s;
+}
+.gl-add input { font-family: var(--ff-sans); font-weight: 400; font-size: 14px; padding: 13px 14px; border-radius: 12px; flex: 1; }
+.gl-setadd input:focus, .gl-add input:focus { border-color: rgba(225,29,56,0.5) !important; }
+.gl-setadd input::placeholder, .gl-add input::placeholder { color: rgba(255,255,255,0.25); }
+.gl-ghost {
+  background: rgba(255,255,255,0.06); color: #fff; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+  font: 700 12.5px var(--ff-sans); padding: 10px 14px; transition: background .18s;
+}
+.gl-ghost:hover { background: rgba(255,255,255,0.10); }
+.gl-empty { font-size: 12px; font-style: italic; color: rgba(255,255,255,0.4); text-align: center; padding: 14px 0; }
+.gl-add { display: flex; gap: 8px; }
+.gl-hist {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 5px;
+  background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;
+  font: 400 12px var(--ff-mono); color: rgba(255,255,255,0.6); font-variant-numeric: tabular-nums;
+}
+.gl-hist b { color: #fff; }
+.gl-pr { color: var(--accent-bright); font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; }
+.gl-hist time { margin-left: auto; font-size: 10.5px; color: rgba(255,255,255,0.4); }
+.gl-note { text-align: center; font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 16px; line-height: 1.5; }
+@media (max-width: 460px) { .gl-setadd { grid-template-columns: 1fr 1fr; } .gl-ghost { grid-column: 1 / -1; } }
+
 /* — Structured-style day flow (Plan view) — */
 .cal-dayswitch { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .cal-viewtoggle { margin-left: auto; display: inline-flex; gap: 4px; }

@@ -5163,6 +5163,100 @@
     return {init};
   })();
 
+  /* ═══════════════════  GYM LOGGER (1:1 with the standalone Workout logger · shared nv.lifts.v1)  ═══════════════════ */
+  const GymLogger = (() => {
+    const KEY = 'nv.lifts.v1';
+    let st = null, booted = false;
+    const read = () => Object.assign({session: [], history: [], best: 0}, Store.get(KEY, {}));
+    const save = () => Store.set(KEY, st);
+    const liftVol = (l) => l.sets.reduce((s, x) => s + x.w * x.r, 0);
+    const volAll  = () => st.session.reduce((s, l) => s + liftVol(l), 0);
+
+    function render() {
+      st = read();                       // re-read so the tab and the hub logger page stay in sync
+      const root = $('[data-gym-logger]'); if (!root) return;
+      const now = new Date();
+      $('[data-gl-day]', root).innerHTML =
+        now.toLocaleDateString('en-US', {weekday: 'short'}) + ' <span class="gl-sep">·</span> ' +
+        now.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+      $('[data-gl-vol]', root).textContent = volAll().toLocaleString();
+      const best = $('[data-gl-best]', root);
+      best.textContent = 'best: ' + st.best.toLocaleString() + ' kg';
+      best.classList.toggle('is-pr', st.best > 0 && volAll() > st.best);
+      $('[data-gl-empty]', root).style.display = st.session.length ? 'none' : '';
+
+      $('[data-gl-lifts]', root).innerHTML = st.session.map((l, li) => `
+        <div class="gl-lift">
+          <div class="gl-lift__head"><span class="gl-lift__name">${esc(l.name)}</span>
+            <button class="gl-del" data-gl-dellift="${li}" aria-label="Remove lift" type="button">×</button></div>
+          ${l.sets.map((s, i) => `<div class="gl-set"><span class="gl-set__n">SET ${i + 1}</span>
+            <b>${s.w}</b><span>kg</span><span class="gl-x">×</span><b>${s.r}</b><span>reps</span>
+            <span class="gl-set__vol">${(s.w * s.r).toLocaleString()} kg</span></div>`).join('')}
+          <div class="gl-setadd">
+            <input type="number" inputmode="decimal" min="0" step="2.5" placeholder="kg" data-gl-w="${li}">
+            <input type="number" inputmode="numeric" min="0" step="1" placeholder="reps" data-gl-r="${li}">
+            <button class="gl-ghost" data-gl-addset="${li}" type="button">+ Add set</button>
+          </div>
+        </div>`).join('');
+
+      const hasHist = st.history.length > 0;
+      $('[data-gl-histdiv]', root).hidden = !hasHist;
+      $('[data-gl-histcard]', root).hidden = !hasHist;
+      $('[data-gl-hist]', root).innerHTML = st.history.slice(-8).reverse().map(s =>
+        `<div class="gl-hist"><b>${s.vol.toLocaleString()} kg</b> · ${s.lifts}${s.lifts === 1 ? ' lift' : ' lifts'}
+         ${s.pr ? '<span class="gl-pr">★ PR</span>' : ''}<time>${esc(s.date)}</time></div>`).join('');
+    }
+
+    function addSet(li, root) {
+      const wEl = $(`[data-gl-w="${li}"]`, root), rEl = $(`[data-gl-r="${li}"]`, root);
+      const w = parseFloat(wEl.value), r = parseInt(rEl.value, 10);
+      if (!Number.isFinite(w) || !Number.isFinite(r) || w <= 0 || r <= 0) return;
+      st.session[li].sets.push({w, r});
+      save(); render();
+    }
+
+    function wire() {
+      const root = $('[data-gym-logger]'); if (!root) return;
+      root.addEventListener('click', (e) => {
+        if (e.target.closest('[data-gl-addlift]')) {
+          const inp = $('[data-gl-name]', root);
+          const v = (inp.value || '').trim(); if (!v) return;
+          st.session.push({name: v, sets: []});
+          inp.value = ''; save(); render(); return;
+        }
+        const del = e.target.closest('[data-gl-dellift]');
+        if (del) { st.session.splice(+del.dataset.glDellift, 1); save(); render(); return; }
+        const as = e.target.closest('[data-gl-addset]');
+        if (as) { addSet(+as.dataset.glAddset, root); return; }
+        if (e.target.closest('[data-gl-finish]')) {
+          const vol = volAll();
+          if (!vol) { toast('Log at least one set first.'); return; }
+          const pr = vol > st.best;
+          if (pr) st.best = vol;
+          const d = new Date();
+          st.history.push({date: (d.getMonth() + 1) + '/' + d.getDate(), vol, lifts: st.session.length, pr});
+          if (st.history.length > 40) st.history = st.history.slice(-40);
+          st.session = [];
+          save(); render();
+          toast(pr ? '★ NEW BEST — ' + vol.toLocaleString() + ' kg session.' : 'Session closed: ' + vol.toLocaleString() + ' kg.');
+          return;
+        }
+      });
+      root.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (e.target.matches('[data-gl-name]')) { $('[data-gl-addlift]', root).click(); }
+        const r = e.target.getAttribute('data-gl-r');
+        if (r != null) addSet(+r, root);
+      });
+    }
+
+    function init() {
+      if (!booted) { booted = true; st = read(); wire(); }
+      render();
+    }
+    return {init};
+  })();
+
   /* ═══════════════════  CHRONO — forever-stopwatches (HH:MM:SS → Day → Week → Year)  ═══════════════════ */
   const Chrono = (() => {
     const watches = [];   // {el, get, set}
@@ -6383,7 +6477,7 @@
         if (name==='home')      { Goals.renderWidget(); Workout.render(); DayFlow.render(); }
         if (name==='goals')     Goals.renderAll();
         if (name==='reminders') Reminders.render();
-        if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
+        if (name==='gym')       { GymLogger.init(); Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
         if (name==='nutrition') Nutrition.init();
         if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
         if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }

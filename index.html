@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body data-view="home">
 
@@ -1002,6 +1002,39 @@
       <!-- ───────────────────────────  GYM HUB  ─────────────────────────── -->
       <section class="board board--gym" data-tab-panel="gym" hidden>
 
+        <!-- WORKOUT LOGGER — mirrors the standalone page and shares its saved data -->
+        <div class="gl" data-gym-logger>
+          <button class="gl-day-pill" type="button"><span data-gl-day>—</span></button>
+          <div class="gl-header">
+            <h2 class="gl-title">Workout logger</h2>
+            <button class="gl-finish" data-gl-finish type="button">Finish session</button>
+          </div>
+          <p class="gl-subtitle">Log a set, close the tab, it is still here.</p>
+
+          <div class="gl-card">
+            <div class="gl-vol-label">Session volume</div>
+            <div class="gl-vol-row">
+              <div class="gl-vol-num"><span data-gl-vol>0</span><small>kg</small></div>
+              <span class="gl-best" data-gl-best>best: 0 kg</span>
+            </div>
+          </div>
+
+          <div class="gl-divider"><span>This session</span></div>
+          <div data-gl-lifts></div>
+          <div class="gl-empty" data-gl-empty>No lifts yet — add one below.</div>
+          <div class="gl-add">
+            <input type="text" data-gl-name placeholder="add a lift… e.g. Back Squat" autocomplete="off">
+            <button class="gl-primary" data-gl-addlift type="button">Add</button>
+          </div>
+
+          <div class="gl-divider" data-gl-histdiv hidden><span>Past sessions</span></div>
+          <div class="gl-card" data-gl-histcard hidden><div data-gl-hist></div></div>
+          <p class="gl-note">Saved on this device · synced with the hub's Workout logger.</p>
+        </div>
+
+        <!-- legacy gym modules (5-day split · bodyweight · timer) — parked, not deleted -->
+        <div class="gym-legacy" hidden aria-hidden="true">
+
         <!-- LAYOUT RESET -->
         <div class="gym-layout-reset">
           <button class="gym-reset-btn" data-gym-reset-layout title="Reset all card positions to default">⟲ Reset Card Positions</button>
@@ -1097,6 +1130,8 @@
             </div>
           </div>
         </article>
+
+        </div><!-- /gym-legacy -->
 
       </section>
 
@@ -1439,7 +1474,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=15" defer></script>
+  <script src="app.js?v=16" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=6" defer></script>
