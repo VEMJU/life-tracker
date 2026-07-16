@@ -13,9 +13,48 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
+
+  <!-- Decide lock state before first paint, so no data flashes behind the gate. -->
+  <script>
+    (function () {
+      try {
+        var cfg = localStorage.getItem('nv.lock');
+        if (!cfg) document.documentElement.classList.add('nv-locked', 'nv-lock-setup');
+        else if (sessionStorage.getItem('nv.lock.session') !== '1') document.documentElement.classList.add('nv-locked');
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body data-view="home">
+
+  <!-- ───────────────────────────────  PASSCODE LOCK  ─────────────────────────────── -->
+  <div class="lock" id="lockScreen" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="lock__panel">
+      <span class="lock__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="10" width="16" height="10" rx="2" stroke-linejoin="round"/>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <h1 class="lock__title" id="lockTitle">Enter passcode</h1>
+      <p class="lock__hint" id="lockHint">This device only.</p>
+
+      <form class="lock__form" id="lockForm" autocomplete="off" novalidate>
+        <input class="lock__input" id="lockPass" type="password" inputmode="text"
+               autocomplete="current-password" aria-label="Passcode" placeholder="••••••••" />
+        <div class="lock__row" id="lockConfirmRow" hidden>
+          <input class="lock__input" id="lockConfirm" type="password"
+                 autocomplete="new-password" aria-label="Confirm passcode" placeholder="Confirm" />
+        </div>
+        <p class="lock__error" id="lockError" role="alert"></p>
+        <button class="lock__submit" id="lockSubmit" type="submit">Unlock</button>
+      </form>
+
+      <p class="lock__note">Local privacy gate — not a security boundary.</p>
+    </div>
+  </div>
+
 
   <!-- ───────────────────────────────  CINEMATIC BOOT INTRO  ─────────────────────────────── -->
   <div class="intro" id="intro" role="dialog" aria-label="Enter the Life Tracker">
@@ -1474,6 +1513,7 @@
     </div>
   </div>
 
+  <script src="lock.js?v=1" defer></script>
   <script src="app.js?v=16" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=7" defer></script>

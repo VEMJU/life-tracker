@@ -3670,3 +3670,142 @@ body[data-view="gym"] .log-panel { display: none !important; }   /* old floating
   .intro__tools { margin-top: 14px; }
   .intro-tab { min-height: 84px; padding: 12px 12px; }
 }
+
+/* ═══════════════════════════════  PASSCODE LOCK  ═══════════════════════════════ */
+/* Gate everything behind the lock until it opens. */
+html.nv-locked, html.nv-locked body { overflow: hidden; }
+html.nv-locked body > *:not(.lock) { visibility: hidden; }
+html:not(.nv-locked) .lock { display: none; }
+
+.lock {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-5);
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(196, 22, 59, .10) 0%, rgba(0, 0, 0, 0) 62%),
+    var(--c-void);
+  transition: opacity .6s var(--ease-out);
+}
+.lock.is-leaving { opacity: 0; pointer-events: none; }
+
+.lock__panel {
+  width: min(380px, 100%);
+  padding: var(--sp-8) var(--sp-6) var(--sp-6);
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  box-shadow: var(--glass-shadow);
+  animation: lock-rise .7s var(--ease-emph) both;
+}
+@keyframes lock-rise {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.lock__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--sp-4);
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+  border-radius: 50%;
+  background: rgba(196, 22, 59, .07);
+  box-shadow: 0 0 26px rgba(225, 29, 56, .18);
+}
+
+.lock__title {
+  margin: 0;
+  font: 700 clamp(19px, 3.4vw, 24px)/1.2 var(--ff-gothic);
+  letter-spacing: .02em;
+  color: var(--fg);
+}
+.lock__hint {
+  margin: var(--sp-2) 0 var(--sp-6);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+.lock__form { display: grid; gap: var(--sp-3); }
+.lock__row { display: grid; }
+.lock__row[hidden] { display: none; }   /* the class would otherwise beat [hidden] */
+
+.lock__input {
+  width: 100%;
+  padding: 13px var(--sp-4);
+  font: 500 15px/1 var(--ff-mono);
+  letter-spacing: .16em;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(0, 0, 0, .42);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.lock__input::placeholder { color: var(--c-mid); letter-spacing: .2em; }
+.lock__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(196, 22, 59, .16);
+}
+
+.lock__error {
+  min-height: 15px;
+  margin: 0;
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  color: var(--accent-bright);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.lock__error.is-show { opacity: 1; }
+
+.lock__submit {
+  padding: 12px var(--sp-5);
+  font: 600 11px/1 var(--ff-mono);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--fg);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(196, 22, 59, .30), rgba(196, 22, 59, .14));
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--r-md);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              background var(--dur-base) var(--ease-out);
+}
+.lock__submit:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(225, 29, 56, .42), rgba(196, 22, 59, .20));
+  box-shadow: 0 0 22px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.lock__submit:disabled { opacity: .55; cursor: default; }
+
+.lock__note {
+  margin: var(--sp-5) 0 0;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--c-mid);
+}
+
+/* Wrong passcode. */
+.lock.is-shake .lock__panel { animation: lock-shake .42s var(--ease-in-out); }
+@keyframes lock-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-7px); }
+  40%, 60% { transform: translateX(7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lock__panel, .lock.is-shake .lock__panel { animation: none; }
+}
