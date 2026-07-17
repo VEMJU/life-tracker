@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=25" />
+  <link rel="stylesheet" href="style.css?v=26" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -80,17 +80,24 @@
       </h1>
       <p class="intro__verse">&ldquo;With God all things are possible.&rdquo; &mdash; Matthew&nbsp;19:26</p>
 
-      <div class="intro__tabs" role="list">
-        <button class="intro-tab" data-go="home"    role="listitem"><span class="intro-tab__n">00</span><span class="intro-tab__name">Home</span><span class="intro-tab__sub">Command Center</span></button>
-        <button class="intro-tab" data-go="gym"     role="listitem"><span class="intro-tab__n">01</span><span class="intro-tab__name">Gym</span><span class="intro-tab__sub">Temple of the Body</span></button>
-        <button class="intro-tab" data-go="nutrition" role="listitem"><span class="intro-tab__n">02</span><span class="intro-tab__name">Nutrition</span><span class="intro-tab__sub">Fuel &amp; Form</span></button>
-        <button class="intro-tab" data-go="finance"  role="listitem"><span class="intro-tab__n">03</span><span class="intro-tab__name">Finance</span><span class="intro-tab__sub">The Vault</span></button>
-        <button class="intro-tab" data-go="academics" role="listitem"><span class="intro-tab__n">04</span><span class="intro-tab__name">Academics</span><span class="intro-tab__sub">College Prep</span></button>
-        <button class="intro-tab" data-go="goals"    role="listitem"><span class="intro-tab__n">05</span><span class="intro-tab__name">Goals</span><span class="intro-tab__sub">The Oath</span></button>
-        <button class="intro-tab" data-go="logs"     role="listitem"><span class="intro-tab__n">06</span><span class="intro-tab__name">Logs</span><span class="intro-tab__sub">The Ledger</span></button>
-        <button class="intro-tab" data-go="clothes"  role="listitem"><span class="intro-tab__n">07</span><span class="intro-tab__name">Clothes</span><span class="intro-tab__sub">The Wardrobe</span></button>
-        <button class="intro-tab" data-go="sports"   role="listitem"><span class="intro-tab__n">08</span><span class="intro-tab__name">Sports</span><span class="intro-tab__sub">The Arena</span></button>
-        <button class="intro-tab" data-go="calendar" role="listitem"><span class="intro-tab__n">09</span><span class="intro-tab__name">Calendar</span><span class="intro-tab__sub">The Chronicle</span></button>
+      <!-- The tabs, as a circular 3D image gallery. Drag / swipe / scroll
+           sideways to spin; click a card to enter that tab. -->
+      <div class="hub-stage" id="hubStage" role="region" aria-label="Tab gallery — drag left or right to rotate">
+        <div class="hub-ring" id="hubRing"></div>
+      </div>
+
+      <!-- Per-card editor (Customize mode) -->
+      <div class="hub-editor" id="hubEditor" hidden>
+        <p class="hub-editor__tab" id="gedTab"></p>
+        <input class="lock__input" id="gedName" type="text" placeholder="Card title" aria-label="Card title" />
+        <input class="lock__input" id="gedSub" type="text" placeholder="Subtitle" aria-label="Card subtitle" />
+        <input class="lock__input" id="gedImg" type="url" placeholder="Image URL (https://…)" aria-label="Card image URL" />
+        <div class="hub-editor__row">
+          <button class="hub-editor__btn is-primary" id="gedSave" type="button">Save</button>
+          <button class="hub-editor__btn" id="gedReset" type="button">Reset</button>
+          <button class="hub-editor__btn" id="gedCancel" type="button">Cancel</button>
+        </div>
+        <p class="hub-editor__hint">Tip: right-click any picture on the web → “Copy image address”, then paste it here.</p>
       </div>
 
       <button class="intro__enter" id="introEnter" type="button">
@@ -113,6 +120,12 @@
           </svg>
           Water Coach
         </a>
+        <button class="intro-tool" id="hubCustomize" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M17 3l4 4L8 20l-5 1 1-5L17 3Z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Customize
+        </button>
         <button class="intro-tool" id="themeCycle" type="button">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>
@@ -1546,5 +1559,6 @@
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=7" defer></script>
+  <script src="gallery.js?v=1" defer></script>
 </body>
 </html>
