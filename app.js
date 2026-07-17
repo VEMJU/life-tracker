@@ -6543,7 +6543,7 @@
   })();
 
   /* ─────────────────  BOOT  ───────────────── */
-  document.addEventListener('DOMContentLoaded', () => {
+  function boot() {
     Countdown.init();
     Pomodoro.init();
     Modals.init();
@@ -6574,5 +6574,14 @@
 
     // Sync initial visibility
     WidgetManager.updateVisibility(document.body.dataset.view || 'home');
-  });
+  }
+
+  // Boot only once the cloud layer has pulled our data into localStorage.
+  // If sync.js isn't present, it still fires nv-data-ready in local-only mode.
+  const whenDom = (fn) =>
+    (document.readyState === 'loading')
+      ? document.addEventListener('DOMContentLoaded', fn, { once: true })
+      : fn();
+  if (window.__nvDataReady) whenDom(boot);
+  else window.addEventListener('nv-data-ready', () => whenDom(boot), { once: true });
 })();

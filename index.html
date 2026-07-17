@@ -13,22 +13,14 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=24" />
 
-  <!-- Decide lock state before first paint, so no data flashes behind the gate. -->
-  <script>
-    (function () {
-      try {
-        var cfg = localStorage.getItem('nv.lock');
-        if (!cfg) document.documentElement.classList.add('nv-locked', 'nv-lock-setup');
-        else if (sessionStorage.getItem('nv.lock.session') !== '1') document.documentElement.classList.add('nv-locked');
-      } catch (e) {}
-    })();
-  </script>
+  <!-- Hide the app before first paint; sync.js reveals it after auth. -->
+  <script>document.documentElement.classList.add('nv-locked');</script>
 </head>
 <body data-view="home">
 
-  <!-- ───────────────────────────────  PASSCODE LOCK  ─────────────────────────────── -->
+  <!-- ───────────────────────────────  SIGN IN  ─────────────────────────────── -->
   <div class="lock" id="lockScreen" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
     <div class="lock__panel">
       <span class="lock__mark" aria-hidden="true">
@@ -37,21 +29,23 @@
           <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke-linecap="round"/>
         </svg>
       </span>
-      <h1 class="lock__title" id="lockTitle">Enter passcode</h1>
-      <p class="lock__hint" id="lockHint">This device only.</p>
+      <h1 class="lock__title" id="lockTitle">Sign in</h1>
+      <p class="lock__hint" id="lockHint">Your data, on this and every device.</p>
 
-      <form class="lock__form" id="lockForm" autocomplete="off" novalidate>
-        <input class="lock__input" id="lockPass" type="password" inputmode="text"
-               autocomplete="current-password" aria-label="Passcode" placeholder="••••••••" />
-        <div class="lock__row" id="lockConfirmRow" hidden>
-          <input class="lock__input" id="lockConfirm" type="password"
-                 autocomplete="new-password" aria-label="Confirm passcode" placeholder="Confirm" />
-        </div>
+      <form class="lock__form" id="lockForm" autocomplete="on" novalidate>
+        <input class="lock__input" id="lockEmail" type="email" inputmode="email"
+               autocomplete="email" aria-label="Email" placeholder="you@email.com" />
+        <input class="lock__input" id="lockPass" type="password"
+               autocomplete="current-password" aria-label="Password" placeholder="Password" />
         <p class="lock__error" id="lockError" role="alert"></p>
-        <button class="lock__submit" id="lockSubmit" type="submit">Unlock</button>
+        <button class="lock__submit" id="lockSubmit" type="submit">Sign in</button>
       </form>
 
-      <p class="lock__note">Local privacy gate — not a security boundary.</p>
+      <p class="lock__switch">
+        <span id="lockToggleQ">No account yet?</span>
+        <a href="#" id="lockToggle" role="button">Create one</a>
+      </p>
+      <p class="lock__note">Protected by your account — data is private to you.</p>
     </div>
   </div>
 
@@ -1513,8 +1507,10 @@
     </div>
   </div>
 
-  <script src="lock.js?v=1" defer></script>
-  <script src="app.js?v=16" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
+  <script src="config.js?v=1" defer></script>
+  <script src="sync.js?v=2" defer></script>
+  <script src="app.js?v=17" defer></script>
   <script src="bg.js?v=2" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=6" defer></script>

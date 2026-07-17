@@ -3740,8 +3740,8 @@ html:not(.nv-locked) .lock { display: none; }
 .lock__input {
   width: 100%;
   padding: 13px var(--sp-4);
-  font: 500 15px/1 var(--ff-mono);
-  letter-spacing: .16em;
+  font: 500 14px/1 var(--ff-sans);
+  letter-spacing: .01em;
   text-align: center;
   color: var(--fg);
   background: rgba(0, 0, 0, .42);
@@ -3750,7 +3750,7 @@ html:not(.nv-locked) .lock { display: none; }
   transition: border-color var(--dur-fast) var(--ease-out),
               box-shadow var(--dur-fast) var(--ease-out);
 }
-.lock__input::placeholder { color: var(--c-mid); letter-spacing: .2em; }
+.lock__input::placeholder { color: var(--c-mid); letter-spacing: .02em; }
 .lock__input:focus {
   outline: none;
   border-color: var(--accent);
@@ -3789,8 +3789,22 @@ html:not(.nv-locked) .lock { display: none; }
 }
 .lock__submit:disabled { opacity: .55; cursor: default; }
 
-.lock__note {
+.lock__switch {
   margin: var(--sp-5) 0 0;
+  font-size: 12px;
+  color: var(--fg-mute);
+}
+.lock__switch a {
+  margin-left: 6px;
+  color: var(--accent-bright);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-soft);
+  cursor: pointer;
+}
+.lock__switch a:hover { color: var(--fg); border-bottom-color: var(--fg); }
+
+.lock__note {
+  margin: var(--sp-3) 0 0;
   font-size: 10px;
   letter-spacing: .1em;
   text-transform: uppercase;
