@@ -13,10 +13,17 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=24" />
+  <link rel="stylesheet" href="style.css?v=25" />
 
-  <!-- Hide the app before first paint; sync.js reveals it after auth. -->
-  <script>document.documentElement.classList.add('nv-locked');</script>
+  <!-- Hide the app before first paint; sync.js reveals it after auth.
+       Also apply the saved theme before first paint so colors never flash. -->
+  <script>
+    document.documentElement.classList.add('nv-locked');
+    try {
+      var th = JSON.parse(localStorage.getItem('nv.theme') || 'null');
+      if (th && th !== 'crimson') document.documentElement.dataset.theme = th;
+    } catch (e) {}
+  </script>
 </head>
 <body data-view="home">
 
@@ -37,6 +44,18 @@
                autocomplete="email" aria-label="Email" placeholder="you@email.com" />
         <input class="lock__input" id="lockPass" type="password"
                autocomplete="current-password" aria-label="Password" placeholder="Password" />
+        <div class="lock__row" id="lockConfirmRow" hidden>
+          <input class="lock__input" id="lockConfirm" type="password"
+                 autocomplete="new-password" aria-label="Confirm password" placeholder="Confirm password" />
+        </div>
+        <div class="lock__row" id="lockNameRow" hidden>
+          <input class="lock__input" id="lockName" type="text"
+                 autocomplete="name" aria-label="Your name" placeholder="Your name — e.g. Nathan Vélez" />
+        </div>
+        <div class="lock__row" id="lockAliasRow" hidden>
+          <input class="lock__input" id="lockAlias" type="text"
+                 autocomplete="nickname" aria-label="Alias or title" placeholder="Alias / title — e.g. Son of God" />
+        </div>
         <p class="lock__error" id="lockError" role="alert"></p>
         <button class="lock__submit" id="lockSubmit" type="submit">Sign in</button>
       </form>
@@ -57,7 +76,7 @@
     <div class="intro__content">
       <p class="intro__eyebrow">Personal Life Tracker</p>
       <h1 class="intro__title">
-        <span class="intro__w">NATHAN&nbsp;VÉLEZ</span><span class="intro__sep" aria-hidden="true">:</span><span class="intro__w">SON&nbsp;OF&nbsp;GOD</span>
+        <span class="intro__w" id="introName">NATHAN&nbsp;VÉLEZ</span><span class="intro__sep" id="introSep" aria-hidden="true">:</span><span class="intro__w" id="introAlias">SON&nbsp;OF&nbsp;GOD</span>
       </h1>
       <p class="intro__verse">&ldquo;With God all things are possible.&rdquo; &mdash; Matthew&nbsp;19:26</p>
 
@@ -93,6 +112,18 @@
           </svg>
           Water Coach
         </a>
+        <button class="intro-tool" id="themeCycle" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>
+          </svg>
+          Theme
+        </button>
+        <button class="intro-tool" id="signOutBtn" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Sign out
+        </button>
       </div>
     </div>
   </div>
@@ -1509,10 +1540,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
-  <script src="sync.js?v=2" defer></script>
-  <script src="app.js?v=17" defer></script>
-  <script src="bg.js?v=2" defer></script>
+  <script src="sync.js?v=3" defer></script>
+  <script src="app.js?v=18" defer></script>
+  <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
-  <script src="intro.js?v=6" defer></script>
+  <script src="intro.js?v=7" defer></script>
 </body>
 </html>

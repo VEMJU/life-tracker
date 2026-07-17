@@ -5327,7 +5327,7 @@
         <stop offset="0%" stop-color="rgba(225,29,56,.35)"/><stop offset="100%" stop-color="rgba(225,29,56,0)"/>
       </linearGradient></defs>
       <polygon points="0,${h} ${line} ${w},${h}" fill="url(#lcg)"/>
-      <polyline points="${line}" fill="none" stroke="#E11D38" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${line}" fill="none" stroke="var(--accent-bright)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.4" fill="#fff"/>
     </svg>`;
   }

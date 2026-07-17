@@ -15,9 +15,10 @@
   const ctx = canvas.getContext('2d', { alpha: true });
   let W = 0, H = 0, DPR = 1;
 
-  /* ---- colours ---- */
+  /* ---- colours (accent follows the active theme) ---- */
   const GREY    = '255,255,255';
-  const CRIMSON = '196,22,59';
+  const CRIMSON = (getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent-rgb') || '196,22,59').trim() || '196,22,59';
 
   /* ---- the drifting crosses ---- */
   const COUNT = window.innerWidth < 700 ? 18 : 32;

@@ -27,9 +27,11 @@
     g.fillRect(0, 0, s, s);
     return c;
   }
-  const WINE = sprite('128,26,40');     // deep wine red — the body of the clouds
-  const CRIM = sprite('210,28,58');     // surgical crimson — the portal core
-  const ASH  = sprite('150,150,160');   // cool grey — highlight wisps
+  const cssRGB = (name, fb) => (getComputedStyle(document.documentElement)
+    .getPropertyValue(name) || fb).trim() || fb;
+  const WINE = sprite(cssRGB('--accent-wine-rgb', '128,26,40')); // deep tone — the body of the clouds
+  const CRIM = sprite(cssRGB('--accent-br-rgb',   '210,28,58')); // bright accent — the portal core
+  const ASH  = sprite('150,150,160');                            // cool grey — highlight wisps
 
   /* ---------- drifting cloud puffs ---------- */
   let W = 0, H = 0, DPR = 1, puffs = [];

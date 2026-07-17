@@ -32,6 +32,55 @@
   const submit  = document.getElementById('lockSubmit');
   const toggle  = document.getElementById('lockToggle');
   const toggleQ = document.getElementById('lockToggleQ');
+  const confirmEl  = document.getElementById('lockConfirm');
+  const confirmRow = document.getElementById('lockConfirmRow');
+  const nameEl     = document.getElementById('lockName');
+  const nameRow    = document.getElementById('lockNameRow');
+  const aliasEl    = document.getElementById('lockAlias');
+  const aliasRow   = document.getElementById('lockAliasRow');
+
+  /* ---------- profile → front page (name + alias replace the default) ---------- */
+  function applyProfile() {
+    let prof = null;
+    try { prof = JSON.parse(localStorage.getItem('nv.profile')); } catch (e) {}
+    if (!prof || !prof.name) return;               // no profile → default branding stays
+    const nb = (s) => String(s).trim().toUpperCase().replace(/\s+/g, ' ');
+    const nEl = document.getElementById('introName');
+    const aEl = document.getElementById('introAlias');
+    const sep = document.getElementById('introSep');
+    if (nEl) nEl.textContent = nb(prof.name);
+    if (aEl && sep) {
+      if (prof.alias && String(prof.alias).trim()) {
+        aEl.textContent = nb(prof.alias);
+        aEl.style.display = ''; sep.style.display = '';
+      } else {
+        aEl.style.display = 'none'; sep.style.display = 'none';
+      }
+    }
+    document.title = prof.name + (prof.alias ? ' — ' + prof.alias : '');
+  }
+
+  /* ---------- theme (accent color follows nv.theme, synced per account) ---------- */
+  const THEMES = ['crimson', 'blue', 'mono'];
+  function applyTheme() {
+    let t = 'crimson';
+    try { t = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
+    if (t !== 'crimson' && THEMES.includes(t)) root.dataset.theme = t;
+    else delete root.dataset.theme;
+  }
+  const themeBtn = document.getElementById('themeCycle');
+  if (themeBtn) themeBtn.addEventListener('click', () => {
+    let cur = 'crimson';
+    try { cur = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
+    const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    localStorage.setItem('nv.theme', JSON.stringify(next));   // patched → syncs to the account
+    applyTheme();
+  });
+  const signOutBtn = document.getElementById('signOutBtn');
+  if (signOutBtn) signOutBtn.addEventListener('click', () => {
+    if (window.NVSync && window.NVSync.signOut) window.NVSync.signOut();
+    else location.reload();
+  });
 
   const PREFIX = 'nv.';
   const TABLE  = 'app_state';
@@ -78,6 +127,8 @@
     // Restore plain storage behavior (nothing to push to).
     localStorage.setItem = rawSet;
     localStorage.removeItem = rawRemove;
+    applyProfile();
+    applyTheme();
     root.classList.remove('nv-locked', 'nv-auth');
     if (gate) gate.style.display = 'none';
     finishDataReady();
@@ -200,6 +251,15 @@
     }
     subscribeRealtime();
 
+    // Older accounts / fresh devices: if the pull brought no profile but the
+    // account carries one in its metadata, restore it (and let it sync).
+    if (!localStorage.getItem('nv.profile')) {
+      const meta = session.user.user_metadata || {};
+      if (meta.name) localStorage.setItem('nv.profile', JSON.stringify({ name: meta.name, alias: meta.alias || '' }));
+    }
+    applyProfile();
+    applyTheme();
+
     root.classList.remove('nv-locked', 'nv-auth');
     gate.classList.add('is-leaving');
     setTimeout(() => {
@@ -217,9 +277,13 @@
   function setMode(next) {
     mode = next;
     err.classList.remove('is-show');
-    if (mode === 'signup') {
+    const signup = mode === 'signup';
+    if (confirmRow) confirmRow.hidden = !signup;
+    if (nameRow)    nameRow.hidden    = !signup;
+    if (aliasRow)   aliasRow.hidden   = !signup;
+    if (signup) {
       title.textContent = 'Create your account';
-      hint.textContent = 'Your email + a password. This unlocks your data on every device.';
+      hint.textContent = 'Your email + a password, and the name that crowns your front page.';
       submit.textContent = 'Create account';
       toggleQ.textContent = 'Already have an account?';
       toggle.textContent = 'Sign in';
@@ -255,11 +319,23 @@
     if (!email || !email.includes('@')) return fail('Enter a valid email.');
     if (password.length < 6) return fail('Password must be at least 6 characters.');
 
+    if (mode === 'signup') {
+      if (password !== (confirmEl ? confirmEl.value : password)) return fail('The two passwords do not match.');
+      if (!nameEl || !nameEl.value.trim()) return fail('Enter your name — it becomes your front page.');
+    }
+
     busy(true);
     try {
       if (mode === 'signup') {
-        const { data, error } = await sb.auth.signUp({ email, password });
+        const name  = nameEl.value.trim();
+        const alias = aliasEl ? aliasEl.value.trim() : '';
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { data: { name, alias } },      // kept in the account itself too
+        });
         if (error) throw error;
+        // Save the profile locally; the patched setItem queues it to sync.
+        localStorage.setItem('nv.profile', JSON.stringify({ name, alias }));
         if (!data.session) {
           // Email confirmation is on: no session yet.
           busy(false);
