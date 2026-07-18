@@ -24,16 +24,38 @@
     el.classList.add(cls);
   };
 
-  /* ── 1 · Spotlight: cards glow under the pointer ── */
+  /* ── 1 · Spotlight: cards glow under the pointer, border ring ignites ── */
+  let litCard = null;
+  function unlight() {
+    if (litCard) { litCard.classList.remove('nv-lit'); litCard = null; }
+  }
   document.addEventListener('pointermove', (e) => {
     if (!e.target.closest) return;
-    const card = e.target.closest('.card, .goal-card');
-    if (!card) return;
+    const card = e.target.closest('.card, .goal-card, .hub-card');
+    if (!card) { unlight(); return; }
     const r = card.getBoundingClientRect();
     if (!r.width || !r.height) return;
     card.style.setProperty('--mx', (((e.clientX - r.left) / r.width) * 100).toFixed(2) + '%');
     card.style.setProperty('--my', (((e.clientY - r.top) / r.height) * 100).toFixed(2) + '%');
+    // The glowing border ring. Injected on demand so app re-renders
+    // (which wipe card contents) heal themselves on the next move.
+    if (!card.querySelector(':scope > .nv-spot')) {
+      const s = document.createElement('i');
+      s.className = 'nv-spot';
+      s.setAttribute('aria-hidden', 'true');
+      card.appendChild(s);
+    }
+    if (litCard !== card) { unlight(); litCard = card; card.classList.add('nv-lit'); }
   }, { passive: true });
+  document.addEventListener('pointerdown', (e) => {
+    // touch: light the card under the finger (no hover on phones)
+    if (e.pointerType !== 'mouse' && e.target.closest) {
+      const card = e.target.closest('.card, .goal-card, .hub-card');
+      if (card && litCard !== card) { unlight(); litCard = card; card.classList.add('nv-lit'); }
+    }
+  }, { passive: true });
+  document.addEventListener('pointercancel', unlight, { passive: true });
+  document.addEventListener('pointerleave', unlight, { passive: true });
 
   /* ── 2 · Rolling numbers ── */
   const NUM_RE = /^\s*([$€]?)([\d][\d,]*)(?:\.(\d+))?\s*(%|kg|lb|lbs|oz)?\s*$/;

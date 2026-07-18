@@ -4076,11 +4076,37 @@ button.intro-tool {
 
 /* ═══════════════════════════════  POLISH · WAVE 1  ═══════════════════════════════ */
 /* Spotlight: cards glow where the pointer is (vars set by polish.js). */
-.card, .goal-card { --mx: 50%; --my: 50%; }
+.card, .goal-card, .hub-card { --mx: 50%; --my: 50%; }
 .card:hover, .goal-card:hover {
-  background-image: radial-gradient(240px circle at var(--mx) var(--my),
-    rgba(var(--accent-rgb), .12), transparent 70%);
+  background-image: radial-gradient(300px circle at var(--mx) var(--my),
+    rgba(var(--accent-rgb), .13), transparent 70%);
 }
+
+/* The signature move: the border ring itself ignites under the pointer.
+   polish.js injects <i class="nv-spot"> into the hovered card; the mask
+   trims the gradient to a 1px ring hugging the card's own border. */
+.nv-spot {
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(300px circle at var(--mx) var(--my),
+    rgba(var(--accent-br-rgb), .85),
+    rgba(var(--accent-rgb), .30) 45%,
+    transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity .3s var(--ease-out);
+}
+.card:hover > .nv-spot,
+.goal-card:hover > .nv-spot,
+.hub-card:hover > .nv-spot,
+.nv-lit > .nv-spot { opacity: 1; }
 
 /* Tab titles blur into focus on every switch. */
 .nv-decode { animation: nvDecode .7s var(--ease-out) both; }
