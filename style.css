@@ -4073,3 +4073,55 @@ button.intro-tool {
 @media (max-width: 720px) {
   .hub-stage { height: clamp(250px, 42vh, 360px); }
 }
+
+/* ═══════════════════════════════  POLISH · WAVE 1  ═══════════════════════════════ */
+/* Spotlight: cards glow where the pointer is (vars set by polish.js). */
+.card, .goal-card { --mx: 50%; --my: 50%; }
+.card:hover, .goal-card:hover {
+  background-image: radial-gradient(240px circle at var(--mx) var(--my),
+    rgba(var(--accent-rgb), .12), transparent 70%);
+}
+
+/* Tab titles blur into focus on every switch. */
+.nv-decode { animation: nvDecode .7s var(--ease-out) both; }
+.nv-decode-sub { animation: nvDecode .6s var(--ease-out) .08s both; }
+@keyframes nvDecode {
+  from { opacity: 0; filter: blur(10px); transform: translateY(8px); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* Cards cascade in when a tab opens. */
+.nv-rise { animation: nvRise .6s var(--ease-emph) backwards; }
+@keyframes nvRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Victory burst particles (animated by polish.js). */
+.nv-confetti {
+  position: fixed; left: 0; top: 0; z-index: 99999;
+  width: 8px; height: 12px; border-radius: 2px;
+  pointer-events: none;
+}
+
+/* The header clock. */
+.nv-clock { margin-left: auto; display: grid; justify-items: end; gap: 2px; }
+.nv-clock__t {
+  font-family: var(--ff-mono); font-weight: 700; font-size: 15px;
+  letter-spacing: .08em; color: var(--c-paper);
+  font-variant-numeric: tabular-nums;
+}
+.nv-clock__d {
+  font-family: var(--ff-mono); font-size: 10px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--c-fog);
+}
+.nv-tick { animation: nvTick .45s var(--ease-out); }
+@keyframes nvTick {
+  from { opacity: .2; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nv-decode, .nv-decode-sub, .nv-rise, .nv-tick { animation: none !important; }
+  .card:hover, .goal-card:hover { background-image: none; }
+}
