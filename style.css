@@ -2432,7 +2432,7 @@ body.intro-locked { overflow: hidden; }
 
 .intro {
   position: fixed; inset: 0; z-index: 9999;
-  display: grid; place-items: center;
+  display: grid; place-items: start center;   /* header stays up top — the gallery lives below it */
   background:
     radial-gradient(120% 90% at 50% 78%, rgba(110,31,42,.30) 0%, rgba(0,0,0,0) 55%),
     radial-gradient(100% 100% at 50% 50%, #0a0507 0%, #000 72%);
@@ -2449,7 +2449,7 @@ body.intro-locked { overflow: hidden; }
   box-shadow: inset 0 0 240px 70px rgba(0,0,0,.92);
 }
 
-.intro__content { position: relative; z-index: 2; width: min(980px, 92vw); text-align: center; padding: 24px; }
+.intro__content { position: relative; z-index: 2; width: min(980px, 92vw); text-align: center; padding: clamp(18px, 4vh, 44px) 24px 24px; }
 
 .intro__eyebrow {
   font-family: var(--ff-mono); font-size: 11px; letter-spacing: .55em;
@@ -2531,6 +2531,20 @@ body.intro-locked { overflow: hidden; }
 @keyframes introBlur { from { opacity:0; filter: blur(14px); transform: translateY(22px); } to { opacity:1; filter: blur(0); transform:none; } }
 @keyframes introRise { from { opacity:0; transform: translateY(34px); } to { opacity:1; transform:none; } }
 
+/* Cinematic login reveal: the scene opens like a widescreen shutter
+   while the sky settles into place. Plays automatically — no scrolling. */
+.intro.is-opening { animation: introShutter 1.5s var(--ease-emph) both; }
+.intro.is-opening .intro__sky { animation: introSkySettle 2.4s var(--ease-out) both; }
+@keyframes introShutter {
+  from { clip-path: polygon(30% 44%, 70% 44%, 70% 56%, 30% 56%); opacity: 0; }
+  10%  { opacity: 1; }
+  to   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+}
+@keyframes introSkySettle {
+  from { transform: scale(1.3); }
+  to   { transform: scale(1); }
+}
+
 @media (max-width: 720px) {
   .intro__tabs { max-width: 420px; gap: 10px; }
   .intro-tab { flex: 1 1 calc(50% - 10px); min-height: 96px; }
@@ -2538,6 +2552,9 @@ body.intro-locked { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .intro__eyebrow, .intro__w, .intro__sep, .intro__verse, .intro-tab, .intro__enter, .intro__tools {
     animation: none !important; opacity: 1 !important; filter: none !important; transform: none !important;
+  }
+  .intro.is-opening, .intro.is-opening .intro__sky, .hub-ring.is-rising .hub-card {
+    animation: none !important;
   }
 }
 
@@ -3666,7 +3683,7 @@ body[data-view="gym"] .log-panel { display: none !important; }   /* old floating
 .intro { overflow-y: auto; }
 @media (max-width: 720px) {
   .intro { align-items: start; }
-  .intro__content { padding: 34px 18px 46px; }
+  .intro__content { padding: 20px 18px 46px; }
   .intro__title { font-size: clamp(24px, 7.4vw, 34px); }
   .intro__tabs { margin-top: 20px; }
   .intro__enter { margin-top: 20px; }
@@ -3859,7 +3876,7 @@ button.intro-tool {
 .hub-stage {
   position: relative;
   width: 100%;
-  height: clamp(300px, 44vh, 440px);
+  height: clamp(300px, 48vh, 470px);
   margin-top: var(--sp-6);
   perspective: 2000px;
   touch-action: pan-y;         /* horizontal swipes spin the ring; vertical still scrolls */
@@ -3871,6 +3888,14 @@ button.intro-tool {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+}
+
+/* Entrance: the cards rise into the ring one after another.
+   translate/scale compose with the ring-placement transform. */
+.hub-ring.is-rising .hub-card { animation: hubCardRise .95s var(--ease-emph) backwards; }
+@keyframes hubCardRise {
+  from { opacity: 0; translate: 0 160px; scale: .55; }
+  to   { opacity: 1; translate: 0 0; scale: 1; }
 }
 
 .hub-card {
@@ -3903,7 +3928,6 @@ button.intro-tool {
   padding: var(--sp-4);
   text-align: left;
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .55) 34%, rgba(0, 0, 0, .92));
-  border-top: 1px solid rgba(var(--accent-rgb), .22);
 }
 
 /* Customize mode */
@@ -3963,5 +3987,5 @@ button.intro-tool {
 }
 
 @media (max-width: 720px) {
-  .hub-stage { height: clamp(260px, 40vh, 360px); }
+  .hub-stage { height: clamp(250px, 42vh, 360px); }
 }

@@ -51,6 +51,18 @@
 
   function metrics() {
     cardW = window.innerWidth < 700 ? 190 : 280;
+    // The front card is magnified by the 3D perspective (2000px). Shrink
+    // until its *projected* height fits the stage, so cards never spill
+    // over the title above.
+    const stageH = stage.clientHeight || 380;
+    for (let k = 0; k < 3; k++) {
+      cardH = Math.round(cardW * 4 / 3);
+      radius = Math.round((cardW + 44) * TABS.length / (2 * Math.PI));
+      const scale = 2000 / Math.max(2000 - radius, 500);
+      const need = cardH * scale;
+      const avail = stageH - 10;
+      if (need > avail) cardW = Math.floor(cardW * avail / need);
+    }
     cardH = Math.round(cardW * 4 / 3);
     radius = Math.round((cardW + 44) * TABS.length / (2 * Math.PI));
   }
@@ -70,6 +82,7 @@
       b.style.marginLeft = (-cardW / 2) + 'px';
       b.style.marginTop = (-cardH / 2) + 'px';
       b.style.transform = `rotateY(${i * STEP}deg) translateZ(${radius}px)`;
+      b.style.animationDelay = (0.45 + i * 0.08).toFixed(2) + 's';   // staggered entrance
       b.innerHTML = `
         <img src="${esc(c.img)}" alt="" loading="lazy" draggable="false"
              onerror="this.remove()">
@@ -148,6 +161,18 @@
     clearTimeout(resizeT);
     resizeT = setTimeout(build, 180);
   }, { passive: true });
+
+  /* ---------- entrance: cards rise into the ring when the hub opens ---------- */
+  let riseT = null;
+  function rise() {
+    if (reduce) return;
+    ring.classList.remove('is-rising');
+    void ring.offsetWidth;                    // restart the animation
+    ring.classList.add('is-rising');
+    clearTimeout(riseT);
+    riseT = setTimeout(() => ring.classList.remove('is-rising'), 2400);
+  }
+  window.addEventListener('nv-hub-open', rise);
 
   /* ---------- customize mode ---------- */
   let edTab = null;

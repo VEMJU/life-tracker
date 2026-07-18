@@ -94,7 +94,7 @@
   /* ---------- enter a tab / re-open the hub ---------- */
   let dismissed = false;
   function stopCanvas() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
-  function startCanvas() { if (reduce || !ctx) return; running = true; resize(); raf = requestAnimationFrame(frame); }
+  function startCanvas() { if (reduce || !ctx || raf) return; running = true; resize(); raf = requestAnimationFrame(frame); }
 
   function hide(targetTab) {
     if (dismissed) return;
@@ -125,10 +125,18 @@
     intro.classList.remove('is-leaving');
     document.body.classList.add('intro-locked');
     startCanvas();
+    // cinematic shutter: restart the opening animation
+    intro.classList.remove('is-opening');
+    void intro.offsetWidth;
+    intro.classList.add('is-opening');
     replay();
     setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 350);
   }
   window.lifeHub = { open };
+  // The moment sign-in completes (or a saved session restores), the lock
+  // lifts — play the startup animation: shutter opens, the title decodes,
+  // then the cards rise into the ring. Automatic, no scrolling.
+  window.addEventListener('nv-data-ready', () => { if (!dismissed) open(); }, { once: true });
   // boot: let the lettering decode as the cards rise
   setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
 
