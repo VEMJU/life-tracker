@@ -2531,18 +2531,84 @@ body.intro-locked { overflow: hidden; }
 @keyframes introBlur { from { opacity:0; filter: blur(14px); transform: translateY(22px); } to { opacity:1; filter: blur(0); transform:none; } }
 @keyframes introRise { from { opacity:0; transform: translateY(34px); } to { opacity:1; transform:none; } }
 
-/* Cinematic login reveal: the scene opens like a widescreen shutter
-   while the sky settles into place. Plays automatically — no scrolling. */
-.intro.is-opening { animation: introShutter 1.5s var(--ease-emph) both; }
-.intro.is-opening .intro__sky { animation: introSkySettle 2.4s var(--ease-out) both; }
-@keyframes introShutter {
-  from { clip-path: polygon(30% 44%, 70% 44%, 70% 56%, 30% 56%); opacity: 0; }
-  10%  { opacity: 1; }
-  to   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+/* ── Cinematic login reveal — a movie opening, played automatically ──
+   Black screen → a slit of light cracks at the center → the curtain
+   bars part like a theater screen → the sky rushes in from deep zoom →
+   a beam of light sweeps the title → the cards rise into the ring. */
+
+/* The curtain: two black bars that part from the middle. */
+.intro.is-opening::before,
+.intro.is-opening::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 51%;
+  z-index: 5;
+  background: #000;
+  pointer-events: none;
+  animation: introBar 1.3s cubic-bezier(.76, 0, .24, 1) .35s both;
 }
+.intro.is-opening::before { top: 0;    transform-origin: top; }
+.intro.is-opening::after  { bottom: 0; transform-origin: bottom; }
+@keyframes introBar { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+
+/* The projector flare: a slit of light igniting at the seam, blooming, fading. */
+.intro__flare {
+  position: absolute; inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(42% 30% at 50% 50%,
+    rgba(255, 236, 224, .95),
+    rgba(var(--accent-br-rgb), .55) 35%,
+    transparent 70%);
+}
+.intro.is-opening .intro__flare { animation: introFlare 1.9s var(--ease-out) .35s both; }
+@keyframes introFlare {
+  0%   { opacity: 0; transform: scaleY(.06); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.65, 1.5); }
+}
+
+/* The camera push-in: sky starts deep-zoomed and soft, settles sharp. */
+.intro.is-opening .intro__sky { animation: introSkySettle 2.6s var(--ease-out) both; }
 @keyframes introSkySettle {
-  from { transform: scale(1.3); }
-  to   { transform: scale(1); }
+  from { transform: scale(2.05); filter: blur(12px); }
+  60%  { filter: blur(0); }
+  to   { transform: scale(1); filter: blur(0); }
+}
+
+/* The light sweep: a beam passes across the title after it decodes. */
+.intro__title { position: relative; }
+.intro.is-opening .intro__title::after {
+  content: '';
+  position: absolute; inset: -12% -6%;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 238, 215, .34) 50%, transparent 60%);
+  transform: translateX(-140%);
+  animation: introSweep 1.2s var(--ease-out) 2.05s both;
+}
+@keyframes introSweep { to { transform: translateX(140%); } }
+
+/* Film grain: a faint, always-on flicker over the whole scene. */
+.intro__grain {
+  position: absolute; inset: -8%;
+  z-index: 6;
+  pointer-events: none;
+  opacity: .055;
+  mix-blend-mode: overlay;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E") repeat;
+  animation: introGrain .5s steps(4) infinite;
+}
+@keyframes introGrain {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-2.5%, 1.5%); }
+  50%  { transform: translate(1.5%, -2.5%); }
+  75%  { transform: translate(-1.5%, -1.5%); }
+  100% { transform: translate(0, 0); }
 }
 
 @media (max-width: 720px) {
@@ -2553,9 +2619,14 @@ body.intro-locked { overflow: hidden; }
   .intro__eyebrow, .intro__w, .intro__sep, .intro__verse, .intro-tab, .intro__enter, .intro__tools {
     animation: none !important; opacity: 1 !important; filter: none !important; transform: none !important;
   }
-  .intro.is-opening, .intro.is-opening .intro__sky, .hub-ring.is-rising .hub-card {
+  .intro.is-opening, .intro.is-opening::before, .intro.is-opening::after,
+  .intro.is-opening .intro__sky, .intro.is-opening .intro__flare,
+  .intro.is-opening .intro__title::after, .intro__grain,
+  .hub-ring.is-rising .hub-card {
     animation: none !important;
   }
+  .intro.is-opening::before, .intro.is-opening::after { display: none; }
+  .intro__flare { opacity: 0 !important; }
 }
 
 /* ───────────────── §38  HUB NAV MODEL (cinematic hub = home; no sidebar) ───────────────── */

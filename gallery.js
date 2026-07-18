@@ -82,7 +82,7 @@
       b.style.marginLeft = (-cardW / 2) + 'px';
       b.style.marginTop = (-cardH / 2) + 'px';
       b.style.transform = `rotateY(${i * STEP}deg) translateZ(${radius}px)`;
-      b.style.animationDelay = (0.45 + i * 0.08).toFixed(2) + 's';   // staggered entrance
+      b.style.animationDelay = (0.9 + i * 0.09).toFixed(2) + 's';   // rise as the curtain finishes parting
       b.innerHTML = `
         <img src="${esc(c.img)}" alt="" loading="lazy" draggable="false"
              onerror="this.remove()">
@@ -170,7 +170,7 @@
     void ring.offsetWidth;                    // restart the animation
     ring.classList.add('is-rising');
     clearTimeout(riseT);
-    riseT = setTimeout(() => ring.classList.remove('is-rising'), 2400);
+    riseT = setTimeout(() => ring.classList.remove('is-rising'), 3200);
   }
   window.addEventListener('nv-hub-open', rise);
 
