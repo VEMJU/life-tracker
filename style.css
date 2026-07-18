@@ -3963,7 +3963,7 @@ button.intro-tool {
   height: clamp(240px, calc(100vh - 500px), 470px);
   margin-top: var(--sp-6);
   perspective: 2000px;
-  touch-action: pan-y;         /* horizontal swipes spin the ring; vertical still scrolls */
+  touch-action: none;          /* the stage owns its touches — gallery.js splits spin vs scroll */
   cursor: grab;
 }
 .hub-stage:active { cursor: grabbing; }

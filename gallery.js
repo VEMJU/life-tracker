@@ -116,43 +116,87 @@
     autoTimer = setTimeout(() => { auto = true; }, 1800);
   }
 
+  /* Settle the ring so a card always ends up front and center. */
+  let snapping = false, snapTarget = 0;
+  function snapTo(idx) {
+    snapTarget = idx * STEP;
+    snapping = true;
+    pause();
+  }
+
+  let wheelSnap = null;
   stage.addEventListener('wheel', (e) => {
     // Only sideways scrolling spins the ring — vertical scrolling passes through untouched.
     if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
     e.preventDefault();
+    snapping = false;
     rotation += e.deltaX * 0.12;
+    clearTimeout(wheelSnap);
+    wheelSnap = setTimeout(() => snapTo(Math.round(rotation / STEP)), 260);
     pause(); paint();
   }, { passive: false });
 
-  let dragging = false, lastX = 0, moved = 0, justDragged = false;
+  /* Drag / swipe. The stage owns its touches (touch-action: none), so the
+     browser can never steal a slightly-diagonal swipe for scrolling — that
+     was what made the ring feel stuck on phones. The first real movement
+     picks an axis: sideways spins the ring, vertical scrolls the page. */
+  const introEl = stage.closest('.intro');
+  let dragging = false, lastX = 0, lastY = 0, lastT = 0;
+  let moved = 0, movedY = 0, axis = null, vel = 0, justDragged = false;
+  const K = () => (window.innerWidth < 700 ? 0.42 : 0.25);   // finger travel → degrees
+
   stage.addEventListener('pointerdown', (e) => {
-    dragging = true; moved = 0; lastX = e.clientX;
+    dragging = true; moved = 0; movedY = 0; axis = null; vel = 0;
+    lastX = e.clientX; lastY = e.clientY; lastT = e.timeStamp;
+    snapping = false;
     pause();
   });
   stage.addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    const dx = e.clientX - lastX;
-    lastX = e.clientX;
-    moved += Math.abs(dx);
-    // Capture only after a real drag starts — capturing on pointerdown
-    // retargets the eventual click to the stage and kills card navigation.
-    if (moved > 6) { try { stage.setPointerCapture(e.pointerId); } catch (err) {} }
-    rotation += dx * 0.25;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    moved += Math.abs(dx); movedY += Math.abs(dy);
+    if (!axis && moved + movedY > 8) {
+      axis = moved >= movedY ? 'spin' : 'scroll';
+      // Capture only once a real spin starts — capturing on pointerdown
+      // retargets the eventual click to the stage and kills card navigation.
+      if (axis === 'spin') { try { stage.setPointerCapture(e.pointerId); } catch (err) {} }
+    }
+    if (axis === 'scroll') { if (introEl) introEl.scrollTop -= dy; return; }
+    if (axis !== 'spin') return;
+    const dt = Math.max(1, e.timeStamp - lastT); lastT = e.timeStamp;
+    vel = 0.8 * vel + 0.2 * (dx / dt);                       // px/ms, smoothed
+    rotation += dx * K();
     pause(); paint();
   });
   const endDrag = () => {
     if (!dragging) return;
     dragging = false;
-    if (moved > 8) {
+    if ((axis === 'spin' && moved > 8) || (axis === 'scroll' && movedY > 8)) {
       justDragged = true;
       setTimeout(() => { justDragged = false; }, 250);
     }
+    if (axis === 'spin' && moved > 8) {
+      // A flick jumps straight to the next card in that direction;
+      // a slow release settles on whichever card is nearest.
+      if (Math.abs(vel) > 0.35) {
+        snapTo(vel > 0 ? Math.floor(rotation / STEP) + 1 : Math.ceil(rotation / STEP) - 1);
+      } else {
+        snapTo(Math.round(rotation / STEP));
+      }
+    }
+    axis = null;
   };
   stage.addEventListener('pointerup', endDrag);
   stage.addEventListener('pointercancel', endDrag);
 
   (function loop() {
-    if (auto && !reduce && !editing) { rotation += SPEED; paint(); }
+    if (snapping) {
+      const d = snapTarget - rotation;
+      if (Math.abs(d) < 0.06) { rotation = snapTarget; snapping = false; }
+      else rotation += d * 0.14;
+      paint();
+    } else if (auto && !reduce && !editing) { rotation += SPEED; paint(); }
     requestAnimationFrame(loop);
   })();
 
