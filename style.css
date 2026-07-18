@@ -2536,9 +2536,11 @@ body.intro-locked { overflow: hidden; }
    bars part like a theater screen → the sky rushes in from deep zoom →
    a beam of light sweeps the title → the cards rise into the ring. */
 
-/* The curtain: two black bars that part from the middle. */
-.intro.is-opening::before,
-.intro.is-opening::after {
+/* The curtain: two black bars that part from the middle.
+   Closed by default, so nothing shows before the reveal plays —
+   no flash of the already-settled hub while signing in. */
+.intro::before,
+.intro::after {
   content: '';
   position: absolute;
   left: 0; right: 0;
@@ -2546,15 +2548,17 @@ body.intro-locked { overflow: hidden; }
   z-index: 5;
   background: #000;
   pointer-events: none;
-  animation: introBar 1.3s cubic-bezier(.76, 0, .24, 1) .35s both;
 }
-.intro.is-opening::before { top: 0;    transform-origin: top; }
-.intro.is-opening::after  { bottom: 0; transform-origin: bottom; }
+.intro::before { top: 0;    transform-origin: top; }
+.intro::after  { bottom: 0; transform-origin: bottom; }
+.intro.is-opening::before,
+.intro.is-opening::after { animation: introBar 1.3s cubic-bezier(.76, 0, .24, 1) .35s both; }
 @keyframes introBar { from { transform: scaleY(1); } to { transform: scaleY(0); } }
 
 /* The projector flare: a slit of light igniting at the seam, blooming, fading. */
 .intro__flare {
-  position: absolute; inset: 0;
+  /* fixed: glued to the screen, never adds scrollable space */
+  position: fixed; inset: 0;
   z-index: 4;
   pointer-events: none;
   opacity: 0;
@@ -2595,7 +2599,8 @@ body.intro-locked { overflow: hidden; }
 
 /* Film grain: a faint, always-on flicker over the whole scene. */
 .intro__grain {
-  position: absolute; inset: -8%;
+  /* fixed: glued to the screen, never adds scrollable space */
+  position: fixed; inset: -8%;
   z-index: 6;
   pointer-events: none;
   opacity: .055;
@@ -2625,7 +2630,7 @@ body.intro-locked { overflow: hidden; }
   .hub-ring.is-rising .hub-card {
     animation: none !important;
   }
-  .intro.is-opening::before, .intro.is-opening::after { display: none; }
+  .intro::before, .intro::after { display: none; }
   .intro__flare { opacity: 0 !important; }
 }
 
@@ -3751,7 +3756,13 @@ body[data-view="gym"] .log-panel { display: none !important; }   /* old floating
 }
 
 /* hub fits on phones: scroll + tighter spacing */
-.intro { overflow-y: auto; }
+/* Desktop: everything fits, nothing scrolls. Small screens keep
+   scrolling as a safety net, but the scrollbar itself stays hidden. */
+.intro { overflow: hidden; }
+@media (max-width: 720px), (max-height: 720px) {
+  .intro { overflow-y: auto; scrollbar-width: none; }
+  .intro::-webkit-scrollbar { display: none; }
+}
 @media (max-width: 720px) {
   .intro { align-items: start; }
   .intro__content { padding: 20px 18px 46px; }
@@ -3947,7 +3958,9 @@ button.intro-tool {
 .hub-stage {
   position: relative;
   width: 100%;
-  height: clamp(300px, 48vh, 470px);
+  /* Fill whatever height is left after the header, Enter and tools —
+     the front page must never scroll on desktop. */
+  height: clamp(240px, calc(100vh - 500px), 470px);
   margin-top: var(--sp-6);
   perspective: 2000px;
   touch-action: pan-y;         /* horizontal swipes spin the ring; vertical still scrolls */

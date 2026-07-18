@@ -134,9 +134,9 @@
   }
   window.lifeHub = { open };
   // The moment sign-in completes (or a saved session restores), the lock
-  // lifts — play the startup animation: shutter opens, the title decodes,
-  // then the cards rise into the ring. Automatic, no scrolling.
-  window.addEventListener('nv-data-ready', () => { if (!dismissed) open(); }, { once: true });
+  // lifts — play the startup animation: curtain parts, the title decodes,
+  // then the cards rise into the ring. Every sign-in, exactly once.
+  window.addEventListener('nv-data-ready', () => open());
   // boot: let the lettering decode as the cards rise
   setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
 
