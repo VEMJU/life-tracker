@@ -16,7 +16,7 @@
   --text-4: rgba(255,255,255,0.25);
   --border: rgba(255,255,255,0.06);
   --border-strong: rgba(255,255,255,0.14);
-  --good: #E11D38;
+  --good: #A78BFA;
   --warn: #fbbf24;
   --bad: #ff8a8a;
   --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
@@ -83,9 +83,9 @@ html, body {
 .bar-track { position: relative; height: 28px; border-radius: 14px; background: rgba(255,255,255,0.04); overflow: hidden; }
 .bar-fill {
   position: absolute; top: 0; bottom: 0; left: 0; border-radius: 14px;
-  background: linear-gradient(90deg, rgba(225,29,56,0.55), var(--good));
+  background: linear-gradient(90deg, rgba(167,139,250,0.55), var(--good));
   transition: width 0.4s ease;
-  box-shadow: 0 0 18px rgba(225,29,56,0.18);
+  box-shadow: 0 0 18px rgba(167,139,250,0.18);
 }
 .bar-fill.over { background: linear-gradient(90deg, var(--good), var(--warn)); }
 .bar-zone { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.18); }
@@ -131,7 +131,7 @@ html, body {
   border-radius: 12px;
   font-size: 13px;
 }
-.log-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px rgba(225,29,56,0.6); flex: none; }
+.log-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px rgba(167,139,250,0.6); flex: none; }
 .log-row time { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); letter-spacing: 0.06em; }
 .log-empty { font-size: 12px; font-style: italic; color: var(--text-3); text-align: center; padding: 12px 0; }
 
@@ -174,7 +174,7 @@ html, body {
   transition: opacity 0.35s, transform 0.35s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
-.toast.best { border-color: rgba(225,29,56,0.5); box-shadow: 0 0 30px rgba(225,29,56,0.25), 0 12px 40px rgba(0,0,0,0.5); }
+.toast.best { border-color: rgba(167,139,250,0.5); box-shadow: 0 0 30px rgba(167,139,250,0.25), 0 12px 40px rgba(0,0,0,0.5); }
 .toast .tag { color: var(--good); font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; margin-right: 8px; }
 
 .modal-bg {
@@ -197,7 +197,7 @@ html, body {
   border-radius: 10px; color: var(--text-1);
   font-family: var(--font-mono); font-size: 14px; outline: none;
 }
-.field input:focus { border-color: rgba(225,29,56,0.5); }
+.field input:focus { border-color: rgba(167,139,250,0.5); }
 .modal .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .hub-link {
   position: fixed; bottom: 14px; left: 14px; z-index: 50;

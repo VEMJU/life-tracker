@@ -5324,7 +5324,7 @@
     const up = pts[pts.length - 1] >= pts[0];
     return `<svg class="linechart ${up ? 'is-up' : 'is-down'}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
       <defs><linearGradient id="lcg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(225,29,56,.35)"/><stop offset="100%" stop-color="rgba(225,29,56,0)"/>
+        <stop offset="0%" style="stop-color:var(--accent-bright);stop-opacity:.35"/><stop offset="100%" style="stop-color:var(--accent-bright);stop-opacity:0"/>
       </linearGradient></defs>
       <polygon points="0,${h} ${line} ${w},${h}" fill="url(#lcg)"/>
       <polyline points="${line}" fill="none" stroke="var(--accent-bright)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
@@ -6244,16 +6244,25 @@
       return st;
     }
 
-    /* ── DAY RING · wine-red sun cycle ── */
-    const RING_STOPS = [
-      [0,   [207,207,207]],   // dawn bone
-      [20,  [236,236,236]],   // morning paper
-      [40,  [225, 29, 56]],   // midday bright crimson
-      [60,  [196, 22, 59]],   // afternoon crimson
-      [80,  [110, 31, 42]],   // evening wine
-      [100, [ 42, 10, 18]],   // night oxblood
-    ];
+    /* ── DAY RING · sun cycle (accent follows the active theme) ── */
+    function themeRgb(name, fb) {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return (raw || fb).split(',').map(Number);
+    }
+    function themeHexToRgb(name, fbHex) {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fbHex;
+      const h = raw.replace('#', '');
+      return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16));
+    }
     function ringColor(pct) {
+      const RING_STOPS = [
+        [0,   [207,207,207]],                                  // dawn bone
+        [20,  [236,236,236]],                                  // morning paper
+        [40,  themeRgb('--accent-br-rgb', '225,29,56')],       // midday bright accent
+        [60,  themeRgb('--accent-rgb', '196,22,59')],          // afternoon accent
+        [80,  themeRgb('--accent-wine-rgb', '110,31,42')],     // evening wine
+        [100, themeHexToRgb('--c-oxblood', '#2A0A12')],        // night deep tone
+      ];
       for (let i = 1; i < RING_STOPS.length; i++) {
         const [p1, c1] = RING_STOPS[i-1], [p2, c2] = RING_STOPS[i];
         if (pct <= p2) {
@@ -6261,7 +6270,7 @@
           return 'rgb(' + c1.map((v, j) => Math.round(v + (c2[j]-v)*t)).join(',') + ')';
         }
       }
-      return 'rgb(42,10,18)';
+      return 'rgb(' + RING_STOPS[RING_STOPS.length - 1][1].join(',') + ')';
     }
     const C = 2 * Math.PI * 52;
     function updateRing() {

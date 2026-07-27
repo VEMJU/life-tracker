@@ -61,7 +61,7 @@
   }
 
   /* ---------- theme (accent color follows nv.theme, synced per account) ---------- */
-  const THEMES = ['crimson', 'blue', 'mono'];
+  const THEMES = ['crimson', 'violet', 'blue', 'mono'];
   function applyTheme() {
     let t = 'crimson';
     try { t = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
