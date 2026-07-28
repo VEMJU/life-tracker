@@ -39,7 +39,9 @@ export default async function handler(req, res) {
     const r = await fetch(
       `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`
     );
-    if (!r.ok) return res.status(200).json({ error: 'upstream' });
+    /* Pass the upstream status through. 401/403 = the key is wrong or revoked,
+       429 = rate limited. Without this the failure is indistinguishable. */
+    if (!r.ok) return res.status(200).json({ error: 'upstream', status: r.status });
 
     const q = await r.json();
     /* Finnhub: c = current, d = change, dp = percent change, pc = prev close.
