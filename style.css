@@ -4348,3 +4348,50 @@ button.intro-tool {
 
 /* the sleep trend curve sits between the bars and the stat row */
 .sleep-curve { margin: var(--sp-4) 0 var(--sp-2); }
+
+/* trend curves added to Logs (sleep · water · running) */
+.water-curve, .run-curve { margin: var(--sp-4) 0 var(--sp-2); }
+.curve-cap {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--c-fog); margin-bottom: var(--sp-2);
+}
+
+/* ═══════════════════  §50  THE TRACKER CHART  ═══════════════════
+   The Peak instrument, reused by every tracker: a readout, a LINE/BARS/STACK
+   toggle, and a plot you can scrub with the pointer.                        */
+.tc { margin-top: var(--sp-2); }
+.tc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-3); flex-wrap: wrap; }
+.tc-headL { min-width: 0; }
+.tc-cap {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--c-fog); margin: 0 0 5px;
+}
+/* the readout: big italic value, unit, then which entry you are hovering */
+.tc-read { display: flex; align-items: baseline; gap: 5px; margin: 0; min-height: 26px; }
+.tc-read b { font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 26px; line-height: 1; color: var(--c-blanc); font-variant-numeric: tabular-nums; }
+.tc-read span { font-family: var(--ff-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-stone); }
+.tc-read i { font-family: var(--ff-display); font-style: italic; font-size: 13px; color: var(--c-fog); margin-left: 4px; }
+
+/* the segmented mode switch */
+.tc-modes { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.02); flex: none; }
+.tc-mode {
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--c-fog); padding: 6px 13px; border-radius: 999px;
+  transition: color var(--dur-base) var(--ease-vt), background var(--dur-base) var(--ease-vt);
+}
+.tc-mode:hover { color: var(--c-paper); }
+.tc-mode.is-on { background: var(--accent-bright, var(--c-paper)); color: var(--c-void); }
+
+.tc-plot { position: relative; width: 100%; cursor: crosshair; touch-action: pan-y; }
+.tc-svg { display: block; width: 100%; height: 150px; overflow: visible; }
+.tc-bar { fill: var(--accent-bright, #fff); opacity: .55; transition: opacity var(--dur-base) var(--ease-vt); }
+.tc-plot:hover .tc-bar { opacity: .75; }
+.tc-x { fill: var(--c-mid); font-family: var(--ff-mono); font-size: 9px; letter-spacing: .1em; }
+.tc-scrub { stroke: var(--accent-bright, #fff); stroke-width: 1; stroke-dasharray: 2 4; transition: opacity .15s var(--ease-vt); }
+
+@media (max-width: 620px) {
+  .tc-head { gap: var(--sp-2); }
+  .tc-read b { font-size: 22px; }
+  .tc-mode { padding: 6px 10px; }
+}

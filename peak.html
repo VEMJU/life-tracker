@@ -371,12 +371,41 @@
    falls back to demo mode and nothing you log is ever written. Defining it
    here (backed by localStorage) means every coffee, event and feel-drag you
    log is your own data and survives a refresh. */
+/* HARDWIRED TO VITALS: Peak's curve is scaled by how recovered you are, and
+   that number belongs to the Vitals tab — not to a placeholder here. On load we
+   read today's Vitals entry and derive recovery with the SAME formula Vitals
+   uses, so a bad night visibly flattens today's energy curve.
+   ⚠ If you change estRecovery in vitals.html, change it here too. */
+function recoveryFromVitals(){
+  try {
+    const raw = localStorage.getItem('nv.vitals.v1'); if (!raw) return null;
+    const store = JSON.parse(raw) || {};
+    const d = new Date();
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const h = store[key]; if (!h) return null;
+    /* a real device reading always wins over the estimate */
+    if (typeof h.whoopRecovery === 'number') return Math.max(1, Math.min(99, Math.round(h.whoopRecovery)));
+    const c01 = x => Math.max(0, Math.min(1, x));
+    const parts = [], w = [];
+    if (typeof h.hrv === 'number'){ parts.push(c01((h.hrv-20)/(90-20))*100); w.push(0.5); }
+    if (typeof h.rhr === 'number'){ parts.push(c01((80-h.rhr)/(80-42))*100); w.push(0.25); }
+    if (typeof h.sleepPerf === 'number'){ parts.push(Math.min(100, h.sleepPerf)); w.push(0.25); }
+    else if (typeof h.sleepHours === 'number'){ parts.push(c01(h.sleepHours/8)*100); w.push(0.25); }
+    if (!parts.length) return null;
+    const sw = w.reduce((a,b)=>a+b,0); let s=0; for (let i=0;i<parts.length;i++) s += parts[i]*w[i];
+    return Math.max(1, Math.min(99, Math.round(s/sw)));
+  } catch(e){ return null; }
+}
+
 window.Vitality = {
   save(data){ try { localStorage.setItem('nv.peak.v1', JSON.stringify(data)); } catch(e){} },
   async load(){
-    try { const raw = localStorage.getItem('nv.peak.v1'); const o = raw ? JSON.parse(raw) : null;
-      return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
-    catch(e){ return {}; }
+    let o = {};
+    try { const raw = localStorage.getItem('nv.peak.v1'); const p = raw ? JSON.parse(raw) : null;
+      if (p && typeof p === 'object' && !Array.isArray(p)) o = p; } catch(e){}
+    const rec = recoveryFromVitals();
+    if (rec != null) o.whoop = Object.assign({}, o.whoop, { recovery: rec });
+    return o;
   }
 };
 </script>

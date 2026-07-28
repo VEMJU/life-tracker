@@ -941,7 +941,33 @@
       toast('Idea saved');
     }
 
+    /* Plain-text export. The backlog is only useful if it can leave the app —
+       paste this straight into a session and it reads as a build brief. */
+    function asText() {
+      const list = sorted(load());
+      if (!list.length) return 'No ideas yet.';
+      const open  = list.filter(i => !i.built);
+      const built = list.filter(i => i.built);
+      const line = i => `- [${i.built ? 'x' : ' '}] ${i.text}`
+        + `  (${i.target || 'unassigned'} · ${KIND[i.kind] || i.kind} · ${PRI[i.pri ?? 1]})`;
+      return ['# App ideas', '', `## To build (${open.length})`, ...open.map(line),
+              ...(built.length ? ['', `## Built (${built.length})`, ...built.map(line)] : [])].join('\n');
+    }
+
     function init() {
+      const copy = $('[data-ideas-copy]');
+      if (copy && !copy.dataset.wired) {
+        copy.dataset.wired = '1';
+        copy.addEventListener('click', async () => {
+          const text = asText();
+          try { await navigator.clipboard.writeText(text); toast('Backlog copied'); }
+          catch (e) {
+            /* clipboard is blocked on file:// in some browsers — fall back to a
+               selectable prompt so the text is still reachable */
+            window.prompt('Copy your backlog:', text);
+          }
+        });
+      }
       const form = $('[data-idea-form]');
       if (form && !form.dataset.wired) {
         form.dataset.wired = '1';
@@ -4602,7 +4628,9 @@
           </div>
           <div class="sleep-bars">${bars}</div>
         </div>
-        ${all.length>=2 ? `<div class="sleep-curve">${svgLine(all.slice(-30).map(e=>e.hours), 320, 88)}</div>` : ''}
+        <div class="sleep-curve">
+          ${trackerChart('sleep', all.slice(-30).map(e=>({label:fmtDate(e.date), value:e.hours})), {unit:'h', caption:'Sleep trend'})}
+        </div>
         <div class="sat-stats sleep-stats">
           <div class="sat-stat"><span class="sat-stat__v">${avg||'—'}h</span><span class="sat-stat__k">7-Day Avg</span></div>
           <div class="sat-stat"><span class="sat-stat__v">${best||'—'}h</span><span class="sat-stat__k">Best Night</span></div>
@@ -4683,7 +4711,17 @@
             <p class="water-streak">${streak>0?`🔥 ${streak}-day streak`:'Hit your goal to start a streak'}</p>
           </div>
         </div>
-        <div class="water-bars">${bars}</div>`;
+        <div class="water-bars">${bars}</div>
+        <div class="water-curve">
+          ${(() => {
+            /* only days you actually logged — empty days would drag a false
+               line down to zero and make the trend a lie */
+            const series = lastNDays(30)
+              .map(dk => ({ label: dayLabel(dk), value: data.water.days[dk] || 0 }))
+              .filter(p => p.value > 0);
+            return trackerChart('water', series, { unit:'oz', caption:'Intake trend' });
+          })()}
+        </div>`;
     }
 
     /* =====================  RUNNING  ===================== */
@@ -4728,6 +4766,9 @@
           <div class="sat-stat"><span class="sat-stat__v">${weekMiles}</span><span class="sat-stat__k">This Week</span></div>
           <div class="sat-stat"><span class="sat-stat__v">${paceOf(fastest.miles,fastest.secs)||'—'}</span><span class="sat-stat__k">Best Pace /mi</span></div>
           <div class="sat-stat"><span class="sat-stat__v">${longest.miles} mi</span><span class="sat-stat__k">Longest Run</span></div>
+        </div>
+        <div class="run-curve">
+          ${trackerChart('runs', [...all].slice(-30).map(r=>({label:fmtDate(r.date), value:r.miles})), {unit:'mi', caption:'Distance'})}
         </div>
         <div class="run-history">${rows}</div>`;
     }
@@ -5385,6 +5426,135 @@
     </svg>`;
   }
 
+  /* ═══════════════════  THE TRACKER CHART  ═══════════════════
+     The Peak tab's chart, generalised so any tracker gets the same instrument:
+
+       LINE   the smooth curve — the shape of the habit
+       BARS   one bar per entry — the individual sessions
+       STACK  the running total — everything you have put in so far
+
+     Hover (or drag on touch) to scrub: a vertical rule follows the pointer and
+     the readout above shows that entry's value and label.
+
+     Usage — returns HTML, mount it anywhere:
+        trackerChart('sleep', series, { unit:'h', caption:'Sleep trend' })
+     where series = [{ label:'Mar 3', value:7.5 }, …]
+
+     Mode is remembered per chart id for the session, so switching tabs and
+     coming back keeps the view you chose.                                    */
+  const ChartModes = new Map();
+  const CHART_SERIES = new Map();          // id -> series, so scrubbing can read values
+
+  function trackerChart(id, series, opts = {}) {
+    const unit    = opts.unit || '';
+    const caption = opts.caption || '';
+    const W = 640, H = opts.height || 150, PAD_B = 22, PAD_T = 14;
+    const mode = ChartModes.get(id) || opts.mode || 'line';
+    CHART_SERIES.set(id, series);
+
+    const modeBar = ['line', 'bars', 'stack'].map(m =>
+      `<button class="tc-mode ${m === mode ? 'is-on' : ''}" data-tc-mode="${id}:${m}" type="button">${m}</button>`
+    ).join('');
+
+    const head = `<div class="tc-head">
+        <div class="tc-headL">
+          ${caption ? `<p class="tc-cap">${esc(caption)}</p>` : ''}
+          <p class="tc-read" data-tc-read="${id}">${
+            series.length ? `<b>${fmtNum(series[series.length-1].value)}</b><span>${esc(unit)}</span><i>${esc(series[series.length-1].label || 'latest')}</i>` : ''
+          }</p>
+        </div>
+        <div class="tc-modes">${modeBar}</div>
+      </div>`;
+
+    if (series.length < 2) {
+      return `<div class="tc" data-tc="${id}">${head}
+        <p class="chart-empty">Log a few entries and the chart draws itself.</p></div>`;
+    }
+
+    /* STACK is the cumulative total; LINE and BARS plot the values themselves */
+    let vals = series.map(p => Number(p.value) || 0);
+    if (mode === 'stack') { let run = 0; vals = vals.map(v => (run += v)); }
+
+    const max = Math.max(...vals), min = Math.min(0, Math.min(...vals));
+    const span = (max - min) || 1;
+    const stepX = W / (vals.length - 1 || 1);
+    const Y = v => (H - PAD_B) - ((v - min) / span) * (H - PAD_B - PAD_T);
+    const xy = vals.map((v, i) => [i * stepX, Y(v)]);
+
+    const gid = 'tcg' + (++__curveId);
+    const grid = [0.33, 0.66, 1].map(f =>
+      `<line class="curve-grid" x1="0" y1="${(PAD_T + (H - PAD_B - PAD_T) * f).toFixed(1)}" x2="${W}" y2="${(PAD_T + (H - PAD_B - PAD_T) * f).toFixed(1)}"/>`
+    ).join('');
+
+    let body = '';
+    if (mode === 'bars') {
+      const bw = Math.max(2, Math.min(26, (W / vals.length) * 0.6));
+      body = vals.map((v, i) => {
+        const x = (i * stepX) - bw / 2, y = Y(v);
+        return `<rect class="tc-bar" x="${Math.max(0, x).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, (H - PAD_B) - y).toFixed(1)}" rx="2"/>`;
+      }).join('');
+    } else {
+      const path = smoothPath(xy);
+      body = `<path d="${path} L${W} ${H - PAD_B} L0 ${H - PAD_B} Z" fill="url(#${gid})" stroke="none"/>
+              <path class="curve-line" d="${path}" fill="none" stroke="var(--accent-bright)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+              <circle class="curve-head" cx="${xy[xy.length-1][0].toFixed(1)}" cy="${xy[xy.length-1][1].toFixed(1)}" r="3.6" fill="#fff"/>`;
+    }
+
+    /* first / middle / last labels only — a full axis turns to mush at width */
+    const axis = [0, Math.floor((series.length - 1) / 2), series.length - 1]
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .map(i => `<text class="tc-x" x="${Math.min(W - 2, Math.max(2, i * stepX)).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === series.length - 1 ? 'end' : 'middle'}">${esc(series[i].label || '')}</text>`)
+      .join('');
+
+    return `<div class="tc" data-tc="${id}" data-tc-unit="${esc(unit)}">
+      ${head}
+      <div class="tc-plot" data-tc-plot="${id}">
+        <svg class="tc-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style="stop-color:var(--accent-bright);stop-opacity:.30"/>
+            <stop offset="100%" style="stop-color:var(--accent-bright);stop-opacity:0"/>
+          </linearGradient></defs>
+          ${grid}${body}${axis}
+          <line class="tc-scrub" data-tc-scrub="${id}" x1="0" y1="${PAD_T}" x2="0" y2="${H - PAD_B}" style="opacity:0"/>
+        </svg>
+      </div>
+    </div>`;
+  }
+  const fmtNum = (n) => {
+    const v = Number(n) || 0;
+    return (Math.abs(v) >= 100 || Number.isInteger(v)) ? Math.round(v).toLocaleString() : (Math.round(v * 10) / 10).toString();
+  };
+
+  /* one delegated listener drives every chart on the page, so charts keep
+     working after any tab re-renders its markup */
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tc-mode]'); if (!b) return;
+    const [id, m] = b.dataset.tcMode.split(':');
+    ChartModes.set(id, m);
+    /* re-render whichever module owns this chart. Logs owns sleep/water/runs;
+       add a line here when a new tab starts using trackerChart. */
+    if (['sleep','water','runs'].includes(id) && typeof Logs !== 'undefined' && Logs.renderAll) Logs.renderAll();
+    else if (id.startsWith('sport-') && typeof Sports !== 'undefined' && Sports.render) Sports.render();
+  });
+  document.addEventListener('pointermove', (e) => {
+    const plot = e.target.closest('[data-tc-plot]'); if (!plot) return;
+    const id = plot.dataset.tcPlot;
+    const series = CHART_SERIES.get(id); if (!series || series.length < 2) return;
+    const r = plot.getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const i = Math.round(f * (series.length - 1));
+    const wrap = plot.closest('.tc');
+    const read = wrap && wrap.querySelector('[data-tc-read]');
+    const unit = (wrap && wrap.dataset.tcUnit) || '';
+    if (read) read.innerHTML = `<b>${fmtNum(series[i].value)}</b><span>${esc(unit)}</span><i>${esc(series[i].label || '')}</i>`;
+    const scrub = plot.querySelector('[data-tc-scrub]');
+    if (scrub) { const x = (i / (series.length - 1)) * 640; scrub.setAttribute('x1', x); scrub.setAttribute('x2', x); scrub.style.opacity = '1'; }
+  }, { passive: true });
+  document.addEventListener('pointerleave', (e) => {
+    const plot = e.target.closest && e.target.closest('[data-tc-plot]'); if (!plot) return;
+    const scrub = plot.querySelector('[data-tc-scrub]'); if (scrub) scrub.style.opacity = '0';
+  }, true);
+
   /* ═══════════════════  SPORTS — 6-month plans · logs · charts · stopwatches  ═══════════════════ */
   const Sports = (() => {
     const KEY = 'nv.sports';
@@ -5512,7 +5682,9 @@
         <article class="card sp-card--chart reveal" style="--d:.11s">
           <header class="card__head"><span class="card__tag">IV.</span><h3 class="card__title">Progress</h3>
             <span class="card__count">${s.logs.length} days logged</span></header>
-          ${svgLine(pts)}
+          ${trackerChart('sport-' + s.id,
+              s.logs.slice(-42).map((l, i) => ({ label: fmtDate(l.date), value: pts[i] })),
+              { unit: 'pts', caption: 'Consistency score' })}
           <p class="sp-hint">Every "did the work" pushes the line up (+2), partial +1, missed −1. Protect the climb.</p>
         </article>
 
@@ -5600,7 +5772,8 @@
       }
       render();
     }
-    return {init};
+    /* render is exposed so the chart's mode toggle can redraw this tab */
+    return {init, render};
   })();
 
   /* ═══════════════════  CALENDAR — years ahead · crosses · auto to-dos · progress drawer  ═══════════════════ */

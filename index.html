@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=35" />
+  <link rel="stylesheet" href="style.css?v=40" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -110,12 +110,12 @@
       </button>
 
       <div class="intro__tools">
-        <a class="intro-tool" href="lifts.html">
+        <button class="intro-tool" type="button" data-go="home">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-            <path d="M3 9v6M21 9v6M6 7v10M18 7v10M6 12h12" stroke-linecap="round"/>
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5V16H8v-2.5A6 6 0 0 1 12 3Z" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Lift Logger
-        </a>
+          App Ideas
+        </button>
         <a class="intro-tool" href="water.html">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <path d="M12 3s6 7 6 12a6 6 0 1 1-12 0c0-5 6-12 6-12Z" stroke-linejoin="round"/>
@@ -506,6 +506,8 @@
           <header class="card__head">
             <span class="card__tag">II.</span>
             <h3 class="card__title">App Ideas</h3>
+            <button class="card__route-btn" data-ideas-copy type="button"
+                    title="Copy the whole backlog — paste it to me next session">Copy&nbsp;↗</button>
             <span class="card__count" data-ideas-count>0</span>
           </header>
 
@@ -1284,7 +1286,7 @@
            (onset → peak → half-life) scaled by bodyweight, plus today's plan. -->
       <section class="board board--peak" data-tab-panel="peak" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="peak.html?v=3" title="Your peak today" loading="lazy"></iframe>
+          <iframe class="gl-frame" src="peak.html?v=4" title="Your peak today" loading="lazy"></iframe>
         </div>
       </section>
 
@@ -1630,7 +1632,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=4" defer></script>
-  <script src="app.js?v=19" defer></script>
+  <script src="app.js?v=23" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
