@@ -25,7 +25,9 @@
   This is the ONE tab that needs internet. Everything you type is local:
   nv.map.v2 in this browser.
 -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- Leaflet is VENDORED (vendor/), not pulled from a CDN. A blocked CDN request
+     took the whole script down and left this tab black with no explanation. -->
+<link rel="stylesheet" href="vendor/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -256,10 +258,20 @@ textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
 <div id="sheetRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="vendor/leaflet.js"></script>
 <script>
 (() => {
 'use strict';
+
+/* If Leaflet is missing for any reason, say so on screen. Silence is what made
+   this hard to diagnose — a black rectangle tells you nothing. */
+if (typeof L === 'undefined') {
+  document.getElementById('map').innerHTML =
+    '<div style="display:grid;place-items:center;height:100%;padding:30px;text-align:center;' +
+    'font-family:Georgia,serif;font-style:italic;color:rgba(255,255,255,.6);line-height:1.6">' +
+    'The map library did not load.<br>Everything else on this page still works.</div>';
+  return;
+}
 
 const KEY = 'nv.map.v2', OLD = 'nv.map.v1';
 const $ = id => document.getElementById(id);
