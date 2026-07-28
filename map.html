@@ -21,9 +21,10 @@
   REGIONS let you keep more than one life on the map: New York, PA, Puebla.
   Each stores its own centre + zoom, so switching is one tap.
 
-  Map imagery: Leaflet + CARTO dark tiles — free, no API key, no billing.
-  This is the ONE tab that needs internet. Everything you type is local:
-  nv.map.v2 in this browser.
+  Map imagery: Leaflet (vendored locally) + OpenStreetMap tiles, inverted to
+  dark by CSS. Free, no API key, no billing. Falls back to CARTO if OSM fails.
+  Tile images are the ONE thing here needing internet. Everything you type is
+  local: nv.map.v2 in this browser.
 -->
 <!-- Leaflet is VENDORED (vendor/), not pulled from a CDN. A blocked CDN request
      took the whole script down and left this tab black with no explanation. -->
@@ -51,11 +52,20 @@ body{font-family:var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased;
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 input,textarea,select{font:inherit;color:inherit}
 
-.wrap{display:flex;height:100vh;width:100%}
+.wrap{display:flex;height:100vh;width:100%;position:relative;z-index:1}
 #map{position:absolute;inset:0;background:#000;z-index:1}
+
+/* the app's drifting crosses, behind everything */
+#crossbg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* OSM ships light tiles; invert them so the map matches the rest of the app.
+   Skipped when we have fallen back to CARTO, which is dark already. */
+.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92) saturate(.5)}
+html.noInvert .leaflet-tile{filter:none}
 .mapWrap{position:relative;flex:1;min-width:0}
+/* slightly translucent so the drifting crosses read faintly behind the panel */
 .panel{width:372px;flex:none;height:100%;display:flex;flex-direction:column;
-  border-right:1px solid var(--rule);background:rgba(6,6,7,.94);
+  border-right:1px solid var(--rule);background:rgba(6,6,7,.84);
   -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);z-index:2}
 @media(max-width:860px){
   .wrap{flex-direction:column-reverse}
@@ -226,6 +236,8 @@ textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
 </head>
 <body>
 
+<canvas id="crossbg"></canvas>
+
 <div class="wrap">
   <aside class="panel">
     <div class="pHead">
@@ -386,9 +398,26 @@ function isPR(p){
 /* ── map ── */
 const startView = S.view || { lat: 40.7128, lng: -74.0060, z: 12 };
 const map = L.map('map', { zoomControl: true }).setView([startView.lat, startView.lng], startView.z);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20
+/* TILES. CARTO's dark tiles were the first choice but their CDN can be blocked,
+   which leaves a black rectangle. OpenStreetMap's own servers are the most
+   widely reachable on the internet, so they are the primary now — and the
+   `.leaflet-tile` CSS filter inverts them into a dark map, so the look survives.
+   If OSM ever fails too, we fall back to CARTO rather than showing nothing. */
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
 }).addTo(map);
+
+let switched = false;
+osm.on('tileerror', () => {
+  if (switched) return;
+  switched = true;
+  map.removeLayer(osm);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20
+  }).addTo(map);
+  document.documentElement.classList.add('noInvert');   // CARTO is already dark
+  toast('Switched map source');
+});
 
 map.on('moveend', () => {
   const c = map.getCenter();
@@ -792,6 +821,54 @@ document.addEventListener('visibilitychange', refit);
 window.addEventListener('resize', refit);
 window.addEventListener('pageshow', refit);
 [60, 250, 700, 1500].forEach(ms => setTimeout(refit, ms));   // belt and braces
+})();
+</script>
+<script>
+/* drifting cross-sigils — the same backdrop as every other tab */
+(function crosses(){
+  var cv = document.getElementById('crossbg'); if (!cv) return;
+  var ctx = cv.getContext('2d', { alpha: true });
+  var W=0,H=0,DPR=1,items=[],raf;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function countFor(w,h){ return Math.max(18, Math.min(90, Math.round((w*h)/26000))); }
+  function seed(){
+    items = [];
+    var COUNT = countFor(W,H);
+    for (var i=0;i<COUNT;i++){
+      var depth = Math.random();
+      items.push({ x:Math.random()*W, y:Math.random()*H, size:18+depth*78,
+        rot:(Math.random()-0.5)*0.6, spin:(Math.random()-0.5)*0.0006,
+        vy:-(0.06+depth*0.22), sway:Math.random()*Math.PI*2,
+        swaySpeed:0.002+Math.random()*0.004, swayAmp:6+depth*16, baseX:0,
+        alpha:0.07+depth*0.17 });
+      items[i].baseX = items[i].x;
+    }
+  }
+  function rr(x,y,w,h,r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
+  function drawCross(c){
+    var s=c.size, bw=s*0.13, cw=s*0.46;
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle='#fff';
+    rr(-bw/2,-s/2,bw,s,bw*0.4); rr(-cw/2,-s/2+s*0.26,cw,bw,bw*0.4);
+    ctx.restore();
+  }
+  function resize(){
+    DPR=Math.min(devicePixelRatio||1,2); W=cv.clientWidth||innerWidth; H=cv.clientHeight||innerHeight;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0); seed();
+  }
+  function frame(){
+    if (document.hidden){ raf=requestAnimationFrame(frame); return; }
+    ctx.clearRect(0,0,W,H);
+    for (var i=0;i<items.length;i++){
+      var c=items[i];
+      c.y+=c.vy; c.sway+=c.swaySpeed; c.x=c.baseX+Math.sin(c.sway)*c.swayAmp; c.rot+=c.spin;
+      if (c.y+c.size<-10){ c.y=H+c.size; c.baseX=Math.random()*W; }
+      drawCross(c);
+    }
+    ctx.globalAlpha=1; raf=requestAnimationFrame(frame);
+  }
+  resize(); addEventListener('resize', resize, { passive:true });
+  if (reduce){ ctx.clearRect(0,0,W,H); items.forEach(drawCross); }
+  else raf=requestAnimationFrame(frame);
 })();
 </script>
 </body>

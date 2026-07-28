@@ -1301,10 +1301,12 @@ window.Vitality = {
 // types.ts — currencies · state.ts — DEFAULT_RATES + fmtMoney
 // -----------------------------------------------------------------------------
 
-const CURRENCIES = ['CHF', 'USD', 'EUR', 'GBP']
-/** state.ts holds these until /api/finance/rates returns; standalone has no
- *  rates endpoint, so this stays the app's own pre-fetch default. */
-const rates = { CHF: 1, USD: 1, EUR: 1, GBP: 1 }
+/* Your three currencies. CHF and GBP removed — Mexican pesos added. */
+const CURRENCIES = ['USD', 'EUR', 'MXN']
+/* Conversion FROM the stored base (USD, since quotes arrive in USD) INTO the
+ * currency you are viewing. These are fixed approximations, NOT live FX — a
+ * peso figure here is a ballpark, not an exchange rate. Adjust when they drift. */
+const rates = { USD: 1, EUR: 0.92, MXN: 18.5 }
 
 function fmtMoney(amountCHF, currency, rates) {
   const rate = rates[currency] || 1
@@ -1928,7 +1930,8 @@ function onFeed() {
 Promise.resolve(window.Vitality.load()).then(d => {
   const data = d && typeof d === 'object' ? d : {}
   store.holdings = Array.isArray(data.holdings) ? data.holdings : []
-  store.currency = CURRENCIES.indexOf(data.currency) >= 0 ? data.currency : 'CHF'
+  /* falls back to USD — an older save may hold CHF or GBP, which no longer exist here */
+  store.currency = CURRENCIES.indexOf(data.currency) >= 0 ? data.currency : 'USD'
   render()
   // Price whatever is already stored. No-op on an empty board.
   refreshQuotes()
