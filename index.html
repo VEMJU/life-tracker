@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=42" />
+  <link rel="stylesheet" href="style.css?v=43" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -564,6 +564,16 @@
           </div>
 
           <div class="idea-list" data-idea-list><!-- injected --></div>
+        </article>
+
+        <!-- NOTICED — the app reading itself back to you. Every line is computed
+             from data some tab actually wrote; it says nothing it cannot prove. -->
+        <article class="card card--noticed reveal" style="--d:.16s">
+          <header class="card__head">
+            <span class="card__tag">✦</span>
+            <h3 class="card__title">Noticed</h3>
+          </header>
+          <div class="noticed-list" data-noticed><!-- injected --></div>
         </article>
 
         <!-- GOALS OVERVIEW (live) -->
@@ -1666,7 +1676,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=4" defer></script>
-  <script src="app.js?v=26" defer></script>
+  <script src="app.js?v=27" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>

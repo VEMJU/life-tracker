@@ -1008,6 +1008,137 @@
     return { init, render };
   })();
 
+  /* ═══════════════════  NOTICED (home)  ═══════════════════
+     The app reading itself back to you.
+
+     One hard rule: it may only say things that are TRUE OF YOUR DATA. Every
+     line below is computed from a store some tab actually wrote — no filler,
+     no horoscope. When there is not enough logged to say anything honest, it
+     says exactly that instead of inventing a pattern.
+
+     It reads across tabs on purpose: the useful observations are the ones no
+     single tab can see (sleep against training, water against streaks).       */
+  const Noticed = (() => {
+    const dayKey = (d) => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const daysBack = (n) => { const d = new Date(); d.setDate(d.getDate()-n); return dayKey(d); };
+    const readJSON = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch(e){ return fb; } };
+    const avg = (a) => a.length ? a.reduce((s,x)=>s+x,0)/a.length : null;
+    const r1  = (n) => Math.round(n*10)/10;
+
+    function findings() {
+      const out = [];
+      const logs  = Store.get('nv.logs', null) || {};
+      const sleep = (logs.sleep && logs.sleep.entries) || [];
+      const water = (logs.water && logs.water.days) || {};
+      const runs  = (logs.running && logs.running.entries) || [];
+
+      /* ── sleep: this week against the fortnight before it ── */
+      if (sleep.length >= 6) {
+        const cut = daysBack(7);
+        const recent = sleep.filter(e => e.date >= cut).map(e => e.hours);
+        const older  = sleep.filter(e => e.date <  cut).map(e => e.hours);
+        if (recent.length >= 2 && older.length >= 2) {
+          const a = avg(recent), b = avg(older), d = r1(a - b);
+          if (Math.abs(d) >= 0.4) {
+            out.push({ tag:'Sleep', tab:'logs', text: d > 0
+              ? `You are sleeping <b>${d}h more</b> a night than you were — ${r1(a)}h average this week.`
+              : `You are down <b>${Math.abs(d)}h a night</b> this week — ${r1(a)}h average, from ${r1(b)}h.` });
+          }
+        }
+      }
+
+      /* ── the cross-tab one: does a short night cost you water? ── */
+      if (sleep.length >= 5 && Object.keys(water).length >= 5) {
+        const goal = (logs.sleep && logs.sleep.goal) || 8;
+        const short = [], full = [];
+        sleep.forEach(e => {
+          const oz = water[e.date];
+          if (typeof oz !== 'number') return;
+          (e.hours < goal - 1 ? short : full).push(oz);
+        });
+        if (short.length >= 2 && full.length >= 2) {
+          const s = avg(short), f = avg(full);
+          if (f > 0 && Math.abs(s - f) / f >= 0.15) {
+            out.push({ tag:'Pattern', tab:'logs', text: s < f
+              ? `After a <b>short night</b> you drink about <b>${Math.round((1-s/f)*100)}% less water</b>. The tired days are the dry ones.`
+              : `Odd one: you drink <b>more</b> on your short-sleep days. Caffeine covering for the sleep, maybe.` });
+          }
+        }
+      }
+
+      /* ── water: the streak, counted honestly ── */
+      const wGoal = (logs.water && logs.water.goal) || 100;
+      if (Object.keys(water).length >= 3) {
+        let streak = 0;
+        for (let i = 0; i < 60; i++) {
+          const k = daysBack(i);
+          if ((water[k] || 0) >= wGoal) streak++;
+          else if (i > 0) break;              // today not yet hit is allowed
+        }
+        if (streak >= 3) out.push({ tag:'Water', tab:'logs', text:`<b>${streak} days</b> straight on your water goal.` });
+      }
+
+      /* ── running: is the last one your best pace on that route? ── */
+      if (runs.length >= 3) {
+        const paced = runs.filter(r => r.miles > 0 && r.secs > 0);
+        if (paced.length >= 3) {
+          const last = paced[paced.length-1];
+          const lastPace = last.secs / last.miles;
+          const best = Math.min(...paced.slice(0,-1).map(r => r.secs / r.miles));
+          if (lastPace < best) {
+            const m = Math.floor(lastPace/60), s = Math.round(lastPace%60);
+            out.push({ tag:'Best yet', tab:'logs', gold:true,
+              text:`Your last run was your <b>fastest pace</b> yet — ${m}:${String(s).padStart(2,'0')} a mile.` });
+          }
+        }
+      }
+
+      /* ── the map: what is actually overdue ── */
+      const mapS = readJSON('nv.map.v2', null);
+      if (mapS && Array.isArray(mapS.places)) {
+        const t = dayKey(new Date());
+        const over = mapS.places.filter(p => !p.done && p.when && p.when.slice(0,10) < t);
+        if (over.length) out.push({ tag:'Map', tab:'map',
+          text:`<b>${over.length} place${over.length>1?'s':''}</b> on your map ${over.length>1?'have':'has'} gone past the date.` });
+      }
+
+      /* ── subscriptions: what leaves the account every month ── */
+      const radar = readJSON('radar.v1', null);
+      if (radar && Array.isArray(radar.list) && radar.list.length) {
+        const monthly = radar.list.reduce((s, x) => {
+          const a = Number(x.amount) || 0;
+          return s + (x.period === 'yearly' ? a/12 : x.period === 'weekly' ? a*4.33 : a);
+        }, 0);
+        if (monthly > 0) out.push({ tag:'Money', tab:'subscriptions',
+          text:`<b>${(radar.currency||'$')}${Math.round(monthly)}</b> a month leaves on its own, across ${radar.list.length} subscription${radar.list.length>1?'s':''}.` });
+      }
+
+      /* ── the backlog you keep for this app ── */
+      const ideas = Store.get(KEYS.ideas, []);
+      const need = ideas.filter(i => !i.built && i.pri === 0);
+      if (need.length) out.push({ tag:'Build', tab:'home',
+        text:`<b>${need.length}</b> idea${need.length>1?'s':''} marked <i>need it</i> and still unbuilt.` });
+
+      return out;
+    }
+
+    function render() {
+      const el = $('[data-noticed]'); if (!el) return;
+      const list = findings();
+      if (!list.length) {
+        el.innerHTML = `<p class="noticed-empty">Nothing worth saying yet — log a few days and patterns start showing up here.</p>`;
+        return;
+      }
+      el.innerHTML = list.slice(0, 5).map(f => `
+        <button class="noticed ${f.gold ? 'is-gold' : ''}" data-route="${esc(f.tab)}" type="button">
+          <span class="noticed__tag">${esc(f.tag)}</span>
+          <span class="noticed__text">${f.text}</span>
+        </button>`).join('');
+      $$('.noticed', el).forEach(b => b.addEventListener('click', () => Tabs.setActive(b.dataset.route)));
+    }
+    return { render };
+  })();
+
   /* ═══════════════════  WORKOUT WIDGET (home)  ═══════════════════ */
   const Workout = (() => {
     function render() {
@@ -6711,7 +6842,7 @@
       if (REAL_PANELS.includes(name)) {
         const panel = $(`[data-tab-panel="${name}"]`);
         if (panel) panel.hidden = false;
-        if (name==='home')      { Goals.renderWidget(); Ideas.init(); DayFlow.render(); }
+        if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
         if (name==='goals')     Goals.renderAll();
         if (name==='reminders') Reminders.render();
         if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
@@ -6809,6 +6940,7 @@
     Goals.init();
     Reminders.init();
     Ideas.init();
+    Noticed.render();
     BodyWeight.init();
     ProgressLog.init();
     GymTimer.init();
