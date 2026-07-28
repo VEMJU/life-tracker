@@ -121,6 +121,20 @@ input,textarea,select{font:inherit;color:inherit}
 .place:hover .pDel{opacity:1}
 .pDel:hover{color:var(--over)}
 
+/* row actions — where this place can take you */
+.pActs{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.act{display:inline-flex;align-items:center;gap:5px;font-family:var(--serif);font-style:italic;font-size:13px;
+  color:var(--fg);border:1px solid var(--rule-strong);border-radius:999px;padding:5px 11px;
+  transition:border-color .2s var(--ease),background .2s var(--ease),transform .12s var(--spring)}
+.act:hover{border-color:var(--accent);background:rgba(255,255,255,.06)}
+.act:active{transform:scale(.95)}
+.act svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.act.ghost{color:var(--muted);border-color:var(--rule)}
+.act.ghost:hover{color:var(--fg)}
+/* a regular haunt gets a quiet marker — it is not a one-off errand */
+.pReg{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  border:1px dashed var(--rule-strong);border-radius:999px;padding:3px 7px}
+
 /* the per-route history bars — your pace, run over run */
 .rtBars{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:9px}
 .rtBars i{flex:1;min-width:2px;background:rgba(255,255,255,.22);border-radius:2px 2px 1px 1px;transition:background .2s}
@@ -252,6 +266,22 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid = p => (p||'p') + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
+/* Tabs a place can lead to. Pick one and the pin gets an "Open <tab>" button
+   that switches the app to whatever actually tracks that place — the gym pin
+   takes you to the Gym tab. Sent to the parent app by postMessage, because this
+   tab lives in an iframe and cannot change tabs on its own. */
+const TABS = ['gym','supplements','subscriptions','vitals','peak','stocks','goals','reminders',
+              'nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
+const TAB_LABEL = t => t.charAt(0).toUpperCase() + t.slice(1);
+function goToTab(tab){
+  try { parent.postMessage({ source:'nv-embed', type:'go', tab:tab }, '*'); } catch(e){}
+}
+/* Directions need no API key — Google's universal URL takes plain coordinates. */
+function directionsURL(p){
+  const dest = `${p.lat},${p.lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`;
+}
+
 /* the five kinds */
 const KINDS = {
   task:     { label:'To do',    icon:'<path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>', line:false, rate:false },
@@ -278,7 +308,7 @@ function load(){
   return normalise({ places: [], regions: [], activeRegion: null, view: null });
 }
 function normalise(o){
-  o.places  = (o.places  || []).map(p => ({ kind:'task', rating:0, done:false, ...p }));
+  o.places  = (o.places  || []).map(p => ({ kind:'task', rating:0, done:false, tab:'', regular:false, ...p }));
   o.regions = o.regions || [];
   return o;
 }
@@ -459,7 +489,9 @@ $('filters').addEventListener('click', (e) => {
 
 /* ── list ── */
 function visible(){
-  if (filter === 'all')  return S.places.filter(p => !p.done);
+  /* "All" hides finished errands but KEEPS regular haunts — the gym does not
+     disappear from your map because you went once. */
+  if (filter === 'all')  return S.places.filter(p => !p.done || p.regular);
   if (filter === 'done') return S.places.filter(p => p.done);
   return S.places.filter(p => p.kind === filter);
 }
@@ -517,8 +549,16 @@ function render(){
           ${K.rate && p.rating ? starHTML(p.rating) : ''}
           ${pace != null ? `<span class="tag pace">${p.dist} ${esc(p.unit||'mi')} · ${fmtPace(pace)}/${esc(p.unit||'mi')}</span>` : ''}
           ${pr ? `<span class="tag is-pr">★ Best yet</span>` : ''}
+          ${p.regular ? `<span class="pReg">Regular</span>` : ''}
         </div>
         ${p.kind === 'route' ? routeBars(p) : ''}
+        <div class="pActs">
+          <button class="act" data-dir="${p.id}" title="Directions in Google Maps">
+            <svg viewBox="0 0 24 24"><path d="M12 2 3 21l9-4 9 4Z"/></svg>Directions</button>
+          ${p.tab ? `<button class="act" data-tab="${esc(p.tab)}" title="Open the ${esc(TAB_LABEL(p.tab))} tab">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>${esc(TAB_LABEL(p.tab))}</button>` : ''}
+          <button class="act ghost" data-edit="${p.id}">Edit</button>
+        </div>
       </div>
       <button class="pDel" data-del="${p.id}" aria-label="Delete">×</button>
     </div>`;
@@ -576,6 +616,19 @@ function openSheet(place, lat, lng, extra){
         ${kind==='route' ? `<p class="note">Use the same name each time you run this route and it will tell you when you have beaten yourself.</p>` : ''}
       </div>` : ''}
 
+      <div class="f"><span class="fL">Leads to</span>
+        <select class="fI" id="fTab">
+          <option value="">— nothing, it is just a place —</option>
+          ${TABS.map(t => `<option value="${t}" ${p.tab===t?'selected':''}>${TAB_LABEL(t)} tab</option>`).join('')}
+        </select>
+        <p class="note">Pick the tab that tracks this place and the pin gets a button straight to it — the gym goes to Gym.</p>
+      </div>
+
+      <label class="f" style="flex-direction:row;align-items:center;gap:10px">
+        <input type="checkbox" id="fReg" ${p.regular?'checked':''} style="width:17px;height:17px;accent-color:#E8E8E8">
+        <span class="fL" style="letter-spacing:.1em">Somewhere I go regularly (keep it after it is done)</span>
+      </label>
+
       <label class="f"><span class="fL">Notes</span>
         <textarea class="fI" id="fNotes" maxlength="600" placeholder="Anything future-you will want to know…">${esc(p.notes)}</textarea></label>`;
   };
@@ -619,6 +672,8 @@ function openSheet(place, lat, lng, extra){
     p.task  = ($('fTask')  || {}).value ? $('fTask').value.trim()  : '';
     p.when  = ($('fWhen')  || {}).value || '';
     p.notes = ($('fNotes') || {}).value ? $('fNotes').value.trim() : '';
+    p.tab     = ($('fTab') || {}).value || '';
+    p.regular = !!($('fReg') && $('fReg').checked);
     if (KINDS[kind].line) {
       p.dist = parseFloat($('fDist').value) || '';
       p.unit = $('fUnit').value;
@@ -642,6 +697,21 @@ $('list').addEventListener('click', (e) => {
     if (p) { p.done = !p.done; save(); render(); if (p.done) toast('Done'); } return; }
   const del = e.target.closest('[data-del]');
   if (del) { S.places = S.places.filter(x => x.id !== del.dataset.del); save(); render(); toast('Removed'); return; }
+
+  /* open turn-by-turn directions to this place */
+  const dir = e.target.closest('[data-dir]');
+  if (dir) { e.stopPropagation();
+    const p = S.places.find(x => x.id === dir.dataset.dir); if (!p) return;
+    window.open(directionsURL(p), '_blank', 'noopener'); return; }
+
+  /* jump to the tab that actually tracks this place */
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { e.stopPropagation(); goToTab(tab.dataset.tab); return; }
+
+  const ed = e.target.closest('[data-edit]');
+  if (ed) { e.stopPropagation();
+    const p = S.places.find(x => x.id === ed.dataset.edit); if (p) openSheet(p); return; }
+
   const go = e.target.closest('[data-go]');
   if (go) {
     const p = S.places.find(x => x.id === go.dataset.go); if (!p) return;

@@ -146,6 +146,7 @@
     vitals:    {eyebrow:'Recovery · How You Slept', title:'Vitals'},
     peak:      {eyebrow:'Your Peak Today · Energy', title:'Peak'},
     map:       {eyebrow:'The Map · Where You Have To Be', title:'Map'},
+    stocks:    {eyebrow:'Holdings · Is This Still Good', title:'Stocks'},
     finance:   {eyebrow:'Capital & Acquisition', title:'Finance'},
     photos:    {eyebrow:'Visual Archive',           title:'Photos'},
     academics: {eyebrow:'College Prep · Class of 2027', title:'Academics'},
@@ -155,7 +156,7 @@
     sports:    {eyebrow:'The Arena · Iron Sharpens Iron', title:'Sports'},
     calendar:  {eyebrow:'The Chronicle · Ordered Days', title:'Calendar'},
   };
-  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','map','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
+  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','map','stocks','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {
@@ -6772,6 +6773,15 @@
             if (e.key==='Enter'||e.key===' ') { e.preventDefault(); setActive(el.dataset.route); }
           });
         }
+      });
+
+      /* Embedded tabs live in iframes and cannot switch tabs themselves, so they
+         ask the parent to do it. The Map uses this to send you from a pin
+         straight to the tab that actually tracks that place. */
+      window.addEventListener('message', (e) => {
+        const m = e.data;
+        if (!m || m.source !== 'nv-embed' || m.type !== 'go') return;
+        if (typeof m.tab === 'string' && REAL_PANELS.includes(m.tab)) setActive(m.tab);
       });
     }
 

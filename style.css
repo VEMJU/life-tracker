@@ -3591,16 +3591,16 @@ body[data-view="calendar"] .cal-drawer { display: block; }
    canvas, so any area the logger doesn't cover shows crosses, never flat black. */
 /* Every embedded full-page module takes over the whole viewport the same way.
    Add a new one? Put its view name in this list and it inherits the behaviour. */
-body[data-view="gym"] .sidebar,   body[data-view="supplements"] .sidebar,   body[data-view="subscriptions"] .sidebar,   body[data-view="vitals"] .sidebar,   body[data-view="peak"] .sidebar,   body[data-view="map"] .sidebar,
-body[data-view="gym"] .topbar,    body[data-view="supplements"] .topbar,    body[data-view="subscriptions"] .topbar,    body[data-view="vitals"] .topbar,    body[data-view="peak"] .topbar,    body[data-view="map"] .topbar,
-body[data-view="gym"] .view-head, body[data-view="supplements"] .view-head, body[data-view="subscriptions"] .view-head, body[data-view="vitals"] .view-head, body[data-view="peak"] .view-head, body[data-view="map"] .view-head,
-body[data-view="gym"] .masthead,  body[data-view="supplements"] .masthead,  body[data-view="subscriptions"] .masthead,  body[data-view="vitals"] .masthead,  body[data-view="peak"] .masthead,  body[data-view="map"] .masthead,
-body[data-view="gym"] .footer,    body[data-view="supplements"] .footer,    body[data-view="subscriptions"] .footer,    body[data-view="vitals"] .footer,    body[data-view="peak"] .footer,    body[data-view="map"] .footer { display: none !important; }
-body[data-view="gym"] .shell, body[data-view="supplements"] .shell, body[data-view="subscriptions"] .shell, body[data-view="vitals"] .shell, body[data-view="peak"] .shell, body[data-view="map"] .shell { margin: 0; padding: 0; max-width: none; }
-body[data-view="gym"] .views, body[data-view="supplements"] .views, body[data-view="subscriptions"] .views, body[data-view="vitals"] .views, body[data-view="peak"] .views, body[data-view="map"] .views { margin-top: 0; padding-top: 0; }
-body[data-view="gym"] .board, body[data-view="supplements"] .board, body[data-view="subscriptions"] .board, body[data-view="vitals"] .board, body[data-view="peak"] .board, body[data-view="map"] .board { padding: 0; gap: 0; }
-body[data-view="supplements"], body[data-view="subscriptions"], body[data-view="vitals"], body[data-view="peak"], body[data-view="map"] { overflow: hidden; }
-.board--supplements, .board--subscriptions, .board--vitals, .board--peak, .board--map { display: block !important; width: 100%; margin: 0; padding: 0; }
+body[data-view="gym"] .sidebar,   body[data-view="supplements"] .sidebar,   body[data-view="subscriptions"] .sidebar,   body[data-view="vitals"] .sidebar,   body[data-view="peak"] .sidebar,   body[data-view="map"] .sidebar,   body[data-view="stocks"] .sidebar,
+body[data-view="gym"] .topbar,    body[data-view="supplements"] .topbar,    body[data-view="subscriptions"] .topbar,    body[data-view="vitals"] .topbar,    body[data-view="peak"] .topbar,    body[data-view="map"] .topbar,    body[data-view="stocks"] .topbar,
+body[data-view="gym"] .view-head, body[data-view="supplements"] .view-head, body[data-view="subscriptions"] .view-head, body[data-view="vitals"] .view-head, body[data-view="peak"] .view-head, body[data-view="map"] .view-head, body[data-view="stocks"] .view-head,
+body[data-view="gym"] .masthead,  body[data-view="supplements"] .masthead,  body[data-view="subscriptions"] .masthead,  body[data-view="vitals"] .masthead,  body[data-view="peak"] .masthead,  body[data-view="map"] .masthead,  body[data-view="stocks"] .masthead,
+body[data-view="gym"] .footer,    body[data-view="supplements"] .footer,    body[data-view="subscriptions"] .footer,    body[data-view="vitals"] .footer,    body[data-view="peak"] .footer,    body[data-view="map"] .footer,    body[data-view="stocks"] .footer { display: none !important; }
+body[data-view="gym"] .shell, body[data-view="supplements"] .shell, body[data-view="subscriptions"] .shell, body[data-view="vitals"] .shell, body[data-view="peak"] .shell, body[data-view="map"] .shell, body[data-view="stocks"] .shell { margin: 0; padding: 0; max-width: none; }
+body[data-view="gym"] .views, body[data-view="supplements"] .views, body[data-view="subscriptions"] .views, body[data-view="vitals"] .views, body[data-view="peak"] .views, body[data-view="map"] .views, body[data-view="stocks"] .views { margin-top: 0; padding-top: 0; }
+body[data-view="gym"] .board, body[data-view="supplements"] .board, body[data-view="subscriptions"] .board, body[data-view="vitals"] .board, body[data-view="peak"] .board, body[data-view="map"] .board, body[data-view="stocks"] .board { padding: 0; gap: 0; }
+body[data-view="supplements"], body[data-view="subscriptions"], body[data-view="vitals"], body[data-view="peak"], body[data-view="map"], body[data-view="stocks"] { overflow: hidden; }
+.board--supplements, .board--subscriptions, .board--vitals, .board--peak, .board--map, .board--stocks { display: block !important; width: 100%; margin: 0; padding: 0; }
 body[data-view="gym"] { overflow: hidden; }
 .board--gym { display: block !important; width: 100%; margin: 0; padding: 0; }
 .gl-embed { width: 100%; }
