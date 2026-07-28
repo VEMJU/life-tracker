@@ -677,7 +677,7 @@ function openSheet(place, lat, lng, extra){
           : kind==='delivery' ? 'Running shoes'
           : kind==='route' ? 'River loop'
           : kind==='trip' ? 'Airport run'
-          : 'The bank, Mum\\'s, the gym…'}" value="${esc(p.name)}"></label>
+          : "The bank, Mum's, the gym…"}" value="${esc(p.name)}"></label>
 
       <label class="f"><span class="fL">${kind==='spot'?'What you got / why go back':kind==='delivery'?'Notes on the order':'What you need to do'}</span>
         <input class="fI" id="fTask" maxlength="140" value="${esc(p.task)}"></label>
