@@ -398,6 +398,9 @@ function isPR(p){
 /* ── map ── */
 const startView = S.view || { lat: 40.7128, lng: -74.0060, z: 12 };
 const map = L.map('map', { zoomControl: true }).setView([startView.lat, startView.lng], startView.z);
+/* counts tile successes/failures for the diagnostic panel below */
+const diag = { loaded: 0, errors: 0 };
+
 /* TILES. CARTO's dark tiles were the first choice but their CDN can be blocked,
    which leaves a black rectangle. OpenStreetMap's own servers are the most
    widely reachable on the internet, so they are the primary now — and the
@@ -409,15 +412,56 @@ const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let switched = false;
 osm.on('tileerror', () => {
+  diag.errors++;
   if (switched) return;
   switched = true;
   map.removeLayer(osm);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  const carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20
   }).addTo(map);
+  carto.on('tileload', () => { diag.loaded++; hideDiag(); });
+  carto.on('tileerror', () => { diag.errors++; showDiag(); });
   document.documentElement.classList.add('noInvert');   // CARTO is already dark
   toast('Switched map source');
 });
+osm.on('tileload', () => { diag.loaded++; hideDiag(); });
+
+/* ── SELF-DIAGNOSIS ──────────────────────────────────────────────────────────
+   A black map says nothing. This panel reports what is actually happening —
+   whether the container has size, whether tiles are arriving — and removes
+   itself the instant a single tile loads. If you can see it, read it to me. */
+function diagBox(){
+  let b = document.getElementById('mapDiag');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'mapDiag';
+    b.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:400;' +
+      'max-width:320px;padding:16px 18px;border-radius:14px;background:rgba(10,10,12,.94);' +
+      'border:1px solid rgba(255,255,255,.18);font-family:ui-monospace,Menlo,monospace;font-size:11px;' +
+      'line-height:1.7;color:rgba(255,255,255,.75);text-align:left;pointer-events:none';
+    document.querySelector('.mapWrap').appendChild(b);
+  }
+  return b;
+}
+function showDiag(){
+  const el = document.getElementById('map');
+  diagBox().innerHTML =
+    'MAP DIAGNOSTIC<br>' +
+    'leaflet: loaded<br>' +
+    'container: ' + el.clientWidth + ' x ' + el.clientHeight + '<br>' +
+    'tiles ok: ' + diag.loaded + '<br>' +
+    'tile errors: ' + diag.errors + '<br>' +
+    'source: ' + (switched ? 'carto' : 'osm') + '<br>' +
+    (el.clientWidth === 0 ? '&rarr; container has no size' :
+     diag.errors > 0 ? '&rarr; tiles are being blocked' :
+     '&rarr; waiting for tiles…');
+}
+function hideDiag(){
+  const b = document.getElementById('mapDiag');
+  if (b && diag.loaded > 0) b.remove();
+}
+setTimeout(() => { if (diag.loaded === 0) showDiag(); }, 2500);
+setTimeout(() => { if (diag.loaded === 0) showDiag(); }, 6000);
 
 map.on('moveend', () => {
   const c = map.getCenter();

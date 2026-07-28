@@ -100,6 +100,8 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+#crossbg{position:fixed;inset:0;z-index:0;pointer-events:none}
+main.page{position:relative;z-index:1}
 body {
   background: var(--bg);
   color: var(--fg);
@@ -1132,6 +1134,7 @@ html.posterMode{background:transparent !important}
 <script>if(!/page/.test(location.hash)&&window.self!==window.top)document.documentElement.className+=' posterMode'</script>
 </head>
 <body>
+<canvas id="crossbg"></canvas>
 
 <!-- The poster face: what the grid shows. lib/tiles/coreTiles.tsx (finance),
      art SVG verbatim; the trend glyph verbatim; index 07; label Finance. -->
@@ -1936,6 +1939,56 @@ Promise.resolve(window.Vitality.load()).then(d => {
   // Price whatever is already stored. No-op on an empty board.
   refreshQuotes()
 }).catch(() => render())
+</script>
+<script>
+/* drifting cross-sigils — the same backdrop as every other tab. Skipped in
+   poster mode, where the tile is only a small preview card. */
+(function crosses(){
+  if (document.documentElement.classList.contains('posterMode')) return;
+  var cv = document.getElementById('crossbg'); if (!cv) return;
+  var ctx = cv.getContext('2d', { alpha: true });
+  var W=0,H=0,DPR=1,items=[],raf;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function countFor(w,h){ return Math.max(18, Math.min(90, Math.round((w*h)/26000))); }
+  function seed(){
+    items=[];
+    var COUNT=countFor(W,H);
+    for (var i=0;i<COUNT;i++){
+      var depth=Math.random();
+      items.push({ x:Math.random()*W, y:Math.random()*H, size:18+depth*78,
+        rot:(Math.random()-0.5)*0.6, spin:(Math.random()-0.5)*0.0006,
+        vy:-(0.06+depth*0.22), sway:Math.random()*Math.PI*2,
+        swaySpeed:0.002+Math.random()*0.004, swayAmp:6+depth*16, baseX:0,
+        alpha:0.07+depth*0.17 });
+      items[i].baseX=items[i].x;
+    }
+  }
+  function rr(x,y,w,h,r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
+  function drawCross(c){
+    var s=c.size, bw=s*0.13, cw=s*0.46;
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle='#fff';
+    rr(-bw/2,-s/2,bw,s,bw*0.4); rr(-cw/2,-s/2+s*0.26,cw,bw,bw*0.4);
+    ctx.restore();
+  }
+  function resize(){
+    DPR=Math.min(devicePixelRatio||1,2); W=cv.clientWidth||innerWidth; H=cv.clientHeight||innerHeight;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0); seed();
+  }
+  function frame(){
+    if (document.hidden){ raf=requestAnimationFrame(frame); return; }
+    ctx.clearRect(0,0,W,H);
+    for (var i=0;i<items.length;i++){
+      var c=items[i];
+      c.y+=c.vy; c.sway+=c.swaySpeed; c.x=c.baseX+Math.sin(c.sway)*c.swayAmp; c.rot+=c.spin;
+      if (c.y+c.size<-10){ c.y=H+c.size; c.baseX=Math.random()*W; }
+      drawCross(c);
+    }
+    ctx.globalAlpha=1; raf=requestAnimationFrame(frame);
+  }
+  resize(); addEventListener('resize', resize, { passive:true });
+  if (reduce){ ctx.clearRect(0,0,W,H); items.forEach(drawCross); }
+  else raf=requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>
