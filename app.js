@@ -6781,7 +6781,20 @@
       window.addEventListener('message', (e) => {
         const m = e.data;
         if (!m || m.source !== 'nv-embed' || m.type !== 'go') return;
-        if (typeof m.tab === 'string' && REAL_PANELS.includes(m.tab)) setActive(m.tab);
+        if (typeof m.tab !== 'string' || !REAL_PANELS.includes(m.tab)) return;
+        setActive(m.tab);
+        /* An anchor names a page INSIDE that tab ("soccer", "push day"). Tabs
+           render asynchronously, so look for something matching once they have.
+           Falls back to just opening the tab when nothing matches — never a
+           dead end. */
+        const anchor = (m.anchor || '').trim().toLowerCase();
+        if (!anchor) return;
+        setTimeout(() => {
+          const panel = $(`[data-tab-panel="${m.tab}"]`); if (!panel) return;
+          const hit = $$('button, [role="tab"], .cl-chip, .chip, summary', panel)
+            .find(el => (el.textContent || '').trim().toLowerCase().includes(anchor));
+          if (hit) { hit.click(); hit.scrollIntoView({ behavior:'smooth', block:'center' }); }
+        }, 260);
       });
     }
 

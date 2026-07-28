@@ -1279,7 +1279,22 @@ window.Vitality = {
   save: d => { try{localStorage.setItem('nv.stocks.v1',JSON.stringify(d))}catch(e){} return Promise.resolve(true) },
   load: () => { try{ return Promise.resolve(JSON.parse(localStorage.getItem('nv.stocks.v1')||'null')) }catch(e){ return Promise.resolve(null) } },
   report: () => {},
-  stock: t => { var q = FEED.quotes && FEED.quotes[t]; return q != null ? Promise.resolve(q) : Promise.reject(new Error('no_key')) },
+  /* Live price, three ways, in order of preference:
+       1. the automated feed, if a routine has written one
+       2. /api/quote — our own endpoint, which holds the Finnhub key SERVER-side
+          so it is never visible in this page (exists once deployed to Vercel)
+       3. reject → the tile asks you to type the price, exactly as before
+     The key is deliberately unreachable from here. That is the whole point. */
+  stock: function (t) {
+    var q = FEED.quotes && FEED.quotes[t];
+    if (q != null) return Promise.resolve(q);
+    return fetch('/api/quote?symbol=' + encodeURIComponent(t))
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('no_key')); })
+      .then(function (d) {
+        if (!d || d.error || typeof d.price !== 'number') throw new Error((d && d.error) || 'no_key');
+        return d.price;
+      });
+  },
 }
 
 // -----------------------------------------------------------------------------

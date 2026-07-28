@@ -12,3 +12,9 @@ node_modules/
 
 # Local-only reference apps (licensed personal/educational use — never publish)
 *-exact.html
+
+# SECRETS — never commit an API key. Real keys live in .env.local (here, for
+# local dev) and in Vercel's Environment Variables (for the live site).
+.env
+.env.*
+!.env.example

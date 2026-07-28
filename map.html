@@ -273,8 +273,10 @@ const uid = p => (p||'p') + Date.now().toString(36) + Math.random().toString(36)
 const TABS = ['gym','supplements','subscriptions','vitals','peak','stocks','goals','reminders',
               'nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
 const TAB_LABEL = t => t.charAt(0).toUpperCase() + t.slice(1);
-function goToTab(tab){
-  try { parent.postMessage({ source:'nv-embed', type:'go', tab:tab }, '*'); } catch(e){}
+/* `anchor` is the free-text second half: which page/section inside that tab.
+   "Sports" + "soccer" lands you on soccer, not just the Sports tab. */
+function goToTab(tab, anchor){
+  try { parent.postMessage({ source:'nv-embed', type:'go', tab:tab, anchor:anchor||'' }, '*'); } catch(e){}
 }
 /* Directions need no API key — Google's universal URL takes plain coordinates. */
 function directionsURL(p){
@@ -308,7 +310,7 @@ function load(){
   return normalise({ places: [], regions: [], activeRegion: null, view: null });
 }
 function normalise(o){
-  o.places  = (o.places  || []).map(p => ({ kind:'task', rating:0, done:false, tab:'', regular:false, ...p }));
+  o.places  = (o.places  || []).map(p => ({ kind:'task', rating:0, done:false, tab:'', anchor:'', regular:false, ...p }));
   o.regions = o.regions || [];
   return o;
 }
@@ -555,8 +557,8 @@ function render(){
         <div class="pActs">
           <button class="act" data-dir="${p.id}" title="Directions in Google Maps">
             <svg viewBox="0 0 24 24"><path d="M12 2 3 21l9-4 9 4Z"/></svg>Directions</button>
-          ${p.tab ? `<button class="act" data-tab="${esc(p.tab)}" title="Open the ${esc(TAB_LABEL(p.tab))} tab">
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>${esc(TAB_LABEL(p.tab))}</button>` : ''}
+          ${p.tab ? `<button class="act" data-tab="${esc(p.tab)}" data-anchor="${esc(p.anchor||'')}" title="Open the ${esc(TAB_LABEL(p.tab))} tab">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>${esc(p.anchor ? TAB_LABEL(p.tab)+' · '+p.anchor : TAB_LABEL(p.tab))}</button>` : ''}
           <button class="act ghost" data-edit="${p.id}">Edit</button>
         </div>
       </div>
@@ -621,8 +623,12 @@ function openSheet(place, lat, lng, extra){
           <option value="">— nothing, it is just a place —</option>
           ${TABS.map(t => `<option value="${t}" ${p.tab===t?'selected':''}>${TAB_LABEL(t)} tab</option>`).join('')}
         </select>
-        <p class="note">Pick the tab that tracks this place and the pin gets a button straight to it — the gym goes to Gym.</p>
       </div>
+
+      <label class="f"><span class="fL">…and which part of it (optional)</span>
+        <input class="fI" id="fAnchor" maxlength="40" placeholder="soccer · push day · the loop" value="${esc(p.anchor||'')}">
+        <p class="note">Pick the tab that tracks this place, and optionally which page inside it. Soccer training at the field → <b>Sports · soccer</b>, and the pin takes you straight there.</p>
+      </label>
 
       <label class="f" style="flex-direction:row;align-items:center;gap:10px">
         <input type="checkbox" id="fReg" ${p.regular?'checked':''} style="width:17px;height:17px;accent-color:#E8E8E8">
@@ -673,6 +679,7 @@ function openSheet(place, lat, lng, extra){
     p.when  = ($('fWhen')  || {}).value || '';
     p.notes = ($('fNotes') || {}).value ? $('fNotes').value.trim() : '';
     p.tab     = ($('fTab') || {}).value || '';
+    p.anchor  = ($('fAnchor') || {}).value ? $('fAnchor').value.trim() : '';
     p.regular = !!($('fReg') && $('fReg').checked);
     if (KINDS[kind].line) {
       p.dist = parseFloat($('fDist').value) || '';
@@ -706,7 +713,7 @@ $('list').addEventListener('click', (e) => {
 
   /* jump to the tab that actually tracks this place */
   const tab = e.target.closest('[data-tab]');
-  if (tab) { e.stopPropagation(); goToTab(tab.dataset.tab); return; }
+  if (tab) { e.stopPropagation(); goToTab(tab.dataset.tab, tab.dataset.anchor); return; }
 
   const ed = e.target.closest('[data-edit]');
   if (ed) { e.stopPropagation();
