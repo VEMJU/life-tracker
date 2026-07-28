@@ -145,6 +145,7 @@
     subscriptions:{eyebrow:'The Radar · Every Dollar', title:'Subscriptions'},
     vitals:    {eyebrow:'Recovery · How You Slept', title:'Vitals'},
     peak:      {eyebrow:'Your Peak Today · Energy', title:'Peak'},
+    map:       {eyebrow:'The Map · Where You Have To Be', title:'Map'},
     finance:   {eyebrow:'Capital & Acquisition', title:'Finance'},
     photos:    {eyebrow:'Visual Archive',           title:'Photos'},
     academics: {eyebrow:'College Prep · Class of 2027', title:'Academics'},
@@ -154,7 +155,7 @@
     sports:    {eyebrow:'The Arena · Iron Sharpens Iron', title:'Sports'},
     calendar:  {eyebrow:'The Chronicle · Ordered Days', title:'Calendar'},
   };
-  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
+  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','map','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {

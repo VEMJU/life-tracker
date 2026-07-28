@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=40" />
+  <link rel="stylesheet" href="style.css?v=41" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -240,6 +240,13 @@
         </svg>
         <span class="navlink__label">Peak</span>
       </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="map">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z" stroke-linejoin="round"/>
+          <circle cx="12" cy="10" r="2.5"/>
+        </svg>
+        <span class="navlink__label">Map</span>
+      </button>
       <button class="navlink" role="tab" aria-selected="false" data-tab="finance">
         <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M3 17l5-5 4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
@@ -331,6 +338,7 @@
       <button class="topbar__link" data-tab="subscriptions">Subscriptions</button>
       <button class="topbar__link" data-tab="vitals">Vitals</button>
       <button class="topbar__link" data-tab="peak">Peak</button>
+      <button class="topbar__link" data-tab="map">Map</button>
       <button class="topbar__link" data-tab="finance">Finance</button>
       <button class="topbar__link" data-tab="photos">Photos</button>
       <button class="topbar__link" data-tab="academics">Academics</button>
@@ -1290,6 +1298,15 @@
         </div>
       </section>
 
+      <!-- ──────────────────────────────  MAP  ────────────────────────────── -->
+      <!-- The places you have to be and what you owe each one. Leaflet + CARTO
+           dark tiles: free, no API key. The one tab that needs internet. -->
+      <section class="board board--map" data-tab-panel="map" hidden>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="map.html?v=2" title="The Map" loading="lazy"></iframe>
+        </div>
+      </section>
+
       <!-- ───────────────  REUSABLE PLACEHOLDER (sealed tabs)  ─────────────── -->
       <section class="board board--placeholder" data-tab-panel="placeholder" hidden>
         <article class="card card--placeholder">
@@ -1632,11 +1649,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=4" defer></script>
-  <script src="app.js?v=23" defer></script>
+  <script src="app.js?v=24" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
-  <script src="gallery.js?v=5" defer></script>
+  <script src="gallery.js?v=6" defer></script>
   <script src="polish.js?v=3" defer></script>
 </body>
 </html>

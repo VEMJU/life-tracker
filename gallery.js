@@ -31,6 +31,7 @@
     { go:'subscriptions', n:'03b', name:'Subscriptions', sub:'The Radar', img:U('photo-1554224155-6726b3ff858f') },
     { go:'vitals',    n:'01b', name:'Vitals',    sub:'Recovery & Sleep',  img:U('photo-1544367567-0f2fcb009e0b') },
     { go:'peak',      n:'01c', name:'Peak',      sub:'Your Energy Curve', img:U('photo-1495364141860-b0d03eccd065') },
+    { go:'map',       n:'09b', name:'Map',       sub:'Where You Have To Be', img:U('photo-1524661135-423995f22d0b') },
     { go:'finance',   n:'03', name:'Finance',   sub:'The Vault',         img:U('photo-1553729459-efe14ef6055d') },
     { go:'academics', n:'04', name:'Academics', sub:'College Prep',      img:U('photo-1456513080510-7bf3a84b82f8') },
     { go:'goals',     n:'05', name:'Goals',     sub:'The Oath',          img:U('photo-1519681393784-d120267933ba') },

@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>The Map</title>
+<!--
+  THE MAP — every place you have to be, every place worth going back to, and
+  every route you have moved along.
+
+  FIVE KINDS, one model. A pin is a place; a trip and a route are two pins with
+  a line between them:
+     task      somewhere you have to go, with a deadline
+     spot      a shop / restaurant worth rating and revisiting
+     delivery  an order landing at an address, rateable when it arrives
+     trip      point A → point B (the Uber, the drive)
+     route     point A → point B under your own power, timed — pace, and
+               whether you beat your own best on that same named route
+
+  REGIONS let you keep more than one life on the map: New York, PA, Puebla.
+  Each stores its own centre + zoom, so switching is one tap.
+
+  Map imagery: Leaflet + CARTO dark tiles — free, no API key, no billing.
+  This is the ONE tab that needs internet. Everything you type is local:
+  nv.map.v2 in this browser.
+-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000; --fg:#fff;
+  --accent:#E8E8E8; --accent-br:#FFFFFF;
+  --over:#ff6b6b; --today:#f5c451; --gold:#f5c451; --pr:#f5c451;
+  --muted:rgba(255,255,255,.5); --muted-strong:rgba(255,255,255,.72);
+  --rule:rgba(255,255,255,.08); --rule-strong:rgba(255,255,255,.16);
+  --card:rgba(255,255,255,.022);
+  --serif:'Instrument Serif',Georgia,serif;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg)}
+body{font-family:var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased;overflow:hidden}
+::selection{background:rgba(232,232,232,.25)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+
+.wrap{display:flex;height:100vh;width:100%}
+#map{position:absolute;inset:0;background:#000;z-index:1}
+.mapWrap{position:relative;flex:1;min-width:0}
+.panel{width:372px;flex:none;height:100%;display:flex;flex-direction:column;
+  border-right:1px solid var(--rule);background:rgba(6,6,7,.94);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);z-index:2}
+@media(max-width:860px){
+  .wrap{flex-direction:column-reverse}
+  .panel{width:100%;height:50%;border-right:0;border-top:1px solid var(--rule)}
+  .mapWrap{height:50%}
+}
+
+.pHead{padding:18px 18px 12px;border-bottom:1px solid var(--rule)}
+.kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.h1{font-family:var(--serif);font-size:29px;line-height:1.05;margin-top:6px}
+.sub{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--muted-strong);margin-top:4px}
+
+/* regions — your several lives, one tap apart */
+.regions{display:flex;gap:6px;flex-wrap:wrap;padding:12px 18px 0}
+.rg{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:6px 12px;position:relative;
+  transition:color .2s var(--ease),background .2s var(--ease),border-color .2s var(--ease)}
+.rg:hover{color:var(--fg);border-color:var(--rule-strong)}
+.rg.on{background:var(--accent);color:#000;border-color:var(--accent)}
+.rg .x{margin-left:6px;opacity:.45}
+.rg .x:hover{opacity:1}
+.rgAdd{color:var(--muted);border-style:dashed}
+
+.filters{display:flex;gap:5px;flex-wrap:wrap;padding:12px 18px 0}
+.fBtn{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:5px 10px;
+  transition:color .2s var(--ease),background .2s var(--ease),border-color .2s var(--ease)}
+.fBtn:hover{color:var(--fg)}
+.fBtn.on{background:rgba(255,255,255,.1);color:var(--fg);border-color:var(--rule-strong)}
+
+.list{flex:1;overflow-y:auto;padding:12px 13px 20px;display:flex;flex-direction:column;gap:8px}
+.place{position:relative;display:flex;gap:10px;align-items:flex-start;padding:12px 12px 12px 15px;
+  border:1px solid var(--rule);border-radius:14px;background:var(--card);cursor:pointer;
+  transition:border-color .2s var(--ease),background .2s var(--ease),transform .12s var(--spring)}
+.place:hover{border-color:var(--rule-strong);background:rgba(255,255,255,.05)}
+.place:active{transform:scale(.99)}
+.place::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:2px;border-radius:2px;background:var(--muted)}
+.place.is-over::before{background:var(--over);box-shadow:0 0 9px var(--over)}
+.place.is-today::before{background:var(--today);box-shadow:0 0 9px var(--today)}
+.place.is-done::before{background:rgba(255,255,255,.18)}
+.place.is-pr::before{background:var(--pr);box-shadow:0 0 10px var(--pr)}
+
+.pCheck{flex:none;width:19px;height:19px;margin-top:1px;border-radius:6px;border:1px solid var(--rule-strong);
+  display:grid;place-items:center;color:#000;transition:background .2s var(--ease),border-color .2s var(--ease),transform .12s var(--spring)}
+.pCheck:active{transform:scale(.88)}
+.place.is-done .pCheck{background:var(--accent);border-color:var(--accent)}
+.pCheck svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pBody{flex:1;min-width:0}
+.pTop{display:flex;align-items:center;gap:7px}
+.pIcon{flex:none;width:15px;height:15px;color:var(--muted)}
+.pIcon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pName{font-size:14px;font-weight:600;letter-spacing:-.01em;word-break:break-word;min-width:0}
+.place.is-done .pName{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
+.pTask{font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--muted-strong);margin-top:3px;word-break:break-word}
+.pMeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:7px}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:3px 8px}
+.tag.is-over{color:var(--over);border-color:rgba(255,107,107,.4)}
+.tag.is-today{color:var(--today);border-color:rgba(245,196,81,.4)}
+.tag.is-pr{color:var(--pr);border-color:rgba(245,196,81,.5)}
+.tag.pace{color:var(--fg);border-color:var(--rule-strong)}
+.stars{display:inline-flex;gap:2px;font-size:11px;color:var(--gold);letter-spacing:.06em}
+.stars .off{color:rgba(255,255,255,.2)}
+.pDel{flex:none;color:rgba(255,255,255,.25);font-size:17px;line-height:1;padding:2px 4px;opacity:0;transition:opacity .2s,color .2s}
+.place:hover .pDel{opacity:1}
+.pDel:hover{color:var(--over)}
+
+/* the per-route history bars — your pace, run over run */
+.rtBars{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:9px}
+.rtBars i{flex:1;min-width:2px;background:rgba(255,255,255,.22);border-radius:2px 2px 1px 1px;transition:background .2s}
+.rtBars i.best{background:var(--pr);box-shadow:0 0 7px rgba(245,196,81,.5)}
+.rtBars i.now{background:var(--accent)}
+
+.empty{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--muted);text-align:center;padding:34px 16px;line-height:1.6}
+
+/* sheet */
+.scrim{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:18px;
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;animation:fade .18s var(--ease) forwards;overflow-y:auto}
+@keyframes fade{to{opacity:1}}
+.sheet{width:100%;max-width:430px;background:#0b0b0d;border:1px solid var(--rule-strong);border-radius:20px;padding:22px;margin:auto;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);opacity:0;transform:translateY(10px) scale(.99);animation:pop .38s var(--spring) forwards}
+@keyframes pop{to{opacity:1;transform:none}}
+.sTitle{font-family:var(--serif);font-size:24px;line-height:1.1}
+.sCoord{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.kinds{display:flex;gap:5px;flex-wrap:wrap;margin-top:15px}
+.kind{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:6px 11px;transition:all .2s var(--ease)}
+.kind:hover{color:var(--fg)}
+.kind.on{background:var(--accent);color:#000;border-color:var(--accent)}
+.f{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.fRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fL{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.fI{background:rgba(255,255,255,.03);border:1px solid var(--rule-strong);border-radius:11px;padding:11px 13px;
+  color:var(--fg);outline:none;width:100%;font-size:14px;transition:border-color .2s var(--ease)}
+.fI:focus{border-color:var(--accent)}
+textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
+.rate{display:flex;gap:5px;margin-top:2px}
+.rate button{font-size:22px;color:rgba(255,255,255,.2);transition:color .15s var(--ease),transform .15s var(--spring);line-height:1}
+.rate button:hover{transform:scale(1.15)}
+.rate button.on{color:var(--gold)}
+.sBtns{display:flex;gap:9px;margin-top:20px}
+.bt{flex:1;border-radius:12px;padding:12px;font-size:13.5px;font-weight:600;transition:transform .15s var(--spring),background .2s,border-color .2s}
+.bt:active{transform:scale(.97)}
+.bt.save{background:var(--accent);color:#000}
+.bt.ghost{border:1px solid var(--rule-strong);color:var(--muted-strong)}
+.bt.ghost:hover{color:var(--fg);border-color:var(--muted)}
+.note{font-family:var(--serif);font-style:italic;font-size:13px;color:var(--muted);margin-top:12px;line-height:1.5}
+
+/* leaflet reskin */
+.leaflet-container{background:#000;font-family:var(--sans)}
+.leaflet-control-zoom a{background:rgba(10,10,12,.9)!important;color:#fff!important;border-color:var(--rule)!important}
+.leaflet-control-zoom a:hover{background:rgba(30,30,34,.95)!important}
+.leaflet-control-attribution{background:rgba(0,0,0,.6)!important;color:rgba(255,255,255,.35)!important;font-size:9px!important}
+.leaflet-control-attribution a{color:rgba(255,255,255,.55)!important}
+.leaflet-popup-content-wrapper{background:#0b0b0d;color:#fff;border:1px solid var(--rule-strong);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.7)}
+.leaflet-popup-tip{background:#0b0b0d;border:1px solid var(--rule-strong)}
+.leaflet-popup-content{margin:12px 14px;font-size:13px}
+.popName{font-family:var(--serif);font-size:18px;line-height:1.15}
+.popTask{font-family:var(--serif);font-style:italic;color:var(--muted-strong);margin-top:4px}
+.popWhen{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+
+.pin{width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid #000;
+  box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 12px rgba(232,232,232,.5)}
+.pin.is-over{background:var(--over);box-shadow:0 0 0 1px rgba(255,107,107,.5),0 0 16px rgba(255,107,107,.75);animation:pulse 2s var(--ease) infinite}
+.pin.is-today{background:var(--today);box-shadow:0 0 0 1px rgba(245,196,81,.5),0 0 16px rgba(245,196,81,.7)}
+.pin.is-done{background:rgba(255,255,255,.28);box-shadow:none;animation:none}
+.pin.sm{width:11px;height:11px}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.22);opacity:.75}}
+
+.fabs{position:absolute;right:14px;bottom:22px;z-index:500;display:flex;flex-direction:column;gap:9px}
+.fab{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(10,10,12,.92);border:1px solid var(--rule-strong);color:var(--fg);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:0 10px 30px rgba(0,0,0,.55);transition:transform .15s var(--spring),border-color .2s,background .2s}
+.fab:hover{border-color:var(--accent)} .fab:active{transform:scale(.92)}
+.fab.on{background:var(--accent);color:#000;border-color:var(--accent)}
+.fab svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+.banner{position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:600;
+  background:rgba(10,10,12,.94);border:1px solid var(--accent);border-radius:999px;padding:10px 18px;
+  font-family:var(--serif);font-style:italic;font-size:14.5px;white-space:nowrap;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(0,0,0,.6)}
+.banner b{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-right:9px}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(14px);z-index:950;
+  background:rgba(18,18,20,.95);border:1px solid var(--rule-strong);border-radius:999px;padding:11px 20px;
+  font-family:var(--serif);font-style:italic;font-size:15px;opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease),transform .3s var(--ease)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.pr{border-color:var(--pr);box-shadow:0 0 30px -8px rgba(245,196,81,.6)}
+
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <aside class="panel">
+    <div class="pHead">
+      <p class="kick">The Map</p>
+      <h1 class="h1">Where you have to be</h1>
+      <p class="sub" id="sub">Tap the map to drop a place.</p>
+    </div>
+    <div class="regions" id="regions"></div>
+    <div class="filters" id="filters"></div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <div class="mapWrap">
+    <div id="map"></div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="fabs">
+      <button class="fab" id="locate" title="Find me">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <button class="fab" id="lineMode" title="Draw a trip or route (click start, then end)">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M7.7 16.3 16.3 7.7"/></svg>
+      </button>
+      <button class="fab" id="fit" title="Show everything here">
+        <svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="sheetRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+
+const KEY = 'nv.map.v2', OLD = 'nv.map.v1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = p => (p||'p') + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+/* the five kinds */
+const KINDS = {
+  task:     { label:'To do',    icon:'<path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>', line:false, rate:false },
+  spot:     { label:'Spot',     icon:'<path d="m12 3 2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.4l6.1-.8Z"/>',              line:false, rate:true  },
+  delivery: { label:'Delivery', icon:'<path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5Z"/><path d="M3 8.5 12 13l9-4.5M12 13v7"/>',           line:false, rate:true  },
+  trip:     { label:'Trip',     icon:'<path d="M5 17h14M6 17V9l2-4h8l2 4v8"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>', line:true, rate:false },
+  route:    { label:'Route',    icon:'<path d="M13 4.5a1.6 1.6 0 1 0 0-.1M8 21l2.5-6 3 2 1-4"/><path d="M6 11.5 9 9l3.5 2"/>',         line:true,  rate:false },
+};
+
+let S = load();
+let filter = 'all';
+let markers = new Map(), lines = new Map();
+let lineDraft = null;              // { from:{lat,lng} } while drawing a trip/route
+
+function load(){
+  try { const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (o && Array.isArray(o.places)) return normalise(o); } catch(e){}
+  /* carry over anything from the first version of this tab */
+  try { const old = JSON.parse(localStorage.getItem(OLD) || 'null');
+    if (old && Array.isArray(old.places)) {
+      return normalise({ places: old.places.map(p => ({...p, kind:'task'})), regions: [], activeRegion:null, view: old.view });
+    }
+  } catch(e){}
+  return normalise({ places: [], regions: [], activeRegion: null, view: null });
+}
+function normalise(o){
+  o.places  = (o.places  || []).map(p => ({ kind:'task', rating:0, done:false, ...p }));
+  o.regions = o.regions || [];
+  return o;
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+
+let toastT;
+function toast(msg, pr){
+  const t = $('toast'); t.textContent = msg; t.classList.toggle('pr', !!pr); t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), pr ? 3600 : 2400);
+}
+
+/* ── dates ── */
+const todayKey = () => { const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function stateOf(p){
+  if (p.done) return 'done';
+  if (!p.when) return 'none';
+  const day = p.when.slice(0,10), t = todayKey();
+  return day < t ? 'over' : day === t ? 'today' : 'none';
+}
+function whenLabel(p){
+  if (!p.when) return '';
+  const [y,m,d] = p.when.slice(0,10).split('-').map(Number);
+  const time = p.when.length > 10 ? p.when.slice(11,16) : '';
+  const s = new Date(y, m-1, d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const st = stateOf(p);
+  return (st === 'over' ? 'Overdue · ' : st === 'today' ? 'Today · ' : '') + s + (time ? ' ' + time : '');
+}
+
+/* ── pace maths: the part that makes routes worth logging ── */
+function paceOf(p){
+  if (!p.dist || !p.secs) return null;
+  return p.secs / p.dist;                       // seconds per unit
+}
+function fmtPace(sec){
+  if (sec == null) return '—';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return m + ':' + String(s).padStart(2,'0');
+}
+function fmtDur(secs){
+  if (!secs) return '—';
+  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+  return (h ? h+':'+String(m).padStart(2,'0') : String(m)) + ':' + String(s).padStart(2,'0');
+}
+/* every previous run of the same named route, oldest first */
+function routeHistory(p){
+  const name = (p.name || '').trim().toLowerCase();
+  if (!name) return [];
+  return S.places
+    .filter(x => x.kind === 'route' && (x.name||'').trim().toLowerCase() === name && paceOf(x) != null)
+    .sort((a,b) => (a.when||'').localeCompare(b.when||''));
+}
+/* did this beat every earlier attempt? (lower pace = faster) */
+function isPR(p){
+  const pace = paceOf(p); if (pace == null) return false;
+  const hist = routeHistory(p).filter(x => x.id !== p.id);
+  if (!hist.length) return false;
+  return pace < Math.min(...hist.map(paceOf));
+}
+
+/* ── map ── */
+const startView = S.view || { lat: 40.7128, lng: -74.0060, z: 12 };
+const map = L.map('map', { zoomControl: true }).setView([startView.lat, startView.lng], startView.z);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20
+}).addTo(map);
+
+map.on('moveend', () => {
+  const c = map.getCenter();
+  S.view = { lat: c.lat, lng: c.lng, z: map.getZoom() };
+  save();
+});
+
+map.on('click', (e) => {
+  if (lineDraft) {                       // second click closes a trip / route
+    const from = lineDraft.from;
+    lineDraft = null; setLineMode(false);
+    openSheet(null, from.lat, from.lng, { toLat: e.latlng.lat, toLng: e.latlng.lng, kind: 'route' });
+    return;
+  }
+  openSheet(null, e.latlng.lat, e.latlng.lng);
+});
+
+function setLineMode(on){
+  $('lineMode').classList.toggle('on', on);
+  const b = $('banner');
+  if (on) { b.hidden = false; b.innerHTML = '<b>Step 1</b> Click where it starts'; }
+  else if (!lineDraft) b.hidden = true;
+}
+$('lineMode').addEventListener('click', () => {
+  if (lineDraft) { lineDraft = null; setLineMode(false); toast('Cancelled'); return; }
+  const on = !$('lineMode').classList.contains('on');
+  setLineMode(on);
+  if (on) {
+    const once = (e) => {
+      lineDraft = { from: { lat: e.latlng.lat, lng: e.latlng.lng } };
+      $('banner').innerHTML = '<b>Step 2</b> Click where it ends';
+      map.off('click', once);
+    };
+    map.once('click', once);
+  }
+});
+
+function pinIcon(p, small){
+  const st = stateOf(p);
+  return L.divIcon({ className:'', iconSize: small ? [11,11] : [16,16], iconAnchor: small ? [5.5,5.5] : [8,8],
+    html: `<div class="pin ${small ? 'sm' : ''} ${st==='over'?'is-over':st==='today'?'is-today':''} ${p.done?'is-done':''}"></div>` });
+}
+
+function draw(){
+  markers.forEach(m => map.removeLayer(m)); markers.clear();
+  lines.forEach(l => map.removeLayer(l));   lines.clear();
+
+  S.places.forEach(p => {
+    const m = L.marker([p.lat, p.lng], { icon: pinIcon(p) }).addTo(map);
+    const pace = paceOf(p);
+    m.bindPopup(`<div class="popName">${esc(p.name || KINDS[p.kind].label)}</div>
+      ${p.task ? `<div class="popTask">${esc(p.task)}</div>` : ''}
+      ${p.rating ? `<div class="popWhen">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</div>` : ''}
+      ${pace != null ? `<div class="popWhen">${p.dist} ${esc(p.unit||'mi')} · ${fmtDur(p.secs)} · ${fmtPace(pace)}/${esc(p.unit||'mi')}${isPR(p)?' · ★ PR':''}</div>` : ''}
+      ${p.when ? `<div class="popWhen">${esc(whenLabel(p))}</div>` : ''}`);
+    m.on('dblclick', () => openSheet(p));
+    markers.set(p.id, m);
+
+    if (KINDS[p.kind].line && p.toLat != null) {
+      const end = L.marker([p.toLat, p.toLng], { icon: pinIcon(p, true) }).addTo(map);
+      markers.set(p.id + '_to', end);
+      const poly = L.polyline([[p.lat,p.lng],[p.toLat,p.toLng]], {
+        color: isPR(p) ? '#f5c451' : '#E8E8E8', weight: 2.5, opacity: p.done ? .3 : .85,
+        dashArray: p.kind === 'trip' ? '5 6' : null
+      }).addTo(map);
+      lines.set(p.id, poly);
+    }
+  });
+}
+
+/* ── regions ── */
+function renderRegions(){
+  const el = $('regions');
+  el.innerHTML = S.regions.map(r =>
+    `<button class="rg ${S.activeRegion===r.id?'on':''}" data-rg="${r.id}">${esc(r.name)}<span class="x" data-rgdel="${r.id}">×</span></button>`
+  ).join('') + `<button class="rg rgAdd" id="rgAdd">+ Save this view</button>`;
+}
+$('regions').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-rgdel]');
+  if (del) { e.stopPropagation(); S.regions = S.regions.filter(r => r.id !== del.dataset.rgdel);
+    if (S.activeRegion === del.dataset.rgdel) S.activeRegion = null; save(); renderRegions(); return; }
+  if (e.target.closest('#rgAdd')) {
+    const name = window.prompt('Name this place — "New York", "Puebla", "PA"…');
+    if (!name || !name.trim()) return;
+    const c = map.getCenter();
+    S.regions.push({ id: uid('r'), name: name.trim(), lat: c.lat, lng: c.lng, z: map.getZoom() });
+    S.activeRegion = S.regions[S.regions.length-1].id;
+    save(); renderRegions(); toast('Region saved'); return;
+  }
+  const b = e.target.closest('[data-rg]');
+  if (b) {
+    const r = S.regions.find(x => x.id === b.dataset.rg); if (!r) return;
+    S.activeRegion = r.id; save(); renderRegions();
+    map.flyTo([r.lat, r.lng], r.z, { duration: .8 });
+  }
+});
+
+/* ── filters ── */
+function renderFilters(){
+  const counts = { all: S.places.length };
+  Object.keys(KINDS).forEach(k => counts[k] = S.places.filter(p => p.kind === k).length);
+  $('filters').innerHTML =
+    `<button class="fBtn ${filter==='all'?'on':''}" data-f="all">All ${counts.all||''}</button>` +
+    Object.entries(KINDS).map(([k,v]) =>
+      `<button class="fBtn ${filter===k?'on':''}" data-f="${k}">${v.label}${counts[k]?' '+counts[k]:''}</button>`).join('') +
+    `<button class="fBtn ${filter==='done'?'on':''}" data-f="done">Done</button>`;
+}
+$('filters').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  filter = b.dataset.f; render();
+});
+
+/* ── list ── */
+function visible(){
+  if (filter === 'all')  return S.places.filter(p => !p.done);
+  if (filter === 'done') return S.places.filter(p => p.done);
+  return S.places.filter(p => p.kind === filter);
+}
+function sortPlaces(list){
+  const rank = p => p.done ? 3 : stateOf(p)==='over' ? 0 : stateOf(p)==='today' ? 1 : 2;
+  return [...list].sort((a,b) => rank(a)-rank(b) || (a.when||'9999').localeCompare(b.when||'9999'));
+}
+function starHTML(n){
+  return `<span class="stars">${[1,2,3,4,5].map(i => `<span class="${i<=n?'':'off'}">★</span>`).join('')}</span>`;
+}
+function routeBars(p){
+  const hist = routeHistory(p); if (hist.length < 2) return '';
+  const paces = hist.map(paceOf);
+  const best = Math.min(...paces), worst = Math.max(...paces);
+  const span = (worst - best) || 1;
+  return `<div class="rtBars">${hist.map(x => {
+    const pc = paceOf(x);
+    /* faster = taller, so the bars read as "better is bigger" */
+    const h = 22 - ((pc - best) / span) * 17;
+    const cls = pc === best ? 'best' : x.id === p.id ? 'now' : '';
+    return `<i class="${cls}" style="height:${h.toFixed(0)}px" title="${fmtPace(pc)}"></i>`;
+  }).join('')}</div>`;
+}
+
+function render(){
+  const open = S.places.filter(p => !p.done).length;
+  const over = S.places.filter(p => stateOf(p) === 'over').length;
+  $('sub').textContent = !S.places.length ? 'Tap the map to drop a place.'
+    : over ? `${over} overdue · ${open} still to do`
+    : open ? `${open} still to do` : 'All clear.';
+
+  renderRegions(); renderFilters();
+
+  const list = sortPlaces(visible());
+  const el = $('list');
+  if (!list.length) {
+    el.innerHTML = `<p class="empty">${
+      filter === 'done' ? 'Nothing finished yet.'
+      : filter === 'all' ? 'No places yet.<br>Tap anywhere on the map to mark somewhere you need to be.'
+      : `No ${KINDS[filter] ? KINDS[filter].label.toLowerCase() : ''} entries yet.`}</p>`;
+    draw(); return;
+  }
+  el.innerHTML = list.map(p => {
+    const st = stateOf(p), K = KINDS[p.kind] || KINDS.task, pace = paceOf(p), pr = isPR(p);
+    return `<div class="place ${p.done?'is-done':''} ${pr?'is-pr':st==='over'?'is-over':st==='today'?'is-today':''}" data-go="${p.id}">
+      <button class="pCheck" data-tog="${p.id}" aria-label="Mark done">${p.done?'<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg>':''}</button>
+      <div class="pBody">
+        <div class="pTop">
+          <span class="pIcon"><svg viewBox="0 0 24 24">${K.icon}</svg></span>
+          <p class="pName">${esc(p.name || K.label)}</p>
+        </div>
+        ${p.task ? `<p class="pTask">${esc(p.task)}</p>` : ''}
+        <div class="pMeta">
+          ${p.when ? `<span class="tag ${st==='over'?'is-over':st==='today'?'is-today':''}">${esc(whenLabel(p))}</span>` : ''}
+          ${K.rate && p.rating ? starHTML(p.rating) : ''}
+          ${pace != null ? `<span class="tag pace">${p.dist} ${esc(p.unit||'mi')} · ${fmtPace(pace)}/${esc(p.unit||'mi')}</span>` : ''}
+          ${pr ? `<span class="tag is-pr">★ Best yet</span>` : ''}
+        </div>
+        ${p.kind === 'route' ? routeBars(p) : ''}
+      </div>
+      <button class="pDel" data-del="${p.id}" aria-label="Delete">×</button>
+    </div>`;
+  }).join('');
+  draw();
+}
+
+/* ── the sheet ── */
+function openSheet(place, lat, lng, extra){
+  const isNew = !place;
+  const p = place || Object.assign(
+    { id: uid(), kind:'task', name:'', task:'', when:'', notes:'', rating:0,
+      dist:'', secs:0, unit:'mi', lat, lng, toLat:null, toLng:null, done:false }, extra || {});
+  let kind = p.kind;
+  let rating = p.rating || 0;
+
+  const mins = p.secs ? Math.floor(p.secs/60) : '';
+  const secsR = p.secs ? p.secs%60 : '';
+
+  const body = () => {
+    const K = KINDS[kind];
+    return `
+      <div class="kinds">${Object.entries(KINDS).map(([k,v]) =>
+        `<button class="kind ${k===kind?'on':''}" data-k="${k}" ${(!K.line && v.line && p.toLat==null && !isNew)?'':''}>${v.label}</button>`).join('')}</div>
+
+      <label class="f"><span class="fL">${kind==='delivery'?'What is coming':kind==='route'||kind==='trip'?'Name this route':'Place'}</span>
+        <input class="fI" id="fName" maxlength="70" placeholder="${
+          kind==='spot' ? 'The coffee place on 5th'
+          : kind==='delivery' ? 'Running shoes'
+          : kind==='route' ? 'River loop'
+          : kind==='trip' ? 'Airport run'
+          : 'The bank, Mum\\'s, the gym…'}" value="${esc(p.name)}"></label>
+
+      <label class="f"><span class="fL">${kind==='spot'?'What you got / why go back':kind==='delivery'?'Notes on the order':'What you need to do'}</span>
+        <input class="fI" id="fTask" maxlength="140" value="${esc(p.task)}"></label>
+
+      <label class="f"><span class="fL">When</span>
+        <input class="fI" id="fWhen" type="datetime-local" value="${esc(p.when)}"></label>
+
+      ${K.rate ? `<div class="f"><span class="fL">Rating</span>
+        <div class="rate" id="rate">${[1,2,3,4,5].map(i=>`<button data-r="${i}" class="${i<=rating?'on':''}">★</button>`).join('')}</div></div>` : ''}
+
+      ${K.line ? `<div class="f"><span class="fL">Distance &amp; time</span>
+        <div class="fRow">
+          <input class="fI" id="fDist" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Distance" value="${esc(p.dist)}">
+          <select class="fI" id="fUnit">
+            <option value="mi" ${p.unit==='mi'?'selected':''}>miles</option>
+            <option value="km" ${p.unit==='km'?'selected':''}>km</option>
+          </select>
+        </div>
+        <div class="fRow" style="margin-top:8px">
+          <input class="fI" id="fMin" type="number" min="0" inputmode="numeric" placeholder="Minutes" value="${mins}">
+          <input class="fI" id="fSec" type="number" min="0" max="59" inputmode="numeric" placeholder="Seconds" value="${secsR}">
+        </div>
+        ${kind==='route' ? `<p class="note">Use the same name each time you run this route and it will tell you when you have beaten yourself.</p>` : ''}
+      </div>` : ''}
+
+      <label class="f"><span class="fL">Notes</span>
+        <textarea class="fI" id="fNotes" maxlength="600" placeholder="Anything future-you will want to know…">${esc(p.notes)}</textarea></label>`;
+  };
+
+  const paint = () => {
+    $('sheetBody').innerHTML = body();
+    $('sheetBody').querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => {
+      kind = b.dataset.k; paint();
+    }));
+    const r = $('rate');
+    if (r) r.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-r]'); if (!b) return;
+      rating = (rating === +b.dataset.r) ? 0 : +b.dataset.r; paint();
+    });
+  };
+
+  $('sheetRoot').innerHTML = `
+    <div class="scrim" id="scrim">
+      <div class="sheet" role="dialog" aria-modal="true">
+        <p class="sTitle">${isNew ? 'Mark this place' : 'Edit'}</p>
+        <p class="sCoord">${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)}${p.toLat!=null?` → ${Number(p.toLat).toFixed(4)}, ${Number(p.toLng).toFixed(4)}`:''}</p>
+        <div id="sheetBody"></div>
+        <div class="sBtns">
+          <button class="bt ghost" id="cancel">Cancel</button>
+          <button class="bt save" id="saveBtn">${isNew ? 'Save it' : 'Save'}</button>
+        </div>
+      </div>
+    </div>`;
+  paint();
+
+  const close = () => { $('sheetRoot').innerHTML = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  $('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') close(); });
+  $('cancel').addEventListener('click', close);
+  setTimeout(() => $('fName') && $('fName').focus(), 60);
+
+  $('saveBtn').addEventListener('click', () => {
+    p.kind = kind; p.rating = rating;
+    p.name  = ($('fName')  || {}).value ? $('fName').value.trim()  : '';
+    p.task  = ($('fTask')  || {}).value ? $('fTask').value.trim()  : '';
+    p.when  = ($('fWhen')  || {}).value || '';
+    p.notes = ($('fNotes') || {}).value ? $('fNotes').value.trim() : '';
+    if (KINDS[kind].line) {
+      p.dist = parseFloat($('fDist').value) || '';
+      p.unit = $('fUnit').value;
+      p.secs = (parseInt($('fMin').value,10) || 0) * 60 + (parseInt($('fSec').value,10) || 0);
+    }
+    if (!p.name && !p.task) { toast('Give it a name or a task'); return; }
+    if (isNew) S.places.push(p);
+    save();
+    const pr = p.kind === 'route' && isPR(p);
+    render(); close();
+    if (pr) toast('★ Best yet on ' + (p.name || 'this route'), true);
+    else toast(isNew ? 'Saved to the map' : 'Saved');
+    if (isNew) map.panTo([p.lat, p.lng]);
+  });
+}
+
+/* ── list wiring ── */
+$('list').addEventListener('click', (e) => {
+  const tog = e.target.closest('[data-tog]');
+  if (tog) { const p = S.places.find(x => x.id === tog.dataset.tog);
+    if (p) { p.done = !p.done; save(); render(); if (p.done) toast('Done'); } return; }
+  const del = e.target.closest('[data-del]');
+  if (del) { S.places = S.places.filter(x => x.id !== del.dataset.del); save(); render(); toast('Removed'); return; }
+  const go = e.target.closest('[data-go]');
+  if (go) {
+    const p = S.places.find(x => x.id === go.dataset.go); if (!p) return;
+    if (p.toLat != null) map.flyToBounds(L.latLngBounds([[p.lat,p.lng],[p.toLat,p.toLng]]), { padding:[60,60], duration:.7 });
+    else map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 15), { duration:.7 });
+    const m = markers.get(p.id); if (m) setTimeout(() => m.openPopup(), 720);
+  }
+});
+
+$('locate').addEventListener('click', () => {
+  if (!navigator.geolocation) { toast('Location not available'); return; }
+  toast('Finding you…');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      map.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration:.8 });
+      L.circleMarker([pos.coords.latitude, pos.coords.longitude],
+        { radius:7, color:'#E8E8E8', fillColor:'#E8E8E8', fillOpacity:.9, weight:2 })
+        .addTo(map).bindPopup('<div class="popName">You are here</div>');
+    },
+    () => toast('Could not get your location — check the browser prompt')
+  );
+});
+$('fit').addEventListener('click', () => {
+  if (!S.places.length) { toast('Nothing on the map yet'); return; }
+  const pts = [];
+  S.places.forEach(p => { pts.push([p.lat,p.lng]); if (p.toLat != null) pts.push([p.toLat,p.toLng]); });
+  map.fitBounds(L.latLngBounds(pts), { padding:[55,55], maxZoom:16 });
+});
+
+/* on first open, offer to start where you actually are */
+if (!S.places.length && !S.regions.length && !S.view && navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    pos => map.setView([pos.coords.latitude, pos.coords.longitude], 13),
+    () => {}
+  );
+}
+
+render();
+setTimeout(() => map.invalidateSize(), 300);
+window.addEventListener('resize', () => map.invalidateSize());
+})();
+</script>
+</body>
+</html>
