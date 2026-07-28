@@ -59,6 +59,7 @@
     electrolyte: 'nv.electrolyte',
     finance:     'nv.finance',
     workout:     (d) => `nv.workout.${d}`,
+    ideas:       'nv.app.ideas',
   };
 
   const Store = {
@@ -138,18 +139,22 @@
     gym:       {eyebrow:'Temple of the Body', title:'Gym'},
     goals:     {eyebrow:'Ambition',           title:'Goals'},
     reminders: {eyebrow:'Cadence',            title:'Reminders'},
-    skincare:  {eyebrow:'Module',title:'Skincare', desc:'Active ingredient rotation and routine adherence. Module reserved.'},
+    skincare:  {eyebrow:'The Ritual',title:'Skincare', desc:'Actives, rotation, and whether you actually did it. Not built yet — the slot is yours.'},
     nutrition: {eyebrow:'Fuel & Form', title:'Nutrition'},
+    supplements:{eyebrow:'The Stack · Every Pill', title:'Supplements'},
+    subscriptions:{eyebrow:'The Radar · Every Dollar', title:'Subscriptions'},
+    vitals:    {eyebrow:'Recovery · How You Slept', title:'Vitals'},
+    peak:      {eyebrow:'Your Peak Today · Energy', title:'Peak'},
     finance:   {eyebrow:'Capital & Acquisition', title:'Finance'},
     photos:    {eyebrow:'Visual Archive',           title:'Photos'},
     academics: {eyebrow:'College Prep · Class of 2027', title:'Academics'},
-    vision:    {eyebrow:'Module',title:'Vision',   desc:'North-star outcomes and dated milestones. Module reserved.'},
+    vision:    {eyebrow:'The North Star',title:'Vision', desc:'The outcomes worth dating, and the milestones between here and them.'},
     logs:      {eyebrow:'Daily Vitals · The Ledger', title:'Logs'},
     clothes:   {eyebrow:'The Wardrobe · Fits & Freight', title:'Clothes & Accessories'},
     sports:    {eyebrow:'The Arena · Iron Sharpens Iron', title:'Sports'},
     calendar:  {eyebrow:'The Chronicle · Ordered Days', title:'Calendar'},
   };
-  const REAL_PANELS = ['home','gym','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
+  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {
@@ -863,6 +868,115 @@
       render();
     }
 
+    return { init, render };
+  })();
+
+  /* ═══════════════════  APP IDEAS (home)  ═══════════════════
+     The backlog for this app itself. Every idea carries WHAT you want, WHICH
+     tab it belongs to (including "a brand-new tab"), what KIND of change it is
+     and how badly you want it. Sorted by need first, then newest — so the top
+     of the list is always the next thing worth building.                      */
+  const Ideas = (() => {
+    const KIND = { feature:'New feature', upgrade:'Upgrade', design:'Design', fix:'Fix', tab:'New tab' };
+    const PRI  = { 0:'Need it', 1:'Want it', 2:'Someday' };
+    let filter = 'all';
+
+    const load  = () => Store.get(KEYS.ideas, []);
+    const save  = (list) => Store.set(KEYS.ideas, list);
+
+    function visible(list) {
+      if (filter === 'open')  return list.filter(i => !i.built);
+      if (filter === 'built') return list.filter(i => i.built);
+      return list;
+    }
+    /* need-it first, then unbuilt before built, then newest */
+    function sorted(list) {
+      return [...list].sort((a, b) =>
+        (a.built?1:0) - (b.built?1:0) ||
+        (a.pri ?? 1) - (b.pri ?? 1) ||
+        (b.at ?? 0) - (a.at ?? 0));
+    }
+
+    function render() {
+      const wrap = $('[data-idea-list]'); if (!wrap) return;
+      const all  = load();
+      const list = sorted(visible(all));
+      const openCount = all.filter(i => !i.built).length;
+
+      const count = $('[data-ideas-count]');
+      if (count) count.textContent = openCount;
+
+      $$('[data-idea-filter]').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.ideaFilter === filter));
+
+      if (!list.length) {
+        wrap.innerHTML = `<p class="idea-empty">${
+          filter === 'built' ? 'Nothing shipped yet — check one off and it lands here.'
+                             : 'No ideas yet. The next upgrade starts as a line above.'}</p>`;
+        return;
+      }
+
+      wrap.innerHTML = list.map(i => `
+        <div class="idea ${i.built ? 'is-built' : ''} pri-${i.pri ?? 1}" data-idea="${i.id}">
+          <button class="idea__check" data-idea-toggle="${i.id}"
+                  aria-label="${i.built ? 'Mark as not built' : 'Mark as built'}" type="button">
+            ${i.built ? `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+          </button>
+          <div class="idea__body">
+            <p class="idea__text">${esc(i.text)}</p>
+            <div class="idea__meta">
+              ${i.target ? `<span class="idea__tag ${i.target === 'NEW TAB' ? 'is-new' : ''}">${esc(i.target)}</span>` : ''}
+              <span class="idea__kind">${esc(KIND[i.kind] || i.kind || 'Idea')}</span>
+              <span class="idea__pri">${esc(PRI[i.pri ?? 1])}</span>
+            </div>
+          </div>
+          <button class="idea__del" data-idea-del="${i.id}" aria-label="Delete idea" type="button">×</button>
+        </div>`).join('');
+    }
+
+    function add(text, target, kind, pri) {
+      const list = load();
+      list.push({ id: uid(), text, target, kind, pri: Number(pri), built: false, at: Date.now() });
+      save(list); render();
+      toast('Idea saved');
+    }
+
+    function init() {
+      const form = $('[data-idea-form]');
+      if (form && !form.dataset.wired) {
+        form.dataset.wired = '1';
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const t = $('[data-idea-text]');
+          const text = (t.value || '').trim(); if (!text) return;
+          add(text, $('[data-idea-target]').value, $('[data-idea-kind]').value, $('[data-idea-pri]').value);
+          t.value = ''; t.focus();
+        });
+      }
+      const filters = $('[data-idea-filters]');
+      if (filters && !filters.dataset.wired) {
+        filters.dataset.wired = '1';
+        filters.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-idea-filter]'); if (!b) return;
+          filter = b.dataset.ideaFilter; render();
+        });
+      }
+      const list = $('[data-idea-list]');
+      if (list && !list.dataset.wired) {
+        list.dataset.wired = '1';
+        list.addEventListener('click', (e) => {
+          const tog = e.target.closest('[data-idea-toggle]');
+          if (tog) {
+            const arr = load(); const it = arr.find(x => x.id === tog.dataset.ideaToggle);
+            if (it) { it.built = !it.built; save(arr); render(); if (it.built) toast('Shipped'); }
+            return;
+          }
+          const del = e.target.closest('[data-idea-del]');
+          if (del) { save(load().filter(x => x.id !== del.dataset.ideaDel)); render(); }
+        });
+      }
+      render();
+    }
     return { init, render };
   })();
 
@@ -2485,7 +2599,9 @@
       const Y = (v) => maxY===minY ? h/2 : (h-pad) - ((v-minY)/spanY)*ih;
       const pts = series.map(p=>[X(p.ts), Y(num(p.balance))]);
       if (series.length===1) pts.unshift([pad, pts[0][1]]);
-      const line = pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+      /* same smoothing as the Peak curve, so the money trend reads like every
+         other tracker in the app instead of a jagged zig-zag */
+      const line = smoothPath(pts);
       const area = `${line} L${pts[pts.length-1][0].toFixed(1)} ${(h-pad).toFixed(1)} L${pts[0][0].toFixed(1)} ${(h-pad).toFixed(1)} Z`;
       const lastPt = pts[pts.length-1];
       let provLine = null, provEndX = null, provEndY = null;
@@ -4486,6 +4602,7 @@
           </div>
           <div class="sleep-bars">${bars}</div>
         </div>
+        ${all.length>=2 ? `<div class="sleep-curve">${svgLine(all.slice(-30).map(e=>e.hours), 320, 88)}</div>` : ''}
         <div class="sat-stats sleep-stats">
           <div class="sat-stat"><span class="sat-stat__v">${avg||'—'}h</span><span class="sat-stat__k">7-Day Avg</span></div>
           <div class="sat-stat"><span class="sat-stat__v">${best||'—'}h</span><span class="sat-stat__k">Best Night</span></div>
@@ -5218,23 +5335,53 @@
     return {mount};
   })();
 
-  /* tiny SVG line chart (crimson, filled) — pts = numbers */
+  /* ── THE CURVE ────────────────────────────────────────────────────────────
+     The Peak tab's energy curve, generalised so every tracker that has a run
+     of numbers draws the same shape: a smooth spline (not straight segments),
+     a gradient that fades out beneath it, a soft glow on the stroke, dotted
+     grid lines behind, and a lit dot on the latest reading.
+
+     Call it with any series and it renders in the tab's own accent:
+        svgLine([1,4,3,9], width, height)
+
+     Every gradient/filter gets a unique id — two charts on one screen used to
+     share the id "lcg" and fight over the same gradient.                    */
+  let __curveId = 0;
+  function smoothPath(xy) {
+    if (xy.length < 3) return xy.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    let d = 'M' + xy[0][0].toFixed(1) + ' ' + xy[0][1].toFixed(1);
+    for (let i = 0; i < xy.length - 1; i++) {
+      const p0 = xy[i - 1] || xy[i], p1 = xy[i], p2 = xy[i + 1], p3 = xy[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ' C' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ',' + c2x.toFixed(1) + ' ' + c2y.toFixed(1)
+         + ',' + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1);
+    }
+    return d;
+  }
   function svgLine(pts, w = 280, h = 72) {
     if (!pts || pts.length < 2) return '<p class="chart-empty">Log a few days to grow the line.</p>';
     const min = Math.min(...pts), max = Math.max(...pts);
     const span = (max - min) || 1;
     const step = w / (pts.length - 1);
-    const xy = pts.map((v, i) => [i * step, h - 6 - ((v - min) / span) * (h - 14)]);
-    const line = xy.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const xy = pts.map((v, i) => [i * step, h - 8 - ((v - min) / span) * (h - 18)]);
+    const path = smoothPath(xy);
     const last = xy[xy.length - 1];
     const up = pts[pts.length - 1] >= pts[0];
-    return `<svg class="linechart ${up ? 'is-up' : 'is-down'}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-      <defs><linearGradient id="lcg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" style="stop-color:var(--accent-bright);stop-opacity:.35"/><stop offset="100%" style="stop-color:var(--accent-bright);stop-opacity:0"/>
-      </linearGradient></defs>
-      <polygon points="0,${h} ${line} ${w},${h}" fill="url(#lcg)"/>
-      <polyline points="${line}" fill="none" stroke="var(--accent-bright)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.4" fill="#fff"/>
+    const id = 'cv' + (++__curveId);
+    const grid = [0.25, 0.5, 0.75].map(f =>
+      `<line class="curve-grid" x1="0" y1="${(h * f).toFixed(1)}" x2="${w}" y2="${(h * f).toFixed(1)}"/>`).join('');
+    return `<svg class="linechart curve ${up ? 'is-up' : 'is-down'}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" style="stop-color:var(--accent-bright);stop-opacity:.30"/>
+          <stop offset="100%" style="stop-color:var(--accent-bright);stop-opacity:0"/>
+        </linearGradient>
+      </defs>
+      ${grid}
+      <path d="${path} L${w} ${h} L0 ${h} Z" fill="url(#${id})" stroke="none"/>
+      <path class="curve-line" d="${path}" fill="none" stroke="var(--accent-bright)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle class="curve-head" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.6" fill="#fff"/>
     </svg>`;
   }
 
@@ -6389,7 +6536,7 @@
       if (REAL_PANELS.includes(name)) {
         const panel = $(`[data-tab-panel="${name}"]`);
         if (panel) panel.hidden = false;
-        if (name==='home')      { Goals.renderWidget(); Workout.render(); DayFlow.render(); }
+        if (name==='home')      { Goals.renderWidget(); Ideas.init(); DayFlow.render(); }
         if (name==='goals')     Goals.renderAll();
         if (name==='reminders') Reminders.render();
         if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
@@ -6464,7 +6611,7 @@
     Modals.init();
     Goals.init();
     Reminders.init();
-    Workout.init();
+    Ideas.init();
     BodyWeight.init();
     ProgressLog.init();
     GymTimer.init();

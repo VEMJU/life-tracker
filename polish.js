@@ -92,7 +92,9 @@
     });
     setTimeout(finish, dur + 250);
   }
-  const ROLL_SEL = '.card__count, [data-countup], [class*="__num"], [class*="total"]';
+  /* Live-ticking readouts (countdown, stopwatches) are deliberately NOT in here —
+     rolling them would fight their own per-second tick. */
+  const ROLL_SEL = '.card__count, [data-countup], [class*="__num"], [class*="total"], .goal-mini__pct, .gl-vol-num';
   function rollNumbers(scope) {
     if (!scope) return;
     scope.querySelectorAll(ROLL_SEL).forEach(countUp);
@@ -127,9 +129,22 @@
     .observe(document.body, { attributes: true, attributeFilter: ['data-view'] });
 
   /* ── 5 · Victory burst: confetti when a goal turns complete ── */
+  /* Confetti reads the LIVE theme accent, so a burst always matches whichever
+     palette is active (crimson / violet / blue / mono) instead of being a
+     hardcoded red that clashes the moment you switch themes. */
+  function themeConfettiColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const rgb = (name, fb) => { const v = cs.getPropertyValue(name).trim(); return v ? 'rgb(' + v + ')' : fb; };
+    return [
+      rgb('--accent-br-rgb', '#e8b04b'),
+      rgb('--accent-rgb',    '#d21c3a'),
+      '#f2ede6',
+      rgb('--accent-wine-rgb', '#801a28'),
+    ];
+  }
   function burst(x, y) {
     if (reduce) return;
-    const colors = ['#d21c3a', '#e8b04b', '#f2ede6', '#801a28'];
+    const colors = themeConfettiColors();
     for (let i = 0; i < 26; i++) {
       const p = document.createElement('i');
       p.className = 'nv-confetti';

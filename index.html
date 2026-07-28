@@ -10,10 +10,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=32" />
+  <link rel="stylesheet" href="style.css?v=35" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -214,6 +214,32 @@
         </svg>
         <span class="navlink__label">Nutrition</span>
       </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="supplements">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7Z" stroke-linejoin="round"/>
+          <path d="M7 7l7 7" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Supplements</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="subscriptions">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke-linejoin="round"/>
+          <path d="M2.5 10h19" stroke-linecap="round"/>
+        </svg>
+        <span class="navlink__label">Subscriptions</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="vitals">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 12h4l2.5-6 5 12L17 12h4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Vitals</span>
+      </button>
+      <button class="navlink" role="tab" aria-selected="false" data-tab="peak">
+        <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 17c3-1 4-9 7-9s4.5 6 7 6 3-3 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="navlink__label">Peak</span>
+      </button>
       <button class="navlink" role="tab" aria-selected="false" data-tab="finance">
         <svg class="navlink__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M3 17l5-5 4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
@@ -301,6 +327,10 @@
       <button class="topbar__link" data-tab="gym">Gym</button>
       <button class="topbar__link" data-tab="skincare">Skincare</button>
       <button class="topbar__link" data-tab="nutrition">Nutrition</button>
+      <button class="topbar__link" data-tab="supplements">Supplements</button>
+      <button class="topbar__link" data-tab="subscriptions">Subscriptions</button>
+      <button class="topbar__link" data-tab="vitals">Vitals</button>
+      <button class="topbar__link" data-tab="peak">Peak</button>
       <button class="topbar__link" data-tab="finance">Finance</button>
       <button class="topbar__link" data-tab="photos">Photos</button>
       <button class="topbar__link" data-tab="academics">Academics</button>
@@ -470,23 +500,53 @@
           </div>
         </article>
 
-        <!-- TODAY'S WORKOUT ROUTINE — clickable, routes to Gym -->
-        <article class="card card--workout reveal is-clickable" style="--d:.12s"
-                 data-route="gym" role="button" tabindex="0"
-                 aria-label="Today's workout routine — open the Gym tab">
+        <!-- APP IDEAS — the backlog for this app itself: what to build next,
+             which tab it belongs to, and how badly you want it. -->
+        <article class="card card--workout card--ideas reveal" style="--d:.12s">
           <header class="card__head">
             <span class="card__tag">II.</span>
-            <h3 class="card__title">Today's Workout Routine</h3>
-            <span class="card__route" aria-hidden="true">Gym&nbsp;→</span>
+            <h3 class="card__title">App Ideas</h3>
+            <span class="card__count" data-ideas-count>0</span>
           </header>
-          <div class="workout" data-no-route>
-            <div class="workout__body" data-workout-today>
-              <!-- injected -->
+
+          <form class="idea-form" data-idea-form>
+            <input class="input idea-form__what" type="text" data-idea-text
+                   placeholder="What do you want the app to do?" autocomplete="off" maxlength="160" />
+            <div class="idea-form__row">
+              <select class="input input--sm" data-idea-target aria-label="Which tab">
+                <option value="">Which tab…</option>
+                <option>Home</option><option>Gym</option><option>Supplements</option>
+                <option>Subscriptions</option><option>Vitals</option><option>Peak</option>
+                <option>Goals</option><option>Reminders</option><option>Nutrition</option>
+                <option>Finance</option><option>Photos</option><option>Academics</option>
+                <option>Logs</option><option>Clothes</option><option>Sports</option>
+                <option>Calendar</option><option>Skincare</option><option>Vision</option>
+                <option value="NEW TAB">✦ A brand-new tab</option>
+                <option value="WHOLE APP">Whole app</option>
+              </select>
+              <select class="input input--sm" data-idea-kind aria-label="Kind of change">
+                <option value="feature">New feature</option>
+                <option value="upgrade">Upgrade</option>
+                <option value="design">Design</option>
+                <option value="fix">Fix</option>
+                <option value="tab">New tab</option>
+              </select>
+              <select class="input input--sm" data-idea-pri aria-label="Priority">
+                <option value="2">Someday</option>
+                <option value="1" selected>Want it</option>
+                <option value="0">Need it</option>
+              </select>
+              <button class="btn btn--primary btn--sm" type="submit">Add</button>
             </div>
+          </form>
+
+          <div class="idea-filters" data-idea-filters>
+            <button class="chip is-active" data-idea-filter="all">All</button>
+            <button class="chip" data-idea-filter="open">Open</button>
+            <button class="chip" data-idea-filter="built">Built</button>
           </div>
-          <footer class="workout__foot">
-            <button class="btn btn--ghost btn--sm" data-route="gym">Open Full Session →</button>
-          </footer>
+
+          <div class="idea-list" data-idea-list><!-- injected --></div>
         </article>
 
         <!-- GOALS OVERVIEW (live) -->
@@ -1086,8 +1146,8 @@
              PR detection, contextual rest timer, per-exercise history chart.
              Embedded from the standalone page so both share the exact same code
              and data (nv.lifts.v2) — nothing to keep in sync by hand. -->
-        <div class="gl-embed reveal" style="--d:.0s">
-          <iframe class="gl-frame" src="lifts.html" title="Workout logger" loading="lazy"></iframe>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="lifts.html?v=3" title="Workout logger" loading="lazy"></iframe>
         </div>
 
         <!-- legacy gym modules (5-day split · bodyweight · timer) — parked, not deleted -->
@@ -1193,6 +1253,41 @@
 
       </section>
 
+      <!-- ───────────────────────────  SUPPLEMENTS  ─────────────────────────── -->
+      <!-- The Stack — every pill on one screen. Same embed pattern as the Gym
+           logger: the standalone page IS the tab, so there is one copy of the
+           code and one copy of the data. -->
+      <section class="board board--supplements" data-tab-panel="supplements" hidden>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="stack.html?v=3" title="Supplement stack" loading="lazy"></iframe>
+        </div>
+      </section>
+
+      <!-- ──────────────────────────  SUBSCRIPTIONS  ────────────────────────── -->
+      <!-- The Radar — every recurring charge on a schedule. Same embed pattern. -->
+      <section class="board board--subscriptions" data-tab-panel="subscriptions" hidden>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="subs.html?v=3" title="Subscription radar" loading="lazy"></iframe>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────  VITALS  ───────────────────────────── -->
+      <!-- Daily recovery + sleep, from a manual HRV / RHR / sleep entry. -->
+      <section class="board board--vitals" data-tab-panel="vitals" hidden>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="vitals.html?v=3" title="Vitals" loading="lazy"></iframe>
+        </div>
+      </section>
+
+      <!-- ──────────────────────────────  PEAK  ────────────────────────────── -->
+      <!-- Your energy curve through the day: real caffeine pharmacokinetics
+           (onset → peak → half-life) scaled by bodyweight, plus today's plan. -->
+      <section class="board board--peak" data-tab-panel="peak" hidden>
+        <div class="gl-embed">
+          <iframe class="gl-frame" src="peak.html?v=3" title="Your peak today" loading="lazy"></iframe>
+        </div>
+      </section>
+
       <!-- ───────────────  REUSABLE PLACEHOLDER (sealed tabs)  ─────────────── -->
       <section class="board board--placeholder" data-tab-panel="placeholder" hidden>
         <article class="card card--placeholder">
@@ -1206,7 +1301,7 @@
             </div>
             <p class="placeholder__eyebrow" data-placeholder-eyebrow>Module</p>
             <h3 class="placeholder__title" data-placeholder-title>Module Reserved</h3>
-            <p class="placeholder__desc" data-placeholder-desc>This protocol is sealed. Implementation arrives in the next ascension cycle.</p>
+            <p class="placeholder__desc" data-placeholder-desc>Not built yet — but the slot is yours. Say the word and it gets made.</p>
             <div class="placeholder__lines" aria-hidden="true"><span></span><span></span><span></span></div>
           </div>
         </article>
@@ -1534,12 +1629,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
-  <script src="sync.js?v=3" defer></script>
-  <script src="app.js?v=18" defer></script>
+  <script src="sync.js?v=4" defer></script>
+  <script src="app.js?v=19" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
-  <script src="gallery.js?v=4" defer></script>
-  <script src="polish.js?v=2" defer></script>
+  <script src="gallery.js?v=5" defer></script>
+  <script src="polish.js?v=3" defer></script>
 </body>
 </html>
