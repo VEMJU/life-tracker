@@ -101,6 +101,7 @@ html, body {
 }
 
 #crossbg{position:fixed;inset:0;z-index:0;pointer-events:none}
+html,body{background:#000}
 main.page{position:relative;z-index:1}
 body {
   background: var(--bg);
@@ -291,10 +292,13 @@ h1, h2, h3, h4, h5, h6 {
 .page {
   position: relative;
   min-height: 100dvh;
-  background: var(--bg);
+  /* transparent, NOT var(--bg): an opaque page covered the crosses canvas
+     behind it. html/body still paint the black underneath. */
+  background: transparent;
   color: var(--fg);
   padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-5) var(--space-16);
-  isolation: isolate;
+  /* `isolation: isolate` removed too — it creates a stacking context that
+     traps this element above the backdrop. */
 }
 
 .page::before {
