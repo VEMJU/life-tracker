@@ -3557,11 +3557,16 @@ body[data-view="calendar"] .cal-drawer { display: block; }
 .gd-times label { display: grid; gap: 4px; font: 400 10px var(--ff-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c-fog); }
 
 /* ───────────────── §47  GYM · WORKOUT LOGGER (1:1 site chassis) ───────────────── */
-.board--gym { display: block !important; max-width: 640px; margin: 0 auto; }
+/* This tab breaks out of the shell's normal max-width/padding — the logger
+   deserves the full viewport, not the same reading-width column as text tabs. */
+body[data-view="gym"] .shell { max-width: none; padding-left: var(--sp-3); padding-right: var(--sp-3); }
+.board--gym { display: block !important; width: 100%; margin: 0 auto; }
+.gl-embed { width: 100%; }
 body[data-view="gym"] .log-panel { display: none !important; }   /* old floating panel retired */
 .gym-legacy { display: none !important; }
 
 .gl { color: #fff; }
+.gl-frame { display: block; width: 100%; height: calc(100vh - var(--sp-6)); min-height: 680px; border: none; border-radius: 0; }
 .gl-day-pill {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px; margin-bottom: 10px;
