@@ -757,8 +757,29 @@ if (!S.places.length && !S.regions.length && !S.view && navigator.geolocation) {
 }
 
 render();
-setTimeout(() => map.invalidateSize(), 300);
-window.addEventListener('resize', () => map.invalidateSize());
+
+/* ── the hidden-tab problem ──────────────────────────────────────────────────
+   This page loads inside a tab that starts hidden, so Leaflet initialises into
+   a 0×0 box and paints nothing. A one-shot timer cannot fix that: when it
+   fires, the tab is often still hidden. So watch the container instead and
+   recalculate the moment it genuinely has a size — which is exactly when you
+   switch to the tab. */
+const mapEl = document.getElementById('map');
+let sized = false;
+function refit(){
+  if (!mapEl.clientWidth || !mapEl.clientHeight) return;
+  map.invalidateSize();
+  if (!sized) {                       // first real paint: settle the view too
+    sized = true;
+    const v = S.view || startView;
+    map.setView([v.lat, v.lng], v.z);
+  }
+}
+if (window.ResizeObserver) new ResizeObserver(refit).observe(mapEl);
+document.addEventListener('visibilitychange', refit);
+window.addEventListener('resize', refit);
+window.addEventListener('pageshow', refit);
+[60, 250, 700, 1500].forEach(ms => setTimeout(refit, ms));   // belt and braces
 })();
 </script>
 </body>
