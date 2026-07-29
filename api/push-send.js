@@ -56,6 +56,92 @@ async function subscriptions() {
   return { rows: await r.json() };
 }
 
+/* ── READING ONE PERSON'S BOARD ───────────────────────────────────────────
+   app_state holds every nv.* key as its own row. We only need two of them,
+   so we ask for exactly those rather than dragging the whole board over. */
+async function stateFor(userId, keys) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  const list = keys.map(encodeURIComponent).join(',');
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/app_state?select=key,data&user_id=eq.${userId}&key=in.(${list})`,
+      { headers: { apikey: key } }
+    );
+    if (!r.ok) return {};
+    const out = {};
+    for (const row of await r.json()) out[row.key] = row.data;
+    return out;
+  } catch (e) { return {}; }
+}
+
+/* The day the PERSON is living, not the server. Cron fires at 13:00 UTC,
+   which is the morning in New York — using the UTC date there would be
+   right by luck now and wrong after the clocks change. */
+function localToday(tz = 'America/New_York') {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()); }
+  catch (e) { return new Date().toISOString().slice(0, 10); }
+}
+
+function daysUntil(date, today) {
+  if (!date) return null;
+  const a = new Date(date + 'T00:00:00Z'), b = new Date(today + 'T00:00:00Z');
+  return Math.round((a - b) / 86400000);
+}
+
+/* ── THE BRIEF ────────────────────────────────────────────────────────────
+   What actually needs this person today, in priority order: overdue first,
+   then due today, then what is left on the planner. A notification gets one
+   line of attention, so it names the most pressing thing and counts the
+   rest — never a wall of text nobody reads. */
+function composeBrief(state, today) {
+  const goalsData = state['nv.goals'] || {};
+  const goals = Array.isArray(goalsData.goals) ? goalsData.goals : [];
+  const shopping = Array.isArray(goalsData.shoppingItems) ? goalsData.shoppingItems : [];
+
+  /* the planner stores an array per day; guard anyway - one stray record in
+     this very board is a bare object, and a crash here means silence */
+  const rawDay = state[`nv.day.${today}`];
+  const day = Array.isArray(rawDay) ? rawDay : rawDay && typeof rawDay === 'object' ? [rawDay] : [];
+  const todo = day.filter(t => t && !t.done && t.text);
+
+  const done = (g) => {
+    if (!Array.isArray(g.steps) || !g.steps.length) return (g.legacyProgress || 0) >= 100;
+    return g.steps.every(s => s.done);
+  };
+  const live = goals.filter(g => g && !done(g));
+
+  const overdue = [], dueToday = [], dueSoon = [];
+  for (const g of live) {
+    const d = daysUntil(g.deadline, today);
+    if (d === null) continue;
+    if (d < 0) overdue.push(g); else if (d === 0) dueToday.push(g); else if (d <= 3) dueSoon.push(g);
+  }
+
+  const restock = shopping.filter((it) => {
+    if (!it || !it.bought || !it.recurDays || !it.boughtAt) return false;
+    const due = new Date(it.boughtAt + 'T00:00:00Z');
+    due.setUTCDate(due.getUTCDate() + Number(it.recurDays || 0));
+    return due <= new Date(today + 'T00:00:00Z');
+  });
+
+  const more = (n) => (n > 1 ? ` (+${n - 1} more)` : '');
+
+  if (overdue.length)  return { title: 'Overdue',   body: `${overdue[0].title}${more(overdue.length)} — past its date.`, tab: 'goals',    tag: 'daily', urgent: true };
+  if (dueToday.length) return { title: 'Due today', body: `${dueToday[0].title}${more(dueToday.length)}.`,               tab: 'goals',    tag: 'daily', urgent: true };
+
+  if (todo.length) {
+    const extra = dueSoon.length ? ` · ${dueSoon.length} goal${dueSoon.length > 1 ? 's' : ''} due within 3 days` : '';
+    return { title: `${todo.length} left today`, body: `${todo[0].text}${more(todo.length)}${extra}`, tab: 'home', tag: 'daily' };
+  }
+  if (dueSoon.length)  return { title: 'Coming up', body: `${dueSoon[0].title}${more(dueSoon.length)} — due within 3 days.`, tab: 'goals', tag: 'daily' };
+  if (restock.length)  return { title: 'Restock',   body: `${restock[0].name || restock[0].text || 'An item'}${more(restock.length)} is due.`, tab: 'goals', tag: 'daily' };
+
+  if (day.length)   return { title: 'All clear', body: 'Everything on today is done. Solid day.', tab: 'home', tag: 'daily' };
+  if (!goals.length) return { title: 'Set your day', body: 'No goals yet — add one and this becomes your morning brief.', tab: 'goals', tag: 'daily' };
+  return { title: 'Today', body: 'Nothing due. Open your board and pick the day.', tab: 'home', tag: 'daily' };
+}
+
 async function dropDead(endpoint) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
@@ -80,15 +166,6 @@ export default async function handler(req, res) {
 
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:you@example.com', pub, priv);
 
-  const payload = req.query.test
-    ? { title: 'Life Tracker', body: 'Push is working. This is a test.', tab: 'home', tag: 'test' }
-    : {
-        title: 'Today',
-        body: 'Open your day — goals, training, and what needs you.',
-        tab: 'calendar',
-        tag: 'daily',
-      };
-
   const got = await subscriptions();
   if (got.fail) return res.status(500).json({ error: got.fail });
 
@@ -97,9 +174,38 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: 0, note: 'Supabase reachable, but no device has subscribed yet' });
   }
 
+  const today = localToday(process.env.USER_TZ || 'America/New_York');
+
+  /* One brief per ACCOUNT, not per device — otherwise someone on a phone and
+     a laptop pays to have their board read twice and gets two notifications
+     that say the same thing. */
+  const byUser = new Map();
+  for (const s of subs) {
+    const id = s.user_id || 'anon';
+    if (!byUser.has(id)) byUser.set(id, []);
+    byUser.get(id).push(s);
+  }
+
+  const briefs = new Map();
+  await Promise.all([...byUser.keys()].map(async (id) => {
+    if (id === 'anon') { briefs.set(id, { title: 'Today', body: 'Open your board.', tab: 'home', tag: 'daily' }); return; }
+    const state = await stateFor(id, ['nv.goals', `nv.day.${today}`]);
+    briefs.set(id, composeBrief(state, today));
+  }));
+
+  /* ?preview=1 shows what today's brief WOULD say and sends nothing — so it
+     can be checked at any hour instead of waiting for 9am. Returns before the
+     sending loop, deliberately. */
+  if (req.query.preview) {
+    return res.status(200).json({ today, sent: 0, briefs: Object.fromEntries(briefs) });
+  }
+
+  const testPayload = { title: 'Life Tracker', body: 'Push is working. This is a test.', tab: 'home', tag: 'test' };
+
   let sent = 0, dead = 0;
   await Promise.all(subs.map(async (s) => {
     const sub = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } };
+    const payload = req.query.test ? testPayload : briefs.get(s.user_id || 'anon');
     try {
       await webpush.sendNotification(sub, JSON.stringify(payload));
       sent++;
@@ -109,5 +215,5 @@ export default async function handler(req, res) {
     }
   }));
 
-  return res.status(200).json({ sent, dead, total: subs.length });
+  return res.status(200).json({ sent, dead, total: subs.length, today });
 }
