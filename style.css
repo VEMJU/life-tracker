@@ -4435,9 +4435,117 @@ button.intro-tool {
 }
 .tile-well > * { position: relative; z-index: 1; }
 
+/* ── THE EYEBROW ──────────────────────────────────────────────────────────
+   Vitality's section header, lifted: a serif italic index in the accent, a
+   mono label, and a rule that fades to nothing. It is the single cheapest
+   thing that makes a screen look composed rather than assembled. */
+.eyebrow { display: flex; align-items: center; gap: 11px; margin-bottom: var(--sp-4); padding-left: 2px; }
+.eyebrow__num { font-family: var(--ff-display); font-style: italic; color: var(--accent); font-size: 1.35rem; line-height: 1; }
+.eyebrow__lbl { font-family: var(--ff-mono); font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--c-bone); }
+.eyebrow__rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-strong), transparent); }
+
+/* ── ONE-TAP CARDS ────────────────────────────────────────────────────────
+   Their StimQuickLog, turned into food. Each card is a thing you eat often;
+   one tap logs it into the meal you are plausibly having. The spark ring on
+   tap is the detail that makes it feel alive rather than merely responsive. */
+.ql-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 12px; }
+.ql-card {
+  position: relative; display: flex; flex-direction: column; gap: 12px;
+  padding: 15px 15px 13px; border-radius: 16px;
+  border: 1px solid var(--border); background: rgba(255,255,255,.02);
+  transition: border-color .2s, box-shadow .2s, transform .2s var(--ease-soft);
+  animation: cardPop 560ms var(--ease-soft) both;
+}
+.ql-card:hover { border-color: var(--accent-soft); box-shadow: 0 0 26px -18px var(--accent-glow); transform: translateY(-1px); }
+.ql-card__top { display: flex; align-items: center; gap: 11px; }
+.ql-chip {
+  width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--border-strong); background: rgba(var(--accent-rgb), .06);
+  color: var(--accent); font-family: var(--ff-display); font-style: italic; font-size: 19px;
+}
+.ql-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ql-name { font-size: 15px; font-weight: 500; letter-spacing: -.01em; color: var(--c-blanc);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ql-sub  { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .08em; color: var(--c-fog); }
+.ql-sub b { color: var(--accent); font-weight: 600; }
+
+/* remove only reveals on hover — the card is for tapping, not managing */
+.ql-remove {
+  position: absolute; top: 9px; right: 9px; width: 22px; height: 22px; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(8,8,10,.7); color: var(--c-fog);
+  font-size: 14px; line-height: 1; cursor: pointer; opacity: 0;
+  transition: opacity .18s, color .18s, border-color .18s;
+}
+.ql-card:hover .ql-remove { opacity: 1; }
+.ql-remove:hover { color: var(--c-blanc); border-color: var(--border-strong); }
+
+.ql-log {
+  position: relative; overflow: hidden; width: 100%; border: none; border-radius: 999px;
+  padding: 11px 14px; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: #fff;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  transition: filter .18s, transform .12s var(--ease-soft), box-shadow .2s;
+}
+.ql-log:hover  { filter: brightness(1.08); box-shadow: 0 8px 22px -12px var(--accent-glow); }
+.ql-log:active { transform: scale(.98); }
+.ql-log.is-logged { background: rgba(var(--accent-rgb), .10); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .32); }
+
+/* the spark: a ring blooming out of the button on tap */
+.ql-log .spark {
+  position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; border-radius: 999px;
+  transform: translate(-50%, -50%) scale(0); border: 2px solid rgba(255,255,255,.55); pointer-events: none;
+}
+.ql-log.is-charging .spark { animation: sparkRing 620ms var(--ease-vt); }
+@keyframes sparkRing {
+  0%   { transform: translate(-50%, -50%) scale(.2); opacity: .7; }
+  100% { transform: translate(-50%, -50%) scale(9);  opacity: 0; }
+}
+
+/* the thin fill under each card, and under each macro */
+.ql-bar { height: 4px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; }
+.ql-bar i {
+  display: block; height: 100%; width: 0; border-radius: 999px; background: var(--accent);
+  transition: width 500ms var(--ease-soft), background .3s;
+}
+.ql-bar i.is-warn { background: #e0b870; }
+
+/* the dashed "add another" pill that closes the grid */
+.ql-add {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px;
+  border: 1px dashed var(--border-strong); background: rgba(255,255,255,.02);
+  color: var(--c-stone); font-size: 12.5px; cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+.ql-add:hover { color: var(--c-blanc); border-color: var(--accent-soft); background: rgba(var(--accent-rgb), .06); }
+
+/* the readout strip that sums the row up */
+.ql-readout {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px; padding: 11px 15px; border: 1px solid var(--border); border-radius: 12px;
+  background: rgba(255,255,255,.02); animation: cardPop 400ms var(--ease-vt) both;
+}
+.ql-readout__d { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--c-bone); }
+.ql-readout__d b { color: var(--c-blanc); font-variant-numeric: tabular-nums; }
+.ql-readout__pill {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent); padding: 4px 9px; border-radius: 999px; background: rgba(var(--accent-rgb), .12);
+}
+
+/* ── DRIFTING MOTES ───────────────────────────────────────────────────────
+   Their atmosphere. Slow, sparse, behind everything. */
+@keyframes moteDrift {
+  0%   { opacity: 0; transform: translateY(20px); }
+  15%  { opacity: .5; }
+  85%  { opacity: .35; }
+  100% { opacity: 0; transform: translateY(-120px); }
+}
+.motes { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.mote { position: absolute; width: 2px; height: 2px; border-radius: 999px; background: var(--accent); opacity: 0; animation: moteDrift linear infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .pop, .pop-stagger > *, .bar-rise, .line-draw { animation: none; }
-  .tile-well::before { animation: none; }
+  .pop, .pop-stagger > *, .bar-rise, .line-draw, .ql-card, .ql-readout { animation: none; }
+  .tile-well::before, .mote { animation: none; }
+  .mote { display: none; }
 }
 
 /* THE BUTTON ROW — centred pills, not a grid of equal boxes. One filled

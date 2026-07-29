@@ -2463,6 +2463,106 @@
       }, {cal:0, carbs:0, protein:0, fats:0});
     }
 
+    /* ══════════════════  QUICK LOG  ══════════════════
+       The thing that makes a food tracker survive contact with real life:
+       you eat the same twenty things. Every food you log is counted, and the
+       ones you reach for most become one-tap cards. No typing, no searching,
+       no deciding which meal — it picks the meal from the clock.
+
+       Favourites are DERIVED from your log, so this needs no setup and gets
+       better the more you use it. Anything you pin by hand outranks them. */
+    function foodTally() {
+      const tally = new Map();
+      Object.values(nutState.days || {}).forEach(day => {
+        Object.values(day.meals || {}).forEach(items => {
+          (items || []).forEach(f => {
+            const k = String(f.name || '').trim().toLowerCase();
+            if (!k) return;
+            const cur = tally.get(k);
+            if (cur) { cur.n++; }
+            else tally.set(k, { n: 1, name: f.name, cal: num(f.cal), protein: num(f.protein), carbs: num(f.carbs), fats: num(f.fats) });
+          });
+        });
+      });
+      return tally;
+    }
+
+    function quickFoods(limit = 6) {
+      const pinned = (nutState.pinned || []).map(p => ({ ...p, pinned: true }));
+      const seen = new Set(pinned.map(p => String(p.name).trim().toLowerCase()));
+      const learned = [...foodTally().entries()]
+        .filter(([k, v]) => v.n >= 2 && !seen.has(k))     // twice before it earns a card
+        .sort((a, b) => b[1].n - a[1].n)
+        .map(([, v]) => v);
+      return [...pinned, ...learned].slice(0, limit);
+    }
+
+    function mealForNow() {
+      const h = new Date().getHours();
+      return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 21 ? 'dinner' : 'snacks';
+    }
+
+    function renderQuickLog() {
+      const el = $('[data-nut-quick]'); if (!el) return;
+      const foods = quickFoods();
+      const meal = mealForNow();
+
+      if (!foods.length) {
+        el.innerHTML =
+          '<div class="eyebrow"><span class="eyebrow__num">01</span>' +
+          '<span class="eyebrow__lbl">Quick log</span><span class="eyebrow__rule"></span></div>' +
+          '<p class="chart-empty">Log a food twice and it earns a one-tap card here.</p>';
+        return;
+      }
+
+      const t = nutState.targets || {};
+      el.innerHTML =
+        '<div class="eyebrow"><span class="eyebrow__num">01</span>' +
+        '<span class="eyebrow__lbl">Quick log · ' + MEAL_LABELS[meal] + '</span>' +
+        '<span class="eyebrow__rule"></span></div>' +
+        '<div class="ql-grid">' + foods.map((f, i) => {
+          const pct = t.cal ? Math.min(100, Math.round((num(f.cal) / t.cal) * 100)) : 0;
+          return '<div class="ql-card" style="animation-delay:' + (i * 60) + 'ms">' +
+            (f.pinned ? '<button class="ql-remove" data-ql-unpin="' + esc(f.name) + '" title="Unpin">×</button>' : '') +
+            '<div class="ql-card__top">' +
+              '<span class="ql-chip">' + esc((f.name || '?').trim().charAt(0).toUpperCase()) + '</span>' +
+              '<span class="ql-meta">' +
+                '<span class="ql-name">' + esc(f.name) + '</span>' +
+                '<span class="ql-sub"><b>' + Math.round(num(f.cal)) + '</b> kcal · P' + Math.round(num(f.protein)) + ' C' + Math.round(num(f.carbs)) + ' F' + Math.round(num(f.fats)) + '</span>' +
+              '</span>' +
+            '</div>' +
+            '<div class="ql-bar"><i style="width:' + pct + '%"></i></div>' +
+            '<button class="ql-log" data-ql-log="' + i + '"><span class="spark"></span>Log to ' + MEAL_LABELS[meal] + '</button>' +
+          '</div>';
+        }).join('') + '</div>';
+
+      /* one tap: spark, log, and every dependent view refreshes */
+      $$('[data-ql-log]', el).forEach(btn => btn.addEventListener('click', () => {
+        const f = foods[+btn.getAttribute('data-ql-log')]; if (!f) return;
+        btn.classList.add('is-charging');
+        setTimeout(() => btn.classList.remove('is-charging'), 640);
+
+        const { meals } = todayMeals();
+        meals[mealForNow()].push({
+          id: uid(), name: f.name,
+          cal: Math.round(num(f.cal)), protein: Math.round(num(f.protein)),
+          carbs: Math.round(num(f.carbs)), fats: Math.round(num(f.fats)),
+        });
+        pNut();
+        btn.classList.add('is-logged');
+        btn.textContent = 'Logged';
+        toast(f.name + ' logged');
+        /* let the spark finish before the grid rebuilds under it */
+        setTimeout(() => { renderMeals(); renderMacroRings(); renderMacroWidget(); renderHeatmap(); renderQuickLog(); }, 680);
+      }));
+
+      $$('[data-ql-unpin]', el).forEach(btn => btn.addEventListener('click', () => {
+        const name = btn.getAttribute('data-ql-unpin');
+        nutState.pinned = (nutState.pinned || []).filter(p => p.name !== name);
+        pNut(); renderQuickLog();
+      }));
+    }
+
     /* ── THE HERO (nutrition tab) ──────────────────────────────────────────
        Vitality's read: one enormous figure, a kick above it, the target
        below, and nothing else competing for the eye. The rings stay — they
@@ -2473,6 +2573,19 @@
       const cal = Math.round(totals.cal || 0);
       const tgt = nutState.targets.cal || 0;
       const left = tgt ? tgt - cal : 0;
+      /* the motes: sparse, slow, behind everything. Built once and left alone
+         so a re-render never restarts them mid-drift. */
+      let motes = el.querySelector('.motes');
+      if (!motes) {
+        motes = document.createElement('div');
+        motes.className = 'motes';
+        motes.innerHTML = Array.from({ length: 7 }, () => {
+          const dur = 9 + Math.random() * 9, delay = -Math.random() * dur;
+          return '<i class="mote" style="left:' + (6 + Math.random() * 88).toFixed(1) + '%;bottom:-6px;' +
+                 'animation-duration:' + dur.toFixed(1) + 's;animation-delay:' + delay.toFixed(1) + 's"></i>';
+        }).join('');
+      }
+
       el.innerHTML =
         '<span class="tile-kick">✦ calories today</span>' +
         '<span class="tile-hero__val">' + cal.toLocaleString() + '</span>' +
@@ -2480,11 +2593,14 @@
         (tgt
           ? '<p class="tile-foot">' + (left >= 0 ? left.toLocaleString() + ' left today' : Math.abs(left).toLocaleString() + ' over target') + '</p>'
           : '');
+      el.prepend(motes);
     }
 
     /* ── Macro rings (nutrition tab) ── */
     function renderMacroRings() {
-      renderNutHero();   // called from here so every existing call site keeps the hero in step
+      /* called from here so all three existing call sites keep these in step */
+      renderNutHero();
+      renderQuickLog();
       const el = $('[data-macro-rings]'); if (!el) return;
       const totals = getTotals(localDateKey());
       const t = nutState.targets;
