@@ -100,8 +100,13 @@
     if (dismissed) return;
     dismissed = true;
     if (targetTab) {
+      /* Routing goes through the nav button because that is what carries the
+         active state. If a tab has a hub card but no nav button — which is
+         exactly how Stats silently landed you back on Home — fall through to
+         the app's router rather than doing nothing at all. */
       const nav = document.querySelector(`[data-tab="${targetTab}"]`);
       if (nav) nav.click();
+      else window.dispatchEvent(new CustomEvent('nv-go-tab', { detail: targetTab }));
     }
     intro.classList.add('is-leaving');
     document.body.classList.remove('intro-locked');
