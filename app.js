@@ -1308,6 +1308,8 @@
             r.why === 'ios-needs-install' ? 'Add to Home Screen first' :
             r.why === 'denied'            ? 'You declined notifications' :
             r.why === 'no-server-key'     ? 'Server keys not set up yet' :
+            r.why === 'signed-out'        ? 'Sign in first — alerts are tied to your account' :
+            r.why === 'no-cloud'          ? 'Alerts need the cloud sync connected' :
                                             'Could not turn alerts on');
         }
         btn.disabled = false;

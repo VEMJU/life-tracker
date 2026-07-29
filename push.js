@@ -79,10 +79,13 @@
     }
 
     /* store it against the signed-in account so the cron job knows where to send */
-    const saved = await save(sub);
-    return saved ? { ok: true } : { ok: false, why: 'save-failed' };
+    return save(sub);
   }
 
+  /* THE SUBSCRIPTION MUST REACH THE SERVER. A copy in localStorage is worthless
+     for push — the sending job reads Supabase, not your browser. So a failure
+     to store it server-side is reported as a failure, never dressed up as
+     success: otherwise the button says "on" and no notification ever arrives. */
   async function save(sub) {
     const json = sub.toJSON();
     const row = {
@@ -91,16 +94,19 @@
       auth: json.keys && json.keys.auth,
       agent: navigator.userAgent.slice(0, 180),
     };
-    /* Supabase when signed in (so it follows you across devices); otherwise the
-       endpoint alone still lets this device receive pushes. */
+    try { localStorage.setItem('nv.push.sub', JSON.stringify(row)); } catch (e) {}
+
+    if (!(window.NVSync && window.NVSync.savePushSubscription)) {
+      return { ok: false, why: 'no-cloud' };
+    }
     try {
-      if (window.NVSync && window.NVSync.savePushSubscription) {
-        await window.NVSync.savePushSubscription(row);
-        return true;
-      }
-    } catch (e) { /* fall through */ }
-    try { localStorage.setItem('nv.push.sub', JSON.stringify(row)); return true; }
-    catch (e) { return false; }
+      await window.NVSync.savePushSubscription(row);
+      return { ok: true };
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (/not signed in/i.test(msg)) return { ok: false, why: 'signed-out' };
+      return { ok: false, why: 'save-failed', detail: msg };
+    }
   }
 
   async function unsubscribe() {
