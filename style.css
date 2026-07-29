@@ -4423,3 +4423,62 @@ button.intro-tool {
   font-family: var(--ff-display); font-style: italic; font-size: 14.5px; color: var(--c-fog);
   line-height: 1.55; padding: 14px 4px; margin: 0;
 }
+
+/* ═══════════════════  §52  ALERTS  ═══════════════════ */
+.alerts-btn {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  margin: var(--sp-4) 0 0; padding: 10px var(--sp-3); border-radius: var(--r-sm);
+  color: var(--c-stone); font-size: 12.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  transition: color var(--dur-base) var(--ease-vt), background var(--dur-base) var(--ease-vt);
+}
+.alerts-btn:hover { color: var(--c-paper); background: rgba(255,255,255,.04); }
+.alerts-btn__label { flex: 1; text-align: left; line-height: 1; }
+.alerts-btn__count {
+  font-family: var(--ff-mono); font-size: 10px; font-weight: 700; letter-spacing: 0;
+  min-width: 19px; height: 19px; display: grid; place-items: center; border-radius: 999px;
+  background: rgba(255,255,255,.1); color: var(--c-paper);
+}
+.alerts-btn__count.is-urgent {
+  background: var(--accent-bright, #fff); color: var(--c-void);
+  box-shadow: 0 0 12px rgba(var(--accent-br-rgb, 255,255,255), .55);
+}
+
+.alerts { position: fixed; inset: 0; z-index: var(--z-modal); }
+.alerts__scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(3px); }
+.alerts__panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(420px, 100%);
+  display: flex; flex-direction: column;
+  background: rgba(9,9,11,.97); border-left: 1px solid var(--border-strong);
+  backdrop-filter: blur(20px); box-shadow: -20px 0 60px rgba(0,0,0,.6);
+  animation: alertsIn .34s var(--ease-vt);
+}
+@keyframes alertsIn { from { transform: translateX(24px); opacity: 0; } }
+.alerts__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-6) var(--sp-5) var(--sp-4); border-bottom: 1px solid var(--hairline); }
+.alerts__kick { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--c-fog); }
+.alerts__title { font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 26px; line-height: 1.1; margin-top: 5px; color: var(--c-blanc); }
+.alerts__list { flex: 1; overflow-y: auto; padding: var(--sp-4) var(--sp-4); display: flex; flex-direction: column; gap: 7px; }
+
+.alert {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
+  padding: 12px 13px 12px 15px; border-radius: var(--r-md); cursor: pointer;
+  border: 1px solid var(--hairline); background: rgba(255,255,255,.015); position: relative;
+  transition: border-color var(--dur-base) var(--ease-vt), background var(--dur-base) var(--ease-vt), transform var(--dur-fast) var(--spring);
+}
+.alert:hover { border-color: var(--border); background: rgba(255,255,255,.045); }
+.alert:active { transform: scale(.99); }
+.alert::before { content: ""; position: absolute; left: 0; top: 11px; bottom: 11px; width: 2px; border-radius: 2px; background: var(--c-mid); }
+.alert.is-urgent::before { background: var(--accent-bright, #fff); box-shadow: 0 0 9px rgba(var(--accent-br-rgb, 255,255,255), .6); }
+.alert__tag {
+  flex: none; font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--c-fog); border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; margin-top: 1px;
+}
+.alert.is-urgent .alert__tag { color: var(--accent-bright, #fff); border-color: rgba(var(--accent-br-rgb, 255,255,255), .45); }
+.alert__text { flex: 1; font-size: 13.5px; line-height: 1.5; color: var(--c-bone); }
+.alert__text b { color: var(--c-blanc); font-weight: 600; }
+.alert__text i { font-family: var(--ff-display); font-style: italic; }
+
+.alerts__empty { font-family: var(--ff-display); font-style: italic; font-size: 15px; color: var(--c-fog); text-align: center; padding: 40px 20px; line-height: 1.6; margin: 0; }
+.alerts__foot { padding: var(--sp-4) var(--sp-5) var(--sp-5); border-top: 1px solid var(--hairline); }
+.alerts__note { font-family: var(--ff-display); font-style: italic; font-size: 13px; color: var(--c-fog); margin-top: 9px; line-height: 1.5; }
+
+@media (max-width: 900px) { .alerts-btn { margin-top: var(--sp-3); } }

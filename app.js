@@ -1139,6 +1139,158 @@
     return { render };
   })();
 
+  /* ═══════════════════  ALERTS  ═══════════════════
+     What needs you, now — gathered from the same stores the tabs write to.
+
+     HONEST LIMIT, stated plainly: a web app can only raise a desktop notice
+     while it is OPEN in a tab. Phone-style push that arrives when the app is
+     closed needs a service worker and a push server; that is a real backend,
+     not a checkbox. So this does two things well instead of one thing badly:
+       · an in-app drawer that is always accurate the moment you open it
+       · desktop notices, if you grant them, while the app is open
+
+     Nothing repeats: each alert is stamped with a key + the day it fired.     */
+  const Alerts = (() => {
+    const SEEN = 'nv.alerts.seen';
+    const dayKey = (d) => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const readJSON = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch(e){ return fb; } };
+
+    function gather() {
+      const out = [];
+      const today = dayKey(new Date());
+
+      /* map — places past their date, and places due today */
+      const mapS = readJSON('nv.map.v2', null);
+      if (mapS && Array.isArray(mapS.places)) {
+        mapS.places.forEach(p => {
+          if (p.done || !p.when) return;
+          const d = p.when.slice(0,10);
+          const label = p.name || p.task || 'a place';
+          if (d < today) out.push({ id:'map-over-'+p.id, urgent:true, tab:'map',
+            tag:'Overdue', text:`<b>${esc(label)}</b> was due ${esc(d)}.` });
+          else if (d === today) out.push({ id:'map-today-'+p.id, urgent:true, tab:'map',
+            tag:'Today', text:`<b>${esc(label)}</b>${p.task ? ' — ' + esc(p.task) : ''}.` });
+        });
+      }
+
+      /* subscriptions renewing in the next three days */
+      const radar = readJSON('radar.v1', null);
+      if (radar && Array.isArray(radar.list)) {
+        radar.list.forEach(s => {
+          if (!s.renewal) return;
+          const days = Math.round((new Date(s.renewal + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+          if (days >= 0 && days <= 3) out.push({ id:'sub-'+s.id+'-'+s.renewal, urgent: days === 0, tab:'subscriptions',
+            tag:'Renews', text:`<b>${esc(s.name)}</b> ${days === 0 ? 'renews today' : `renews in ${days} day${days>1?'s':''}`} · ${esc(radar.currency||'$')}${s.amount}.` });
+        });
+      }
+
+      /* water — only worth saying once the day is well along */
+      const logs = Store.get('nv.logs', null) || {};
+      const wGoal = (logs.water && logs.water.goal) || 100;
+      const oz = (logs.water && logs.water.days && logs.water.days[today]) || 0;
+      if (new Date().getHours() >= 18 && oz < wGoal) {
+        out.push({ id:'water-'+today, urgent:false, tab:'logs',
+          tag:'Water', text:`<b>${wGoal - oz} oz</b> short of your water goal today.` });
+      }
+
+      /* sleep — nothing logged for last night */
+      const sleep = (logs.sleep && logs.sleep.entries) || [];
+      if (sleep.length && new Date().getHours() >= 10 && !sleep.some(e => e.date === today)) {
+        out.push({ id:'sleep-'+today, urgent:false, tab:'logs',
+          tag:'Sleep', text:`Last night is not logged yet.` });
+      }
+
+      /* ideas you called urgent and have not built */
+      const need = (Store.get(KEYS.ideas, []) || []).filter(i => !i.built && i.pri === 0);
+      if (need.length) out.push({ id:'ideas-'+today, urgent:false, tab:'home',
+        tag:'Build', text:`<b>${need.length}</b> idea${need.length>1?'s':''} marked <i>need it</i>.` });
+
+      return out.sort((a,b) => (b.urgent?1:0) - (a.urgent?1:0));
+    }
+
+    function render() {
+      const list = gather();
+      const countEl = $('[data-alerts-count]');
+      const urgent = list.filter(a => a.urgent).length;
+      if (countEl) {
+        countEl.textContent = list.length;
+        countEl.hidden = list.length === 0;
+        countEl.classList.toggle('is-urgent', urgent > 0);
+      }
+      const titleEl = $('[data-alerts-title]');
+      if (titleEl) titleEl.textContent = !list.length ? 'All clear'
+        : urgent ? `${urgent} need${urgent>1?'':'s'} you now` : `${list.length} to look at`;
+
+      const wrap = $('[data-alerts-list]');
+      if (wrap) wrap.innerHTML = !list.length
+        ? `<p class="alerts__empty">Nothing pressing. Everything you have logged is on track.</p>`
+        : list.map(a => `<button class="alert ${a.urgent?'is-urgent':''}" data-alert-go="${esc(a.tab)}" type="button">
+             <span class="alert__tag">${esc(a.tag)}</span>
+             <span class="alert__text">${a.text}</span>
+           </button>`).join('');
+
+      $$('[data-alert-go]', wrap || document).forEach(b =>
+        b.addEventListener('click', () => { close(); Tabs.setActive(b.dataset.alertGo); }));
+
+      notify(list);
+      return list;
+    }
+
+    /* desktop notices — only for urgent items, only once each, only if allowed */
+    function notify(list) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const seen = readJSON(SEEN, {});
+      const today = dayKey(new Date());
+      let changed = false;
+      list.filter(a => a.urgent).slice(0, 3).forEach(a => {
+        if (seen[a.id] === today) return;
+        seen[a.id] = today; changed = true;
+        try {
+          new Notification('Life Tracker', {
+            body: a.tag + ' — ' + a.text.replace(/<[^>]+>/g, ''),
+            tag: a.id, silent: false,
+          });
+        } catch (e) {}
+      });
+      if (changed) { try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch(e){} }
+    }
+
+    function open()  { const d = $('[data-alerts]'); if (d) { render(); d.hidden = false; } }
+    function close() { const d = $('[data-alerts]'); if (d) d.hidden = true; }
+
+    function paintPermission() {
+      const btn = $('[data-alerts-permit]'), note = $('[data-alerts-note]');
+      if (!btn || !note) return;
+      if (!('Notification' in window)) {
+        btn.hidden = true; note.textContent = 'This browser cannot show desktop alerts.'; return;
+      }
+      if (Notification.permission === 'granted') {
+        btn.hidden = true;
+        note.textContent = 'Desktop alerts are on — they arrive while the app is open.';
+      } else if (Notification.permission === 'denied') {
+        btn.hidden = true;
+        note.textContent = 'Desktop alerts are blocked in your browser settings for this site.';
+      } else {
+        btn.hidden = false;
+        note.textContent = 'Alerts appear while the app is open in a tab.';
+      }
+    }
+
+    function init() {
+      $('[data-alerts-open]')?.addEventListener('click', open);
+      $$('[data-alerts-close]').forEach(b => b.addEventListener('click', close));
+      $('[data-alerts-permit]')?.addEventListener('click', () => {
+        /* permission MUST be requested from a real click — browsers ignore it otherwise */
+        Notification.requestPermission().then(() => { paintPermission(); render(); });
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      paintPermission();
+      render();
+      setInterval(() => { if (!document.hidden) render(); }, 15 * 60 * 1000);
+    }
+    return { init, render, open };
+  })();
+
   /* ═══════════════════  WORKOUT WIDGET (home)  ═══════════════════ */
   const Workout = (() => {
     function render() {
@@ -6941,6 +7093,7 @@
     Reminders.init();
     Ideas.init();
     Noticed.render();
+    Alerts.init();
     BodyWeight.init();
     ProgressLog.init();
     GymTimer.init();

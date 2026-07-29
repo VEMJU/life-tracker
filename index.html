@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=43" />
+  <link rel="stylesheet" href="style.css?v=44" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -320,8 +320,39 @@
       </button>
     </nav>
 
+    <!-- ALERTS — what needs you now. Reads the same stores the tabs write. -->
+    <button class="alerts-btn" data-alerts-open type="button" aria-label="Alerts">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M18 9a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" stroke-linejoin="round"/>
+        <path d="M10.5 20a2 2 0 0 0 3 0" stroke-linecap="round"/>
+      </svg>
+      <span class="alerts-btn__label">Alerts</span>
+      <span class="alerts-btn__count" data-alerts-count hidden>0</span>
+    </button>
+
     <p class="sidebar__seal">SOLI · DEO · GLORIA</p>
   </aside>
+
+  <!-- the alerts drawer -->
+  <div class="alerts" data-alerts hidden>
+    <div class="alerts__scrim" data-alerts-close></div>
+    <aside class="alerts__panel" role="dialog" aria-label="Alerts">
+      <header class="alerts__head">
+        <div>
+          <p class="alerts__kick">What needs you</p>
+          <h3 class="alerts__title" data-alerts-title>All clear</h3>
+        </div>
+        <button class="icon-btn" data-alerts-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="alerts__list" data-alerts-list></div>
+      <footer class="alerts__foot">
+        <button class="btn btn--ghost btn--sm" data-alerts-permit>Enable desktop alerts</button>
+        <p class="alerts__note" data-alerts-note></p>
+      </footer>
+    </aside>
+  </div>
 
   <!-- ───────────────────────────────  TOP-BAR (mobile)  ─────────────────────────────── -->
   <header class="topbar" aria-label="Primary navigation, mobile">
@@ -1676,7 +1707,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=5" defer></script>
-  <script src="app.js?v=27" defer></script>
+  <script src="app.js?v=28" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
