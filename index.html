@@ -13,7 +13,15 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=44" />
+  <link rel="stylesheet" href="style.css?v=45" />
+
+  <!-- PWA: makes the app installable, which is what iOS requires before it
+       will deliver push notifications at all. -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Life Tracker" />
+  <meta name="theme-color" content="#000000" />
 
   <!-- Hide the app before first paint; sync.js reveals it after auth.
        Also apply the saved theme before first paint so colors never flash. -->
@@ -348,7 +356,9 @@
       </header>
       <div class="alerts__list" data-alerts-list></div>
       <footer class="alerts__foot">
-        <button class="btn btn--ghost btn--sm" data-alerts-permit>Enable desktop alerts</button>
+        <button class="btn btn--primary btn--sm" data-push-toggle hidden>Turn on phone alerts</button>
+        <p class="alerts__note" data-push-note></p>
+        <button class="btn btn--ghost btn--sm" data-alerts-permit>
         <p class="alerts__note" data-alerts-note></p>
       </footer>
     </aside>
@@ -1707,11 +1717,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=5" defer></script>
-  <script src="app.js?v=28" defer></script>
+  <script src="app.js?v=29" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
   <script src="gallery.js?v=7" defer></script>
   <script src="polish.js?v=3" defer></script>
+  <script src="push.js?v=1" defer></script>
 </body>
 </html>

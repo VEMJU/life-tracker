@@ -1276,9 +1276,47 @@
       }
     }
 
+    /* ── phone alerts (real push, via the service worker) ── */
+    async function paintPush() {
+      const btn = $('[data-push-toggle]'), note = $('[data-push-note]');
+      if (!btn || !note || !window.NVPush) return;
+      const s = await window.NVPush.status();
+      const msg = {
+        'unsupported':       ['', 'This browser cannot do phone alerts.'],
+        'ios-needs-install': ['', 'On iPhone: tap Share → Add to Home Screen, then open it from there. Apple only allows alerts from an installed app.'],
+        'denied':            ['', 'Alerts are blocked for this site in your browser settings.'],
+        'no-sw':             ['', 'Alerts need the app served over https — they will work on your live site, not from a local file.'],
+        'off':               ['Turn on phone alerts', 'Get your day even when the app is closed.'],
+        'on':                ['Turn off phone alerts', 'Phone alerts are on. Your daily push arrives even with the app closed.'],
+      }[s] || ['', ''];
+      btn.hidden = !msg[0];
+      btn.textContent = msg[0];
+      btn.dataset.state = s;
+      note.textContent = msg[1];
+    }
+
     function init() {
-      $('[data-alerts-open]')?.addEventListener('click', open);
+      $('[data-alerts-open]')?.addEventListener('click', () => { open(); paintPush(); });
       $$('[data-alerts-close]').forEach(b => b.addEventListener('click', close));
+      $('[data-push-toggle]')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        if (btn.dataset.state === 'on') { await window.NVPush.unsubscribe(); }
+        else {
+          const r = await window.NVPush.subscribe();
+          if (!r.ok) toast(
+            r.why === 'ios-needs-install' ? 'Add to Home Screen first' :
+            r.why === 'denied'            ? 'You declined notifications' :
+            r.why === 'no-server-key'     ? 'Server keys not set up yet' :
+                                            'Could not turn alerts on');
+        }
+        btn.disabled = false;
+        paintPush();
+      });
+      /* a tapped notification asks the app to open that tab */
+      window.addEventListener('nv-go-tab', (e) => {
+        if (e.detail && REAL_PANELS.includes(e.detail)) Tabs.setActive(e.detail);
+      });
       $('[data-alerts-permit]')?.addEventListener('click', () => {
         /* permission MUST be requested from a real click — browsers ignore it otherwise */
         Notification.requestPermission().then(() => { paintPermission(); render(); });

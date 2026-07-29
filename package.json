@@ -1,0 +1,9 @@
+{
+  "name": "life-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Personal life tracker — static app with Vercel serverless functions.",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
