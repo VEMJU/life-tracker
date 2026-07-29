@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=45" />
+  <link rel="stylesheet" href="style.css?v=46" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -401,6 +401,17 @@
       <button class="topbar__link" data-tab="sports">Sports</button>
       <button class="topbar__link" data-tab="calendar">Calendar</button>
     </nav>
+
+    <!-- On a phone the sidebar is hidden, so Alerts lives here instead —
+         otherwise there is no way to reach phone notifications on mobile,
+         which is the one device that actually receives them. -->
+    <button class="topbar__alerts" data-alerts-open type="button" aria-label="Alerts">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M18 9a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" stroke-linejoin="round"/>
+        <path d="M10.5 20a2 2 0 0 0 3 0" stroke-linecap="round"/>
+      </svg>
+      <span class="topbar__alerts-count" data-alerts-count hidden>0</span>
+    </button>
   </header>
 
   <!-- ───────────────────────────────  BACK TO HUB  ─────────────────────────────── -->
@@ -1720,7 +1731,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=30" defer></script>
+  <script src="app.js?v=31" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>

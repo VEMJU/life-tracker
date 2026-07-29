@@ -1210,13 +1210,14 @@
 
     function render() {
       const list = gather();
-      const countEl = $('[data-alerts-count]');
       const urgent = list.filter(a => a.urgent).length;
-      if (countEl) {
+      /* two badges now — the sidebar's and the mobile topbar's — and only one
+         of them is ever visible, so both must be kept in step */
+      $$('[data-alerts-count]').forEach(countEl => {
         countEl.textContent = list.length;
         countEl.hidden = list.length === 0;
         countEl.classList.toggle('is-urgent', urgent > 0);
-      }
+      });
       const titleEl = $('[data-alerts-title]');
       if (titleEl) titleEl.textContent = !list.length ? 'All clear'
         : urgent ? `${urgent} need${urgent>1?'':'s'} you now` : `${list.length} to look at`;
@@ -1296,7 +1297,7 @@
     }
 
     function init() {
-      $('[data-alerts-open]')?.addEventListener('click', () => { open(); paintPush(); });
+      $$('[data-alerts-open]').forEach(b => b.addEventListener('click', () => { open(); paintPush(); }));
       $$('[data-alerts-close]').forEach(b => b.addEventListener('click', close));
       $('[data-push-toggle]')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
