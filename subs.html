@@ -2,6 +2,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Radar · every dollar, on schedule</title>
+<script src="vendor/theme-bridge.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -915,7 +916,7 @@ render();
   function rr(x,y,w,h,r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
   function drawCross(c){
     const s = c.size, bw = s*0.13, cw = s*0.46;
-    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha = c.alpha; ctx.fillStyle = '#fff';
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha = c.alpha; ctx.fillStyle = window.NV_ACCENT || '#fff';
     rr(-bw/2,-s/2,bw,s,bw*0.4); rr(-cw/2,-s/2+s*0.26,cw,bw,bw*0.4);
     ctx.restore();
   }

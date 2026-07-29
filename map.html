@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script src="vendor/theme-bridge.js"></script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
@@ -77,6 +78,28 @@ html.noInvert .leaflet-tile{filter:none}
 .kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 .h1{font-family:var(--serif);font-size:29px;line-height:1.05;margin-top:6px}
 .sub{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--muted-strong);margin-top:4px}
+
+/* search — find a place by name instead of hunting for it on the map */
+.searchRow{display:flex;align-items:center;gap:9px;margin:12px 18px 0;padding:10px 12px;
+  border:1px solid var(--rule-strong);border-radius:12px;background:rgba(255,255,255,.03);
+  transition:border-color .2s var(--ease)}
+.searchRow:focus-within{border-color:var(--accent)}
+.searchIcon{width:15px;height:15px;flex:none;fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linecap:round}
+#searchInput{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--fg);font-size:14px}
+#searchInput::placeholder{color:rgba(255,255,255,.32)}
+#searchInput::-webkit-search-cancel-button{display:none}
+#searchClear{flex:none;color:var(--muted);font-size:17px;line-height:1;padding:0 2px}
+#searchClear:hover{color:var(--fg)}
+
+.results{margin:8px 18px 0;border:1px solid var(--rule);border-radius:12px;overflow:hidden;
+  background:rgba(10,10,12,.96);max-height:250px;overflow-y:auto}
+.res{display:block;width:100%;text-align:left;padding:11px 13px;border:0;background:none;cursor:pointer;
+  border-bottom:1px solid var(--rule);transition:background .15s var(--ease)}
+.res:last-child{border-bottom:0}
+.res:hover{background:rgba(255,255,255,.06)}
+.resName{font-size:13.5px;font-weight:600;color:var(--fg)}
+.resWhere{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.resNote{padding:12px 13px;font-family:var(--serif);font-style:italic;font-size:13px;color:var(--muted);text-align:center}
 
 /* regions — your several lives, one tap apart */
 .regions{display:flex;gap:6px;flex-wrap:wrap;padding:12px 18px 0}
@@ -245,6 +268,13 @@ textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
       <h1 class="h1">Where you have to be</h1>
       <p class="sub" id="sub">Tap the map to drop a place.</p>
     </div>
+    <div class="searchRow">
+      <svg class="searchIcon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="search" placeholder="Search a place or address…" autocomplete="off" />
+      <button id="searchClear" aria-label="Clear" hidden>×</button>
+    </div>
+    <div class="results" id="results" hidden></div>
+
     <div class="regions" id="regions"></div>
     <div class="filters" id="filters"></div>
     <div class="list" id="list"></div>
@@ -557,6 +587,70 @@ $('regions').addEventListener('click', (e) => {
     S.activeRegion = r.id; save(); renderRegions();
     map.flyTo([r.lat, r.lng], r.z, { duration: .8 });
   }
+});
+
+/* ── SEARCH ──────────────────────────────────────────────────────────────────
+   Nominatim is OpenStreetMap's own geocoder: free, no API key, no billing. It
+   asks for courtesy in return — at most one request a second — so we wait until
+   you stop typing rather than firing on every keystroke. */
+const searchInput = $('searchInput'), resultsEl = $('results'), clearBtn = $('searchClear');
+let searchTimer = null, lastQuery = '';
+
+function hideResults(){ resultsEl.hidden = true; resultsEl.innerHTML = ''; }
+
+async function runSearch(q){
+  if (q === lastQuery) return;
+  lastQuery = q;
+  resultsEl.hidden = false;
+  resultsEl.innerHTML = '<p class="resNote">Searching…</p>';
+  try {
+    /* bias results toward wherever you are looking now */
+    const c = map.getCenter();
+    const url = 'https://nominatim.openstreetmap.org/search'
+      + '?format=json&limit=6&addressdetails=1'
+      + '&q=' + encodeURIComponent(q)
+      + '&viewbox=' + [c.lng-1.2, c.lat+1.2, c.lng+1.2, c.lat-1.2].join(',');
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error('search failed');
+    const list = await r.json();
+    if (!list.length) { resultsEl.innerHTML = '<p class="resNote">Nothing found.</p>'; return; }
+    resultsEl.innerHTML = list.map((p, i) => {
+      const parts = (p.display_name || '').split(',');
+      const name  = parts.shift().trim();
+      const where = parts.slice(0, 3).join(',').trim();
+      return `<button class="res" data-i="${i}">
+        <span class="resName">${esc(name)}</span>
+        ${where ? `<span class="resWhere">${esc(where)}</span>` : ''}
+      </button>`;
+    }).join('');
+    resultsEl.querySelectorAll('.res').forEach(b => b.addEventListener('click', () => {
+      const hit = list[+b.dataset.i]; if (!hit) return;
+      const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
+      map.flyTo([lat, lng], 16, { duration: .8 });
+      hideResults();
+      searchInput.value = '';
+      clearBtn.hidden = true;
+      /* offer to keep it: the sheet opens pre-named with what you searched */
+      setTimeout(() => openSheet(null, lat, lng, { name: (hit.display_name || '').split(',')[0].trim() }), 850);
+    }));
+  } catch (e) {
+    resultsEl.innerHTML = '<p class="resNote">Search is unavailable right now.</p>';
+  }
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  clearBtn.hidden = !q;
+  clearTimeout(searchTimer);
+  if (q.length < 3) { hideResults(); lastQuery = ''; return; }
+  searchTimer = setTimeout(() => runSearch(q), 550);   // wait for you to stop typing
+});
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { searchInput.value = ''; clearBtn.hidden = true; hideResults(); }
+  if (e.key === 'Enter')  { clearTimeout(searchTimer); const q = searchInput.value.trim(); if (q.length >= 3) runSearch(q); }
+});
+clearBtn.addEventListener('click', () => {
+  searchInput.value = ''; clearBtn.hidden = true; hideResults(); lastQuery = ''; searchInput.focus();
 });
 
 /* ── filters ── */
@@ -891,7 +985,7 @@ window.addEventListener('pageshow', refit);
   function rr(x,y,w,h,r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
   function drawCross(c){
     var s=c.size, bw=s*0.13, cw=s*0.46;
-    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle='#fff';
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle = window.NV_ACCENT || '#fff';
     rr(-bw/2,-s/2,bw,s,bw*0.4); rr(-cw/2,-s/2+s*0.26,cw,bw,bw*0.4);
     ctx.restore();
   }

@@ -67,7 +67,40 @@
     try { t = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
     if (t !== 'crimson' && THEMES.includes(t)) root.dataset.theme = t;
     else delete root.dataset.theme;
+    broadcastTheme();
   }
+
+  /* ── THEME → EMBEDDED TABS ───────────────────────────────────────────────
+     Map, Stocks, Peak and the rest are iframes: separate documents that cannot
+     see this page's CSS variables. So we read the live accent here and post it
+     in. Each embedded page applies it to its own tokens and repaints its
+     crosses, which is why the whole app changes colour together instead of the
+     shell going purple while the tabs stay white. */
+  function broadcastTheme() {
+    const cs = getComputedStyle(root);
+    const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+    const payload = {
+      source: 'nv-host', type: 'theme',
+      accent:     v('--accent', '#C4163B'),
+      accentBr:   v('--accent-bright', '#E11D38'),
+      accentRgb:  v('--accent-rgb', '196, 22, 59'),
+      accentBrRgb:v('--accent-br-rgb', '225, 29, 56'),
+    };
+    document.querySelectorAll('iframe.gl-frame').forEach(f => {
+      try { f.contentWindow.postMessage(payload, '*'); } catch (e) {}
+    });
+  }
+  /* an iframe that finishes loading later still needs telling */
+  window.addEventListener('load', () => {
+    document.querySelectorAll('iframe.gl-frame').forEach(f => {
+      f.addEventListener('load', broadcastTheme);
+    });
+    broadcastTheme();
+  });
+  /* and an embedded page can ask for it the moment it boots */
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.source === 'nv-embed' && e.data.type === 'theme:request') broadcastTheme();
+  });
   const themeBtn = document.getElementById('themeCycle');
   if (themeBtn) themeBtn.addEventListener('click', () => {
     let cur = 'crimson';

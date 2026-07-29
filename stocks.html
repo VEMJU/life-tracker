@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" style="background: #000000; color-scheme: dark;">
 <head>
+<script src="vendor/theme-bridge.js"></script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
@@ -1971,7 +1972,7 @@ Promise.resolve(window.Vitality.load()).then(d => {
   function rr(x,y,w,h,r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
   function drawCross(c){
     var s=c.size, bw=s*0.13, cw=s*0.46;
-    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle='#fff';
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha; ctx.fillStyle = window.NV_ACCENT || '#fff';
     rr(-bw/2,-s/2,bw,s,bw*0.4); rr(-cw/2,-s/2+s*0.26,cw,bw,bw*0.4);
     ctx.restore();
   }
