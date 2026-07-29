@@ -20,15 +20,35 @@
 
 import webpush from 'web-push';
 
+/* Returns { rows } or { fail } — never a bare empty array on error. Swallowing
+   a failure here is the cruellest possible bug: a bad key would report "no
+   subscriptions yet" forever and send you hunting through your phone settings
+   for a problem that was never there. */
 async function subscriptions() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key) return [];
-  const r = await fetch(`${url}/rest/v1/push_subscriptions?select=*`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
-  });
-  if (!r.ok) return [];
-  return r.json();
+  if (!url) return { fail: 'SUPABASE_URL is not set in Vercel' };
+  if (!key) return { fail: 'SUPABASE_SERVICE_KEY is not set in Vercel' };
+
+  let r;
+  try {
+    r = await fetch(`${url}/rest/v1/push_subscriptions?select=*`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+  } catch (e) {
+    return { fail: `could not reach Supabase: ${e.message}` };
+  }
+
+  if (r.status === 401 || r.status === 403) {
+    return { fail: 'Supabase rejected SUPABASE_SERVICE_KEY (401/403) — copy the secret key again and redeploy' };
+  }
+  if (r.status === 404) {
+    return { fail: 'table push_subscriptions not found — run supabase-push.sql' };
+  }
+  if (!r.ok) {
+    return { fail: `Supabase returned ${r.status}: ${(await r.text()).slice(0, 200)}` };
+  }
+  return { rows: await r.json() };
 }
 
 async function dropDead(endpoint) {
@@ -64,8 +84,13 @@ export default async function handler(req, res) {
         tag: 'daily',
       };
 
-  const subs = await subscriptions();
-  if (!subs.length) return res.status(200).json({ sent: 0, note: 'no subscriptions stored yet' });
+  const got = await subscriptions();
+  if (got.fail) return res.status(500).json({ error: got.fail });
+
+  const subs = got.rows || [];
+  if (!subs.length) {
+    return res.status(200).json({ sent: 0, note: 'Supabase reachable, but no device has subscribed yet' });
+  }
 
   let sent = 0, dead = 0;
   await Promise.all(subs.map(async (s) => {
