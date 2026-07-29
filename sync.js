@@ -402,6 +402,28 @@
       location.reload();
     },
     isConfigured: true,
+
+    /* ── WHERE A DEVICE GOES TO BE FOUND ──────────────────────────────────
+       push.js hands us the subscription the browser minted. It lands in its
+       own table, tied to the account — so the nightly job can reach every
+       phone you signed in on, not just the one you set up. Conflict is on
+       `endpoint` because that string IS the device: re-subscribing on the
+       same phone should refresh the row, never add a second one. */
+    savePushSubscription: async (row) => {
+      if (!userId) throw new Error('not signed in');
+      const { error } = await sb.from('push_subscriptions').upsert(
+        { ...row, user_id: userId },
+        { onConflict: 'endpoint' }
+      );
+      if (error) throw error;
+      return true;
+    },
+
+    /* Permission revoked, or the toggle switched off: stop sending here. */
+    dropPushSubscription: async (endpoint) => {
+      if (!userId || !endpoint) return;
+      try { await sb.from('push_subscriptions').delete().eq('endpoint', endpoint); } catch (e) {}
+    },
   };
 
   (async function boot() {

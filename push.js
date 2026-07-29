@@ -107,7 +107,16 @@
     if (!reg) reg = await register();
     if (!reg) return;
     const sub = await reg.pushManager.getSubscription();
-    if (sub) await sub.unsubscribe();
+    if (sub) {
+      /* forget the device server-side FIRST — if we unsubscribed first we'd
+         lose the endpoint and the row would linger, pushing into the void
+         until the send job pruned it. */
+      const ep = sub.endpoint;
+      try {
+        if (window.NVSync && window.NVSync.dropPushSubscription) await window.NVSync.dropPushSubscription(ep);
+      } catch (e) { /* the send job prunes dead endpoints anyway */ }
+      await sub.unsubscribe();
+    }
     try { localStorage.removeItem('nv.push.sub'); } catch (e) {}
   }
 
