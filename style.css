@@ -4293,13 +4293,35 @@ button.intro-tool {
 .fhm-stat__val { font-size: 18px; }
 .td-progress__total { font-size: 20px; }
 
+/* — the running clocks: a timer is a hero number that happens to move — */
+.chrono__time,             /* Gym · chronometer             */
+.gtimer__time {            /* Gym · rest timer              */
+  font-family: var(--ff-display);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* — the tabs §48 first missed: same split, no markup touched — */
+.mw-macro__val,            /* Nutrition · macro readout     */
+.ew-ratio__val,            /* Nutrition · electrolyte ratio */
+.reminder__time {          /* Reminders · when it fires     */
+  font-family: var(--ff-display);
+  font-style: italic;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
 /* — captions and quiet lines: the italic voice, never uppercase mono — */
 .dayring__status,
 .statusLine,
+.water-side__pct,          /* Logs · "85% of goal"          */
 .noteLine { font-family: var(--ff-display); font-style: italic; letter-spacing: .01em; }
 
 /* — every card obeys the same corner + settle, whatever tab built it — */
-.goal-card, .sat-card, .fin-card, .spark-card, .cl-item, .run-card {
+.goal-card, .sat-card, .fin-card, .spark-card, .cl-item, .run-card,
+.reminder, .photo-card, .sp-log, .sp-plan {
   border-radius: var(--r-xl);
   transition: border-color var(--dur-base) var(--ease-vt),
               box-shadow  var(--dur-base) var(--ease-vt),
