@@ -97,6 +97,7 @@
   --ease-emph:   cubic-bezier(.2, .8, .2, 1);
   /* the two signature curves: a long settle, and a slight overshoot on press */
   --ease-vt:     cubic-bezier(.16, 1, .3, 1);
+  --ease-soft:   cubic-bezier(.22, 1, .36, 1);   /* Vitality's card-pop curve */
   --spring:      cubic-bezier(.34, 1.56, .64, 1);
   --dur-fast: 150ms;
   --dur-base: 260ms;
@@ -4340,6 +4341,134 @@ button.intro-tool {
 .curve .curve-line { filter: drop-shadow(0 0 6px rgba(var(--accent-br-rgb, 255,255,255), .55)); }
 .curve .curve-head { filter: drop-shadow(0 0 7px rgba(var(--accent-br-rgb, 255,255,255), .9)); }
 .chart-empty { font-family: var(--ff-display); font-style: italic; font-size: 15px; color: var(--c-fog); text-align: center; padding: 18px 0; margin: 0; }
+
+/* ═══════════════════  §53  TILE ANATOMY  ═══════════════════
+   The three parts a Vitality tile has that a plain card does not:
+
+     HERO      one figure the tile exists to show, in the serif voice,
+               with its target and a hairline of progress beneath it
+     RULE      a hairline that separates sections inside one tile
+     ACTIONS   the button row along the bottom, built from data — adding a
+               button later is one array entry, never a layout change
+
+   Written once here so every tab rebuilt from now on inherits it.          */
+
+/* THE WELL — a Vitality hero is centred, enormous, and stands alone. The size
+   is the point: clamp(72px,18vw,110px) in their tiles, not a large-ish number.
+   Kick above it, "of N" below, nothing else competing. */
+.tile-well { text-align: center; padding: var(--sp-6) 0 var(--sp-2); }
+.tile-kick {
+  font-family: var(--ff-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--accent);
+}
+.tile-hero__val {
+  display: block; margin-top: 10px;
+  font-family: var(--ff-display); font-style: italic; font-weight: 400;
+  font-size: clamp(60px, 13vw, 104px); line-height: 1; letter-spacing: -.015em;
+  color: #fff; font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 44px rgba(var(--accent-rgb), .28);
+}
+.tile-hero__of {
+  display: block; margin-top: 8px;
+  font-family: var(--ff-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--c-fog);
+}
+/* a quiet mono line closing the tile — their .foot */
+.tile-foot {
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--c-fog); text-align: center;
+  margin-top: var(--sp-6);
+}
+
+/* progress as a hairline, not a chunky bar — the Vitality read */
+.tile-hero__bar { position: relative; height: 2px; margin-top: var(--sp-4); background: rgba(255,255,255,.09); border-radius: 2px; overflow: hidden; }
+.tile-hero__bar i {
+  position: absolute; inset: 0 auto 0 0; display: block; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  box-shadow: 0 0 12px -2px var(--accent-glow);
+  transition: width 900ms var(--ease-vt);
+}
+/* past target reads as a warning, not as success */
+.tile-hero__bar.is-over i { background: linear-gradient(90deg, #e0b870, #e08a5a); }
+
+.tile-rule { height: 1px; background: var(--hairline); margin: var(--sp-5) 0; border: 0; }
+
+/* ── THE MOTION ───────────────────────────────────────────────────────────
+   Lifted from their tiles, not approximated. What makes it read as Vitality
+   rather than as a fade is the OVERSHOOT: a card rises past its resting
+   place at 60%, then settles back. A plain fade-up feels cheap next to it. */
+@keyframes cardPop {
+  0%   { opacity: 0; transform: translateY(12px) scale(.98); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.006); }
+  100% { opacity: 1; transform: none; }
+}
+.pop { animation: cardPop 560ms var(--ease-soft) both; }
+
+/* stagger: 60ms between cards, 22ms inside a dense list — their numbers */
+.pop-stagger > * { animation: cardPop 560ms var(--ease-soft) both; }
+.pop-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.pop-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.pop-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.pop-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.pop-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.pop-stagger > *:nth-child(6) { animation-delay: 300ms; }
+.pop-stagger > *:nth-child(n+7) { animation-delay: 360ms; }
+
+/* bars grow from their base; lines draw themselves left to right */
+@keyframes barRise  { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes lineDraw { to { stroke-dashoffset: 0; } }
+.bar-rise { transform-origin: 50% 100%; animation: barRise 500ms var(--ease-vt) both; }
+.line-draw { animation: lineDraw 900ms var(--ease-vt) forwards; }
+
+/* the slow breath under a hero — 9s, barely perceptible, never distracting */
+@keyframes atmoBreath {
+  0%, 100% { opacity: .7; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;  transform: translate(-50%, -50%) scale(1.08); }
+}
+.tile-well { position: relative; }
+.tile-well::before {
+  content: ''; position: absolute; left: 50%; top: 42%;
+  width: 300px; height: 300px; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), .13), transparent 62%);
+  animation: atmoBreath 9s ease-in-out infinite;
+  pointer-events: none; z-index: 0;
+}
+.tile-well > * { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pop, .pop-stagger > *, .bar-rise, .line-draw { animation: none; }
+  .tile-well::before { animation: none; }
+}
+
+/* THE BUTTON ROW — centred pills, not a grid of equal boxes. One filled
+   "glass" button carries the main act; the rest are quiet rings. */
+.tile-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: var(--sp-3); margin-top: var(--sp-6);
+}
+.tile-actions__btn {
+  padding: 11px 22px; cursor: pointer; border-radius: 999px;
+  font-family: var(--ff-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--c-stone);
+  background: transparent; border: 1px solid var(--border);
+  transition: color .15s var(--ease-out), border-color .15s var(--ease-out),
+              transform .15s var(--spring);
+}
+.tile-actions__btn:hover { color: #fff; border-color: var(--c-stone); }
+.tile-actions__btn:active { transform: scale(.97); }
+
+/* the one that matters: filled, glowing, no border — their .glass */
+.tile-actions__btn.is-primary {
+  padding: 13px 30px; border: none; letter-spacing: .1em; font-size: 11px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  box-shadow: 0 10px 34px -12px var(--accent-glow);
+}
+.tile-actions__btn.is-primary:hover { transform: translateY(-1px); }
+.tile-actions__btn.is-primary:active { transform: scale(.97); }
+
+/* round ghost, for the −1 next to a +1 */
+.tile-actions__btn.is-round { width: 46px; height: 46px; padding: 0; font-size: 18px; letter-spacing: 0; }
 
 /* ═══════════════════  §49  APP IDEAS (home)  ═══════════════════
    The backlog for the app itself. Priority is carried by a coloured spine on

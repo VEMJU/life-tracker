@@ -329,6 +329,52 @@
   })();
 
   /* ═══════════════════  GOALS  ═══════════════════ */
+  /* ══════════════════  TILE ACTION ROWS  ══════════════════
+     The button row along the bottom of a rebuilt tile, built from data.
+     Adding a button to a tab is ONE entry here — never a layout change:
+
+       { id, label, primary?, round?, run() }
+
+     Anything with a `run` fires it; anything with a `tab` jumps there. */
+  const TILE_ACTIONS = {
+    nutrition: [
+      /* opens the meal you are most likely logging right now, rather than
+         always breakfast — the form lives per meal section */
+      { id: 'meal',    label: '+ Log food', primary: true,
+        run: () => {
+          const h = new Date().getHours();
+          const meal = h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 21 ? 'dinner' : 'snacks';
+          const btn = document.querySelector('[data-meal-add="' + meal + '"]');
+          if (!btn) return;
+          btn.click();
+          btn.closest('.meal-sec')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } },
+      { id: 'targets', label: 'Targets',
+        run: () => document.getElementById('targets-toggle')?.click() },
+      { id: 'water',   label: 'Water',       tab: 'logs' },
+      { id: 'stack',   label: 'Supplements', tab: 'supplements' },
+    ],
+  };
+
+  function renderTileActions(root) {
+    (root || document).querySelectorAll('[data-tile-actions]').forEach(host => {
+      const key = host.getAttribute('data-tile-actions');
+      const defs = TILE_ACTIONS[key];
+      if (!defs || host.dataset.built === '1') return;
+      host.innerHTML = defs.map(d =>
+        '<button class="tile-actions__btn' + (d.primary ? ' is-primary' : '') + (d.round ? ' is-round' : '') +
+        '" type="button" data-tile-action="' + d.id + '">' + esc(d.label) + '</button>'
+      ).join('');
+      host.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-tile-action]'); if (!btn) return;
+        const def = defs.find(d => d.id === btn.getAttribute('data-tile-action')); if (!def) return;
+        if (def.tab) Tabs.setActive(def.tab);
+        else if (def.run) def.run();
+      });
+      host.dataset.built = '1';   // listener is delegated; bind it once
+    });
+  }
+
   const Goals = (() => {
     const CAT_PALETTE = ['#6ab0e0','#7dd488','#e0b870','#c89ae0','#e0a0a0','#7dd9d4','#d4c97d','#a0a8e0'];
     const RECUR_OPTS = [14,30,60,90];
@@ -2417,8 +2463,28 @@
       }, {cal:0, carbs:0, protein:0, fats:0});
     }
 
+    /* ── THE HERO (nutrition tab) ──────────────────────────────────────────
+       Vitality's read: one enormous figure, a kick above it, the target
+       below, and nothing else competing for the eye. The rings stay — they
+       are the detail you look at second, not first. */
+    function renderNutHero() {
+      const el = $('[data-nut-hero]'); if (!el) return;
+      const totals = getTotals(localDateKey());
+      const cal = Math.round(totals.cal || 0);
+      const tgt = nutState.targets.cal || 0;
+      const left = tgt ? tgt - cal : 0;
+      el.innerHTML =
+        '<span class="tile-kick">✦ calories today</span>' +
+        '<span class="tile-hero__val">' + cal.toLocaleString() + '</span>' +
+        '<span class="tile-hero__of">' + (tgt ? 'of ' + tgt.toLocaleString() + ' kcal' : 'no target set') + '</span>' +
+        (tgt
+          ? '<p class="tile-foot">' + (left >= 0 ? left.toLocaleString() + ' left today' : Math.abs(left).toLocaleString() + ' over target') + '</p>'
+          : '');
+    }
+
     /* ── Macro rings (nutrition tab) ── */
     function renderMacroRings() {
+      renderNutHero();   // called from here so every existing call site keeps the hero in step
       const el = $('[data-macro-rings]'); if (!el) return;
       const totals = getTotals(localDateKey());
       const t = nutState.targets;
@@ -7135,6 +7201,7 @@
     Ideas.init();
     Noticed.render();
     Alerts.init();
+    renderTileActions();      // bottom button rows on every rebuilt tile
     BodyWeight.init();
     ProgressLog.init();
     GymTimer.init();
