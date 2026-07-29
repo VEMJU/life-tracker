@@ -155,8 +155,9 @@
     clothes:   {eyebrow:'The Wardrobe · Fits & Freight', title:'Clothes & Accessories'},
     sports:    {eyebrow:'The Arena · Iron Sharpens Iron', title:'Sports'},
     calendar:  {eyebrow:'The Chronicle · Ordered Days', title:'Calendar'},
+    stats:     {eyebrow:'The Ledger · Everything At Once', title:'Stats'},
   };
-  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','map','stocks','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar'];
+  const REAL_PANELS = ['home','gym','supplements','subscriptions','vitals','peak','map','stocks','goals','reminders','nutrition','finance','photos','academics','logs','clothes','sports','calendar','stats'];
 
   /* ═══════════════════  COUNTDOWN  ═══════════════════ */
   const Countdown = (() => {
@@ -374,6 +375,134 @@
       host.dataset.built = '1';   // listener is delegated; bind it once
     });
   }
+
+  /* ══════════════════  STATS  ══════════════════
+     The 21st.dev HealthStatCard, rebuilt in this stack.
+
+     WHY NOT THE REACT FILE AS WRITTEN: it needs React, TypeScript, Tailwind,
+     the shadcn tree, framer-motion and Radix. This app has no build step —
+     that is why a change is live the moment it is saved and why the tabs can
+     be plain iframes. Adopting that toolchain to gain one card would mean
+     rebuilding everything around it. So the card is reproduced feature for
+     feature — stat row with change arrows, spring bars, hover tilt, tooltips,
+     legend — using this app's own tokens, which also makes it match.
+
+     The real upgrade: the demo had hardcoded numbers. This reads your logs. */
+  const Stats = (() => {
+    const PAL = ['#6ab0e0', '#7dd488', '#e0b870', '#c89ae0', '#7dd9d4', '#e0a0a0'];
+
+    const dayKeyBack = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return localDateKey(d); };
+
+    /* average of the last `days`, ignoring days with no entry at all —
+       a missing day is unknown, not a zero, and averaging in zeros would
+       quietly punish you for not logging */
+    function avg(vals) {
+      const real = vals.filter(v => typeof v === 'number' && !isNaN(v));
+      if (!real.length) return null;
+      return real.reduce((a, b) => a + b, 0) / real.length;
+    }
+
+    function series(readFn, days) {
+      return Array.from({ length: days }, (_, i) => readFn(dayKeyBack(days - 1 - i)));
+    }
+
+    function gather() {
+      /* 'nv.logs' is a literal here because the Logs module owns that key
+         privately — there is no KEYS.logs entry, and reading an undefined
+         key would have made this tab quietly empty forever. */
+      const logs = Store.get('nv.logs', {}) || {};
+      const nut  = Store.get(KEYS.nutrition, {}) || {};
+
+      const sleepBy = {};
+      ((logs.sleep && logs.sleep.entries) || []).forEach(e => { if (e && e.date) sleepBy[e.date] = num(e.hours); });
+      const waterDays = (logs.water && logs.water.days) || {};
+      const stepsV = ((logs.vitals || []).find(v => v && v.id === 'steps') || {}).entries || {};
+
+      const calFor = (dk) => {
+        const day = (nut.days || {})[dk]; if (!day) return undefined;
+        return Object.values(day.meals || {}).reduce((a, items) =>
+          a + (items || []).reduce((b, f) => b + num(f.cal), 0), 0);
+      };
+
+      const week  = (fn) => series(fn, 7);
+      const prev  = (fn) => Array.from({ length: 7 }, (_, i) => fn(dayKeyBack(13 - i)));
+
+      const mk = (label, fn, unit, dp) => {
+        const now = avg(week(fn)), before = avg(prev(fn));
+        const pct = (now !== null && before !== null && before !== 0)
+          ? Math.round(((now - before) / before) * 100) : null;
+        return {
+          title: label, unit,
+          value: now === null ? '—' : (dp ? now.toFixed(dp) : Math.round(now).toLocaleString()),
+          changePercent: pct === null ? null : Math.abs(pct),
+          changeDirection: pct === null ? null : (pct >= 0 ? 'up' : 'down'),
+        };
+      };
+
+      const stats = [
+        mk('Sleep',    (dk) => sleepBy[dk],           'h', 1),
+        mk('Water',    (dk) => waterDays[dk],         'oz', 0),
+        mk('Steps',    (dk) => num(stepsV[dk]) || undefined, '', 0),
+        mk('Calories', calFor,                        'kcal', 0),
+      ];
+
+      /* the bars: each metric as a percentage of its own goal, so four
+         different units can share one axis honestly */
+      const goalSleep = (logs.sleep && logs.sleep.goal) || 8;
+      const goalWater = (logs.water && logs.water.goal) || 100;
+      const goalSteps = (((logs.vitals || []).find(v => v && v.id === 'steps') || {}).goal) || 10000;
+      const goalCal   = (nut.targets && nut.targets.cal) || 2800;
+
+      const pctOf = (v, g) => v === null || !g ? 0 : Math.max(0, Math.min(100, Math.round((v / g) * 100)));
+      const graph = [
+        { label: 'Sleep',    value: pctOf(avg(week((dk) => sleepBy[dk])), goalSleep),   color: PAL[0], description: 'Nightly average vs your ' + goalSleep + 'h goal' },
+        { label: 'Water',    value: pctOf(avg(week((dk) => waterDays[dk])), goalWater), color: PAL[1], description: 'Daily average vs your ' + goalWater + 'oz goal' },
+        { label: 'Steps',    value: pctOf(avg(week((dk) => num(stepsV[dk]) || undefined)), goalSteps), color: PAL[2], description: 'Daily average vs your ' + goalSteps.toLocaleString() + ' goal' },
+        { label: 'Calories', value: pctOf(avg(week(calFor)), goalCal),                  color: PAL[3], description: 'Daily average vs your ' + goalCal.toLocaleString() + ' kcal target' },
+      ];
+
+      return { stats, graph, empty: stats.every(s => s.value === '—') };
+    }
+
+    function render() {
+      const host = $('[data-stats-host]'); if (!host) return;
+      const { stats, graph, empty } = gather();
+
+      host.innerHTML =
+        '<article class="card card--stats reveal" style="--d:.05s">' +
+          '<div class="eyebrow"><span class="eyebrow__num">01</span>' +
+          '<span class="eyebrow__lbl">Last 7 days</span><span class="eyebrow__rule"></span></div>' +
+
+          '<div class="stat-row">' + stats.map((s, i) =>
+            '<div class="stat-cell" style="animation-delay:' + (i * 60) + 'ms">' +
+              '<div class="stat-cell__v"><b>' + esc(String(s.value)) + '</b>' +
+                (s.unit ? '<span class="stat-cell__u">' + esc(s.unit) + '</span>' : '') + '</div>' +
+              '<p class="stat-cell__t">' + esc(s.title) + '</p>' +
+              (s.changePercent === null ? '<p class="stat-cell__d is-flat">no prior week</p>'
+                : '<p class="stat-cell__d ' + (s.changeDirection === 'up' ? 'is-up' : 'is-down') + '">' +
+                  (s.changeDirection === 'up' ? '▲' : '▼') + ' ' + s.changePercent + '%</p>') +
+            '</div>').join('') + '</div>' +
+
+          (empty
+            ? '<p class="chart-empty">Nothing logged yet. Log sleep, water or food and this fills itself in.</p>'
+            : '<div class="stat-graph">' + graph.map((b, i) =>
+                '<div class="stat-bar-wrap" data-tip="' + esc(b.label + ' · ' + b.value + '% — ' + b.description) + '">' +
+                  '<div class="stat-bar" style="height:' + Math.max(2, b.value) + '%;' +
+                    'background:linear-gradient(180deg,' + b.color + ' 0%,' + b.color + 'cc 100%);' +
+                    'animation-delay:' + (i * 60) + 'ms"></div>' +
+                '</div>').join('') + '</div>') +
+
+          '<div class="stat-legend">' +
+            '<h4 class="stat-legend__t">Against your goals</h4>' +
+            '<div class="stat-legend__grid">' + graph.map(b =>
+              '<span class="stat-legend__i"><i style="background:' + b.color + '"></i>' +
+              esc(b.label) + ' (' + b.value + '%)</span>').join('') + '</div>' +
+          '</div>' +
+        '</article>';
+    }
+
+    return { render };
+  })();
 
   const Goals = (() => {
     const CAT_PALETTE = ['#6ab0e0','#7dd488','#e0b870','#c89ae0','#e0a0a0','#7dd9d4','#d4c97d','#a0a8e0'];
@@ -7256,6 +7385,10 @@
       Photos.updatePinVisibility(name);
 
       showPanel(name);
+      /* Stats reads every other tab's data, so it is rebuilt on entry rather
+         than at boot — otherwise it would show whatever was true when the app
+         started, which is exactly the number you did not want. */
+      if (name === 'stats') Stats.render();
       const activeTop = toplinks().find(t => t.dataset.tab===name);
       activeTop?.scrollIntoView?.({behavior:'smooth',inline:'center',block:'nearest'});
       window.scrollTo({top:0,behavior:'smooth'});

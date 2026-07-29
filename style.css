@@ -4531,6 +4531,80 @@ button.intro-tool {
   color: var(--accent); padding: 4px 9px; border-radius: 999px; background: rgba(var(--accent-rgb), .12);
 }
 
+/* ═══════════════════  §54  STATS  ═══════════════════
+   The 21st.dev HealthStatCard rebuilt without React. framer-motion's spring
+   becomes a CSS spring curve, whileHover becomes :hover, and Radix tooltips
+   become one CSS bubble driven by a data-tip attribute — no library, no
+   build step, same behaviour.                                              */
+
+.stat-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4);
+  text-align: center; margin-bottom: var(--sp-6);
+}
+@media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-cell { animation: cardPop 560ms var(--ease-soft) both; }
+.stat-cell__v { display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+.stat-cell__v b {
+  font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 30px;
+  line-height: 1; color: var(--c-blanc); font-variant-numeric: tabular-nums;
+}
+.stat-cell__u { font-family: var(--ff-mono); font-size: 10px; color: var(--c-fog); }
+.stat-cell__t {
+  margin-top: 6px; font-family: var(--ff-mono); font-size: 9.5px;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--c-fog);
+}
+.stat-cell__d { margin-top: 5px; font-family: var(--ff-mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; }
+.stat-cell__d.is-up   { color: #7dd488; }
+.stat-cell__d.is-down { color: #e08a8a; }
+.stat-cell__d.is-flat { color: var(--c-fog); font-weight: 400; letter-spacing: .12em; font-size: 8.5px; text-transform: uppercase; }
+
+/* the bars: spring up from their base, tilt on hover */
+.stat-graph {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-3);
+  height: 150px; padding: var(--sp-4); border-radius: var(--r-md);
+  background: rgba(255,255,255,.03); perspective: 700px;
+}
+.stat-bar-wrap { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: pointer; }
+.stat-bar {
+  width: 100%; border-radius: 999px; transform-origin: 50% 100%;
+  animation: barRise 620ms var(--spring) both;
+  transition: transform .25s var(--spring), box-shadow .25s var(--ease-vt), filter .25s;
+}
+.stat-bar-wrap:hover .stat-bar {
+  transform: scale(1.08) translateY(-6px) rotateX(8deg) rotateY(-6deg);
+  box-shadow: 0 10px 20px rgba(0,0,0,.45); filter: brightness(1.12);
+}
+.stat-bar-wrap:active .stat-bar { transform: scale(.95); }
+
+/* the tooltip, as one bubble instead of a portal library */
+.stat-bar-wrap::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%) translateY(4px);
+  width: max-content; max-width: 240px; padding: 8px 11px; z-index: 20;
+  font-family: var(--ff-sans, inherit); font-size: 11.5px; line-height: 1.45; text-align: left;
+  color: var(--c-paper); background: rgba(14,14,16,.97);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  box-shadow: 0 12px 34px rgba(0,0,0,.6);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s var(--ease-vt), transform .16s var(--ease-vt);
+}
+.stat-bar-wrap:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.stat-legend { margin-top: var(--sp-6); }
+.stat-legend__t {
+  margin-bottom: var(--sp-3); font-family: var(--ff-mono); font-size: 9.5px;
+  font-weight: 500; letter-spacing: .22em; text-transform: uppercase; color: var(--c-fog);
+}
+.stat-legend__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
+@media (max-width: 640px) { .stat-legend__grid { grid-template-columns: repeat(2, 1fr); } }
+.stat-legend__i { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--c-stone); }
+.stat-legend__i i { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-cell, .stat-bar { animation: none; }
+  .stat-bar-wrap:hover .stat-bar { transform: none; }
+}
+
 /* ── DRIFTING MOTES ───────────────────────────────────────────────────────
    Their atmosphere. Slow, sparse, behind everything. */
 @keyframes moteDrift {

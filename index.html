@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=50" />
+  <link rel="stylesheet" href="style.css?v=51" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -1399,6 +1399,13 @@
         </div>
       </section>
 
+      <!-- ───────────────────────────  STATS  ───────────────────────────
+           The 21st.dev health-stat card, rebuilt in this app's own stack and
+           fed by your real logs instead of demo numbers. -->
+      <section class="board board--stats" data-tab-panel="stats" hidden>
+        <div data-stats-host><!-- injected --></div>
+      </section>
+
       <!-- ───────────────  REUSABLE PLACEHOLDER (sealed tabs)  ─────────────── -->
       <section class="board board--placeholder" data-tab-panel="placeholder" hidden>
         <article class="card card--placeholder">
@@ -1741,11 +1748,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=33" defer></script>
+  <script src="app.js?v=34" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=9" defer></script>
-  <script src="gallery.js?v=7" defer></script>
+  <script src="gallery.js?v=8" defer></script>
   <script src="polish.js?v=3" defer></script>
   <script src="push.js?v=3" defer></script>
 </body>

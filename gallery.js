@@ -40,6 +40,7 @@
     { go:'clothes',   n:'07', name:'Clothes',   sub:'The Wardrobe',      img:U('photo-1489987707025-afc232f7ea0f') },
     { go:'sports',    n:'08', name:'Sports',    sub:'The Arena',         img:U('photo-1546519638-68e109498ffc') },
     { go:'calendar',  n:'09', name:'Calendar',  sub:'The Chronicle',     img:U('photo-1506784983877-45594efa4cbe') },
+    { go:'stats',     n:'10', name:'Stats',     sub:'Everything At Once', img:U('photo-1551288049-bebda4e38f71') },
   ];
 
   const KEY = 'nv.hub.gallery';
