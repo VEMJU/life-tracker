@@ -30,10 +30,15 @@ async function subscriptions() {
   if (!url) return { fail: 'SUPABASE_URL is not set in Vercel' };
   if (!key) return { fail: 'SUPABASE_SERVICE_KEY is not set in Vercel' };
 
+  /* Secret keys (sb_secret_…) go in `apikey` ONLY. They are not JWTs, so
+     Supabase rejects them in an Authorization: Bearer header. It also refuses
+     any secret-key request whose User-Agent looks like a browser — a guard
+     against these ever being used client-side. Both are why this must stay
+     server-side. */
   let r;
   try {
     r = await fetch(`${url}/rest/v1/push_subscriptions?select=*`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      headers: { apikey: key },
     });
   } catch (e) {
     return { fail: `could not reach Supabase: ${e.message}` };
@@ -57,7 +62,7 @@ async function dropDead(endpoint) {
   if (!url || !key) return;
   await fetch(`${url}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(endpoint)}`, {
     method: 'DELETE',
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    headers: { apikey: key },       // secret key: apikey header only, never Bearer
   }).catch(() => {});
 }
 
