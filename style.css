@@ -268,25 +268,6 @@ ul { padding: 0; list-style: none; }
 .topbar__link:hover { color: var(--c-paper); }
 .topbar__link.is-active { color: var(--c-blanc); background: rgba(var(--accent-rgb, 255,255,255), .12); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 255,255,255), .32); }
 
-/* The bell. Pinned right and never scrolls away with the tab strip — it is the
-   only route to phone notifications on the device that receives them. */
-.topbar__alerts {
-  position: relative; flex-shrink: 0;
-  display: grid; place-items: center;
-  width: 36px; height: 36px; margin-left: auto;
-  color: var(--c-stone); border-radius: var(--r-sm);
-  border: 1px solid var(--hairline);
-  background: rgba(255,255,255,.04);
-  transition: color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
-}
-.topbar__alerts:active { color: var(--c-blanc); border-color: rgba(var(--accent-rgb, 255,255,255), .5); }
-.topbar__alerts-count {
-  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px;
-  display: grid; place-items: center;
-  font: 700 9px/1 var(--ff-mono); color: #fff;
-  background: var(--accent, #C4163B); border-radius: 999px;
-}
-
 /* ─────────────────  §6  SHELL  ───────────────── */
 .shell {
   position: relative; z-index: 1;
@@ -2705,6 +2686,40 @@ body.intro-locked { overflow: hidden; }
   box-shadow: var(--glass-shadow-hover), 0 0 26px -6px var(--accent-glow);
 }
 .hub-back__sigil { display: inline-flex; color: var(--accent); }
+
+/* ── ALERTS, FLOATING ────────────────────────────────────────────────────────
+   §38 above turns off .sidebar and .topbar for every screen size, so the old
+   Alerts button inside the sidebar could never be reached — including on the
+   phone, the one device that actually receives push notifications. This is the
+   entry point now: hub-back's twin in the opposite corner, on the same layer,
+   so it also floats above the full-screen embedded tabs (map, stocks, gym). */
+.alerts-fab {
+  position: fixed; top: 18px; right: 18px; z-index: 60;
+  display: inline-grid; place-items: center; cursor: pointer;
+  width: 42px; height: 42px;
+  color: var(--c-bone);
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(130%); backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: var(--glass-shadow);
+  transition: color .2s var(--ease-out), border-color .2s, box-shadow .2s, transform .2s;
+}
+.alerts-fab:hover {
+  color: #fff; border-color: var(--accent-soft); transform: translateY(-1px);
+  box-shadow: var(--glass-shadow-hover), 0 0 26px -6px var(--accent-glow);
+}
+.alerts-fab__count {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: grid; place-items: center;
+  font: 700 9px/1 var(--ff-mono); color: #fff;
+  background: var(--accent); border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.65);
+}
+/* the hub is a full-screen overlay and owns the view — no chrome over it */
+body.intro-locked .alerts-fab { display: none; }
+
+@media (max-width: 720px) { .alerts-fab { top: 12px; right: 12px; } }
 
 /* the active-tab title glows crimson while it decodes */
 .view-head__title.is-decoding { color: var(--accent-bright); text-shadow: 0 0 18px rgba(var(--accent-br-rgb),.42); }
