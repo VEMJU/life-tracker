@@ -7495,6 +7495,9 @@
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const supported = !!SR;
     let rec = null, listening = false;
+    /* guards the one-shot retry below. Reset only on a MANUAL tap — resetting it
+       when recognition opens would let a failing service retry forever. */
+    let retried = false;
 
     /* Spoken language is not tab names. "Food", "money" and "school" are what
        a person actually says. */
@@ -7744,15 +7747,32 @@
       rec.onerror = (e) => {
         listening = false;
         $('[data-voice-fab]')?.classList.remove('is-live');
+
+        /* 'network' does NOT mean your internet is down. Web Speech is not
+           on-device: Chrome and Safari stream the audio to a speech service and
+           get text back. Embedded browsers — VS Code's Simple Browser, in-app
+           webviews, some privacy builds — have no access to that service, and
+           fail this way every single time. Chrome also throws it spuriously on
+           a first attempt, so one silent retry is worth it before complaining. */
+        if (e.error === 'network' && !retried) {
+          retried = true;
+          setTimeout(() => { try { start(); } catch (err) {} }, 400);
+          return;
+        }
+
         const why =
           (e.error === 'not-allowed' || e.error === 'service-not-allowed')
-            ? 'Microphone permission was refused. Allow it in your browser settings, then try again.'
-          : e.error === 'no-speech' ? 'I did not hear anything.'
-          : e.error === 'network'   ? 'Speech recognition needs a connection and could not reach it.'
-          : 'Listening failed (' + e.error + ').';
+            ? 'The microphone was blocked. Allow it for this site, then tap me again.'
+          : e.error === 'no-speech' ? 'I did not hear anything — try again a bit closer.'
+          : e.error === 'network'
+            ? 'The speech service is unreachable from this browser. If you are in VS Code’s preview pane or an in-app browser, that is why — open the site in Safari or Chrome. Meanwhile, type below (your keyboard’s 🎤 dictates on device).'
+          : e.error === 'audio-capture' ? 'No microphone was found on this device.'
+          : 'Listening failed (' + e.error + '). Type it below instead.';
+
         show('bad', 'Could not listen', why);
-        const f = $('[data-voice-fallback]'); if (f) f.hidden = false;
-        hideSoon(10000);
+        const f = $('[data-voice-fallback]');
+        if (f) { f.hidden = false; try { f.focus(); } catch (err) {} }
+        hideSoon(14000);
       };
       rec.onend = () => {
         listening = false;
@@ -7773,7 +7793,8 @@
     }
 
     function init() {
-      $('[data-voice-fab]')?.addEventListener('click', start);
+      /* a deliberate tap earns a fresh retry budget */
+      $('[data-voice-fab]')?.addEventListener('click', () => { retried = false; start(); });
       $('[data-voice-close]')?.addEventListener('click', () => {
         stop(); const p = panel(); if (p) p.hidden = true;
       });
