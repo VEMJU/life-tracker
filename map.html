@@ -254,6 +254,80 @@ textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.pr{border-color:var(--pr);box-shadow:0 0 30px -8px rgba(245,196,81,.6)}
 
+/* ── WEATHER, DOCKED RIGHT ────────────────────────────────────────────────────
+   The liquid-glass card, ported off React. The distortion is an SVG filter
+   (feTurbulence + feDisplacementMap) on a blurred backdrop layer; the wet edge
+   is two inset shadows. framer-motion's whileHover/whileTap become :hover and
+   :active. No library, no build step.
+
+   Layered exactly as the original: bend (blur+distort) → face (glow) →
+   edge (inner highlight) → content. */
+.wx{position:absolute;top:14px;right:14px;z-index:420;width:318px;max-width:calc(100% - 28px);
+  display:flex;flex-direction:column;gap:9px;pointer-events:auto}
+@media(max-width:860px){.wx{width:auto;left:14px}}
+
+.glass{position:relative;border-radius:18px;overflow:hidden;
+  transition:transform .25s var(--ease)}
+.glass:hover{transform:scale(1.008)}
+.glass__bend{position:absolute;inset:0;z-index:0;border-radius:inherit;
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  filter:url(#wxGlass)}
+.glass__face{position:absolute;inset:0;z-index:1;border-radius:inherit;
+  box-shadow:0 4px 4px rgba(0,0,0,.28),0 0 12px rgba(0,0,0,.18),0 0 24px rgba(255,255,255,.06)}
+.glass__edge{position:absolute;inset:0;z-index:2;border-radius:inherit;
+  box-shadow:inset 1.5px 1.5px 1px 0 rgba(255,255,255,.20),
+             inset -1.5px -1.5px 1px 0 rgba(255,255,255,.14)}
+.glass__in{position:relative;z-index:3;background:rgba(255,255,255,.05)}
+
+/* hourly strip */
+.wxHours{display:flex;justify-content:space-between;padding:13px 14px}
+.wxH{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0}
+.wxH b{font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:rgba(255,255,255,.62);font-weight:400}
+.wxH i{font-family:var(--serif);font-style:italic;font-size:14px;color:#fff;font-variant-numeric:tabular-nums}
+.wxH.now b{color:#fff}
+
+/* the two square cards */
+.wxPair{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.wxBig{padding:14px}
+.wxTemp{font-family:var(--serif);font-style:italic;font-size:38px;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.wxDesc{font-size:11.5px;color:rgba(255,255,255,.72);margin-top:5px;line-height:1.35;text-transform:capitalize}
+.wxRange{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:rgba(255,255,255,.55);margin-top:4px}
+.wxClock{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.wxDate{font-size:11px;color:rgba(255,255,255,.66);margin-top:5px}
+.wxPin{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:4px 9px;border-radius:999px;
+  background:rgba(0,0,0,.22);font-size:10.5px;color:#fff;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.wxPin svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.9}
+
+/* 5-day list */
+.wxDays{padding:11px 14px;display:flex;flex-direction:column;gap:9px}
+.wxD{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wxD span{font-size:11.5px;color:rgba(255,255,255,.82)}
+.wxD em{font-family:var(--mono);font-style:normal;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.6);
+  font-variant-numeric:tabular-nums}
+.wxD .ic{display:flex;align-items:center;gap:8px;min-width:0}
+
+/* place switcher — driven by your saved regions, plus wherever you are */
+.wxPlaces{display:flex;gap:5px;flex-wrap:wrap;padding:10px 12px}
+.wxP{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 10px;
+  transition:color .18s var(--ease),background .18s var(--ease),border-color .18s var(--ease)}
+.wxP:hover{color:#fff;border-color:rgba(255,255,255,.4)}
+.wxP.on{background:rgba(255,255,255,.9);color:#000;border-color:transparent}
+
+/* collapsed: a single pill that never fights the map */
+.wxToggle{position:absolute;top:0;right:0;z-index:430;display:flex;align-items:center;gap:7px;
+  padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(10,10,12,.7);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+.wxToggle:hover{color:#fff;border-color:rgba(255,255,255,.36)}
+.wx.isShut .wxBody{display:none}
+.wx:not(.isShut) .wxToggle{position:static;align-self:flex-end}
+.wxBody{display:flex;flex-direction:column;gap:9px}
+.wxNote{padding:13px 14px;font-family:var(--serif);font-style:italic;font-size:12.5px;
+  color:rgba(255,255,255,.7);line-height:1.5}
+.wxIco{width:19px;height:19px;flex:none}
+
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -283,6 +357,24 @@ textarea.fI{resize:vertical;min-height:66px;line-height:1.5}
   <div class="mapWrap">
     <div id="map"></div>
     <div class="banner" id="banner" hidden></div>
+
+    <!-- the distortion behind the glass. Hidden; referenced by filter:url() -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <filter id="wxGlass" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox">
+          <feTurbulence type="fractalNoise" baseFrequency="0.003 0.007" numOctaves="1" result="t"/>
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="42" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
+
+    <aside class="wx isShut" id="wx">
+      <button class="wxToggle" id="wxToggle" type="button">
+        <span id="wxToggleTxt">Weather</span>
+      </button>
+      <div class="wxBody" id="wxBody"><!-- injected --></div>
+    </aside>
+
     <div class="fabs">
       <button class="fab" id="locate" title="Find me">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
@@ -572,14 +664,18 @@ function renderRegions(){
 $('regions').addEventListener('click', (e) => {
   const del = e.target.closest('[data-rgdel]');
   if (del) { e.stopPropagation(); S.regions = S.regions.filter(r => r.id !== del.dataset.rgdel);
-    if (S.activeRegion === del.dataset.rgdel) S.activeRegion = null; save(); renderRegions(); return; }
+    if (S.activeRegion === del.dataset.rgdel) S.activeRegion = null;
+    if (S.wx.place === del.dataset.rgdel) S.wx.place = null;   // don't point at a deleted place
+    save(); renderRegions(); if (!$('wx').classList.contains('isShut')) renderWx(); return; }
   if (e.target.closest('#rgAdd')) {
     const name = window.prompt('Name this place — "New York", "Puebla", "PA"…');
     if (!name || !name.trim()) return;
     const c = map.getCenter();
     S.regions.push({ id: uid('r'), name: name.trim(), lat: c.lat, lng: c.lng, z: map.getZoom() });
     S.activeRegion = S.regions[S.regions.length-1].id;
-    save(); renderRegions(); toast('Region saved'); return;
+    /* the weather place list IS the region list, so it has to hear about this */
+    save(); renderRegions(); if (!$('wx').classList.contains('isShut')) renderWx();
+    toast('Region saved'); return;
   }
   const b = e.target.closest('[data-rg]');
   if (b) {
@@ -588,6 +684,159 @@ $('regions').addEventListener('click', (e) => {
     map.flyTo([r.lat, r.lng], r.z, { duration: .8 });
   }
 });
+
+/* ── WEATHER ─────────────────────────────────────────────────────────────────
+   Several places at once, each with its own local clock, because "what time is
+   it there" is half the reason to watch more than one city.
+
+   The places ARE your saved regions — no second list to maintain. Add a region
+   and it appears here; delete it and it leaves.
+
+   Responses are cached for 15 minutes per coordinate. OpenWeather's free tier
+   allows 60 calls a minute, which is generous, but re-fetching every time you
+   toggle a panel is still rude and slow for no benefit. */
+const WX_TTL = 15 * 60 * 1000;
+const wxCache = new Map();          // 'lat,lon' -> { at, data }
+S.wx = S.wx || { place: null, open: false };
+
+const WX_ICONS = {
+  clear:  '<circle cx="12" cy="12" r="4.6"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>',
+  partly: '<circle cx="9" cy="9" r="3.4"/><path d="M9 2.6v1.8M2.6 9h1.8M4.9 4.9l1.3 1.3"/><path d="M8.5 19h9a3.2 3.2 0 0 0 .3-6.4A4.6 4.6 0 0 0 9.3 13a3 3 0 0 0-.8 6Z"/>',
+  cloud:  '<path d="M7.5 19h9.8a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 8.3 12.6a3.2 3.2 0 0 0-.8 6.4Z"/>',
+  rain:   '<path d="M7.5 15.5h9.8a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 8.3 9.1a3.2 3.2 0 0 0-.8 6.4Z"/><path d="M9 18.6l-.9 2.2M13 18.6l-.9 2.2M17 18.6l-.9 2.2"/>',
+  storm:  '<path d="M7.5 14.5h9.8a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 8.3 8.1a3.2 3.2 0 0 0-.8 6.4Z"/><path d="M13 17l-2.6 4h3l-1.2 3"/>',
+  snow:   '<path d="M7.5 14.8h9.8a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 8.3 8.4a3.2 3.2 0 0 0-.8 6.4Z"/><path d="M9.4 18.4h.01M12.4 20.2h.01M15.4 18.4h.01M12.4 17.4h.01"/>',
+  haze:   '<path d="M3.5 9h17M5.5 13h13M7.5 17h9"/>',
+};
+const wxIcon = (kind, size) =>
+  `<svg class="wxIco" ${size ? `style="width:${size}px;height:${size}px"` : ''} viewBox="0 0 24 24" `
+  + `fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">`
+  + (WX_ICONS[kind] || WX_ICONS.cloud) + '</svg>';
+
+/* every time shown is the PLACE's time, built by shifting UTC by its offset */
+const wxLocal = (unixSec, tz) => new Date(((unixSec ?? Math.floor(Date.now() / 1000)) + (tz || 0)) * 1000);
+const pad2 = (n) => String(n).padStart(2, '0');
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function wxPlaces(){
+  const list = S.regions.map(r => ({ id: r.id, name: r.name, lat: r.lat, lng: r.lng }));
+  const c = map.getCenter();
+  /* always one entry for wherever the map is looking, so this works before you
+     have saved a single region */
+  list.unshift({ id: '__view', name: 'This view', lat: c.lat, lng: c.lng });
+  return list;
+}
+function wxActive(){
+  const list = wxPlaces();
+  return list.find(p => p.id === S.wx.place) || list[0];
+}
+
+async function wxFetch(lat, lng){
+  const k = lat.toFixed(3) + ',' + lng.toFixed(3);
+  const hit = wxCache.get(k);
+  if (hit && Date.now() - hit.at < WX_TTL) return hit.data;
+  const r = await fetch(`/api/weather?lat=${lat}&lon=${lng}`);
+  const d = await r.json();
+  /* only cache a real answer — caching "no_key" for 15 minutes would hide the
+     moment the key starts working */
+  if (!d.error) wxCache.set(k, { at: Date.now(), data: d });
+  return d;
+}
+
+function wxShell(inner){
+  return `<div class="glass"><div class="glass__bend"></div><div class="glass__face"></div>`
+       + `<div class="glass__edge"></div><div class="glass__in">${inner}</div></div>`;
+}
+
+function wxPlaceRow(active){
+  return wxShell('<div class="wxPlaces">' + wxPlaces().map(p =>
+    `<button class="wxP ${p.id === active.id ? 'on' : ''}" data-wxp="${esc(p.id)}">${esc(p.name)}</button>`
+  ).join('') + '</div>');
+}
+
+async function renderWx(){
+  const body = $('wxBody'); if (!body) return;
+  const wrap = $('wx');
+  $('wxToggleTxt').textContent = wrap.classList.contains('isShut') ? 'Weather' : 'Hide';
+  if (wrap.classList.contains('isShut')) { body.innerHTML = ''; return; }
+
+  const active = wxActive();
+  body.innerHTML = wxShell(`<p class="wxNote">Reading the sky over ${esc(active.name)}…</p>`) + wxPlaceRow(active);
+  wireWxPlaces();
+
+  let d;
+  try { d = await wxFetch(active.lat, active.lng); }
+  catch (e) { d = { error: 'fetch_failed' }; }
+
+  if (d.error) {
+    const msg = d.error === 'no_key'
+      ? 'No weather key on the live site yet. Add OPENWEATHER_API_KEY in Vercel and redeploy.'
+      : d.error === 'upstream' && d.status === 401
+        ? 'OpenWeather rejected the key. Brand-new keys take an hour or two to activate — this is what that looks like.'
+        : 'Could not reach the weather service just now.';
+    body.innerHTML = wxShell(`<p class="wxNote">${esc(msg)}</p>`) + wxPlaceRow(active);
+    wireWxPlaces();
+    return;
+  }
+
+  const tz = d.now.tzOffset;
+  const nowL = wxLocal(null, tz);
+
+  const hours = (d.hourly || []).map((h, i) => {
+    const t = wxLocal(h.at, tz);
+    return `<div class="wxH ${i === 0 ? 'now' : ''}"><b>${pad2(t.getUTCHours())}:00</b>`
+         + wxIcon(h.kind, 17) + `<i>${h.tempC == null ? '—' : (h.tempC > 0 ? '+' : '') + h.tempC}°</i></div>`;
+  }).join('');
+
+  const days = (d.daily || []).map((day, i) => {
+    const t = wxLocal(day.at, tz);
+    const label = i === 0 ? 'Today' : DOW[t.getUTCDay()] + ', ' + t.getUTCDate() + ' ' + MON[t.getUTCMonth()];
+    return `<div class="wxD"><span class="ic">${wxIcon(day.kind, 17)}<span>${esc(label)}</span></span>`
+         + `<em>${day.hiC == null ? '—' : (day.hiC > 0 ? '+' : '') + day.hiC}° / ${day.loC == null ? '—' : (day.loC > 0 ? '+' : '') + day.loC}°</em></div>`;
+  }).join('');
+
+  body.innerHTML =
+    (hours ? wxShell(`<div class="wxHours">${hours}</div>`) : '') +
+    `<div class="wxPair">` +
+      wxShell(`<div class="wxBig">
+        <div class="wxTemp">${(d.now.tempC > 0 ? '+' : '') + d.now.tempC}°</div>
+        <div class="wxDesc">${esc(d.now.desc || '')}</div>
+        <div class="wxRange">${d.now.hiC == null ? '' : (d.now.hiC > 0 ? '+' : '') + d.now.hiC + '° / ' + ((d.now.loC > 0 ? '+' : '') + d.now.loC) + '°'}</div>
+      </div>`) +
+      wxShell(`<div class="wxBig">
+        <div class="wxClock">${pad2(nowL.getUTCHours())}:${pad2(nowL.getUTCMinutes())}</div>
+        <div class="wxDate">${DOW[nowL.getUTCDay()]}, ${MON[nowL.getUTCMonth()]} ${nowL.getUTCDate()}</div>
+        <span class="wxPin"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>${esc(d.place || active.name)}</span>
+      </div>`) +
+    `</div>` +
+    (days ? wxShell(`<div class="wxDays">${days}</div>`) : '') +
+    wxPlaceRow(active);
+
+  wireWxPlaces();
+}
+
+function wireWxPlaces(){
+  /* this file only has $ (by id) — no $$ helper, unlike app.js */
+  $('wxBody').querySelectorAll('[data-wxp]').forEach(b => b.addEventListener('click', () => {
+    S.wx.place = b.dataset.wxp; save(); renderWx();
+    /* switching the weather place moves the map there too — one gesture, and
+       it keeps the panel honest about what you are looking at */
+    const p = wxPlaces().find(x => x.id === S.wx.place);
+    if (p && p.id !== '__view') map.flyTo([p.lat, p.lng], map.getZoom(), { duration: .7 });
+  }));
+}
+
+$('wxToggle').addEventListener('click', () => {
+  const wrap = $('wx');
+  wrap.classList.toggle('isShut');
+  S.wx.open = !wrap.classList.contains('isShut'); save();
+  renderWx();
+});
+
+/* left open last time? open it again — but only after the map exists, since the
+   place list reads map.getCenter() for "This view" */
+if (S.wx.open) { $('wx').classList.remove('isShut'); renderWx(); }
 
 /* ── SEARCH ──────────────────────────────────────────────────────────────────
    Nominatim is OpenStreetMap's own geocoder: free, no API key, no billing. It
