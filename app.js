@@ -7696,25 +7696,113 @@
       hideT = setTimeout(() => { const p = panel(); if (p) p.hidden = true; }, ms);
     }
 
-    function run(text) {
+    /* ── THE DIVISION OF LABOUR ─────────────────────────────────────────────
+       Patterns run first: instant, free, and they work with no signal. Only
+       what they cannot parse goes to the model — so "add task gym at 6" never
+       costs anything, and "who won the game last night" gets the web. */
+    async function run(text) {
       let r;
       try { r = interpret(text); }
       catch (e) { r = { ok:false, say:'That tripped me up.' }; }
 
-      show(r.ok ? 'ok' : 'bad', '“' + text + '”', r.say);
       const save = $('[data-voice-save]');
       if (save) save.hidden = true;
 
       if (r.ok) {
+        show('ok', '“' + text + '”', r.say);
         speak(r.say);
         if (r.tab && REAL_PANELS.includes(r.tab)) Tabs.setActive(r.tab);
         hideSoon(3600);
-      } else {
-        /* an unknown command is never thrown away — it can become a task,
-           which is far kinder than losing the thought */
-        if (r.unknown && save) { save.hidden = false; save.dataset.text = text; }
-        hideSoon(9000);
+        return;
       }
+
+      /* A named failure — no tab called that, "goal" with no goal — is a real
+         answer. Don't spend a model call telling them the same thing. */
+      if (!r.unknown) { show('bad', '“' + text + '”', r.say); hideSoon(9000); return; }
+
+      await think(text, save);
+    }
+
+    /* ── ASKING NOVA PROPERLY ───────────────────────────────────────────────
+       /api/nova holds the model key server-side — it is never in this file,
+       because anything in this file is public. */
+    async function think(text, save) {
+      show('live', '“' + text + '”', 'Thinking…');
+      $('[data-voice-fab]')?.classList.add('is-thinking');
+      try {
+        const res = await fetch('/api/nova', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const d = await res.json();
+
+        if (d.error) {
+          const why = d.error === 'no_key'
+            ? 'My thinking is not connected yet — add ANTHROPIC_API_KEY in Vercel and redeploy.'
+            : d.error === 'bad_key'      ? 'That API key was rejected.'
+            : d.error === 'rate_limited' ? 'Too many questions at once — try again in a moment.'
+                                         : 'I could not reach my thinking just now.';
+          show('bad', '“' + text + '”', why);
+          if (save) { save.hidden = false; save.dataset.text = text; }
+          hideSoon(11000);
+          return;
+        }
+
+        /* An action decided by the model still goes through the module's own
+           add(), so a spoken goal is identical to a typed one. */
+        if (d.kind === 'action') {
+          const said = perform(d.action, d.input || {});
+          show(said ? 'ok' : 'bad', '“' + text + '”', said || 'I understood, but could not do it.');
+          if (said) speak(said);
+          hideSoon(3800);
+          return;
+        }
+
+        show('ok', '“' + text + '”', d.text + (d.searched ? '  ·  from the web' : ''));
+        speak(d.text);
+        hideSoon(Math.min(30000, 6000 + d.text.length * 55));
+      } catch (e) {
+        show('bad', '“' + text + '”', 'I could not reach my thinking — you may be offline.');
+        if (save) { save.hidden = false; save.dataset.text = text; }
+        hideSoon(11000);
+      } finally {
+        $('[data-voice-fab]')?.classList.remove('is-thinking');
+      }
+    }
+
+    /* the model names an action; this is the only place that maps names to the
+       app's real add() functions */
+    function perform(action, a) {
+      try {
+        if (action === 'add_goal') {
+          const g = Goals.add(a.title, a.deadline || '');
+          return g ? 'Goal added: ' + g.title + (a.deadline ? ', due ' + a.deadline : '') : '';
+        }
+        if (action === 'add_task') {
+          const label = a.time ? a.time + ' · ' + a.text : a.text;
+          addDayTask(a.date || localDateKey(new Date()), label);
+          Tabs.setActive('home');
+          return 'Added ' + a.text + (a.time ? ' at ' + a.time : '') + ' on ' + (a.date || 'today');
+        }
+        if (action === 'add_reminder') {
+          const when = new Date(a.when);
+          if (isNaN(when)) return '';
+          Reminders.add(a.text, when.toISOString());
+          Tabs.setActive('reminders');
+          return 'Reminder set: ' + a.text;
+        }
+        if (action === 'add_idea') {
+          const it = Ideas.add(a.text, a.kind || 'feature', a.kind === 'tab' ? 'NEW TAB' : '');
+          return it ? 'Idea saved: ' + it.text : '';
+        }
+        if (action === 'navigate') {
+          if (!REAL_PANELS.includes(a.tab)) return '';
+          Tabs.setActive(a.tab);
+          return 'Opening ' + a.tab;
+        }
+      } catch (e) {}
+      return '';
     }
 
     function start() {

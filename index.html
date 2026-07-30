@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=52" />
+  <link rel="stylesheet" href="style.css?v=53" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -425,13 +425,15 @@
   <!-- ───────────────────────────  NOVA  ───────────────────────────
        Say it instead of typing it. Sits beside the Alerts bell so it is
        reachable from every tab, on every device. -->
-  <button class="nova-fab" data-voice-fab type="button" aria-label="Nova — speak a command">
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-      <rect x="9" y="2.5" width="6" height="11" rx="3"/>
-      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" stroke-linecap="round"/>
-      <path d="M12 18v3.5M9 21.5h6" stroke-linecap="round"/>
-    </svg>
-    <span class="nova-fab__ring" aria-hidden="true"></span>
+  <!-- Nova is an orb, not a mic. Four layers: the halo that breathes, the core,
+       the sheen that gives it depth, and the ring that spins while she listens. -->
+  <button class="nova-fab" data-voice-fab type="button" aria-label="Nova">
+    <span class="nova-orb" aria-hidden="true">
+      <span class="nova-orb__halo"></span>
+      <span class="nova-orb__core"></span>
+      <span class="nova-orb__sheen"></span>
+      <span class="nova-orb__ring"></span>
+    </span>
   </button>
 
   <section class="nova" data-voice-panel data-state="live" hidden aria-live="polite">
@@ -1788,7 +1790,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=36" defer></script>
+  <script src="app.js?v=37" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=10" defer></script>
