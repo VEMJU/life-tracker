@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=51" />
+  <link rel="stylesheet" href="style.css?v=52" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -421,6 +421,35 @@
     </svg>
     <span class="alerts-fab__count" data-alerts-count hidden>0</span>
   </button>
+
+  <!-- ───────────────────────────  NOVA  ───────────────────────────
+       Say it instead of typing it. Sits beside the Alerts bell so it is
+       reachable from every tab, on every device. -->
+  <button class="nova-fab" data-voice-fab type="button" aria-label="Nova — speak a command">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+      <rect x="9" y="2.5" width="6" height="11" rx="3"/>
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" stroke-linecap="round"/>
+      <path d="M12 18v3.5M9 21.5h6" stroke-linecap="round"/>
+    </svg>
+    <span class="nova-fab__ring" aria-hidden="true"></span>
+  </button>
+
+  <section class="nova" data-voice-panel data-state="live" hidden aria-live="polite">
+    <header class="nova__head">
+      <span class="nova__mark" aria-hidden="true">✦</span>
+      <span class="nova__name">Nova</span>
+      <button class="nova__x" data-voice-close type="button" aria-label="Close">×</button>
+    </header>
+    <p class="nova__line" data-voice-line></p>
+    <p class="nova__sub" data-voice-sub></p>
+    <button class="nova__save" data-voice-save type="button" hidden>Save it to today anyway</button>
+    <input class="nova__type" data-voice-fallback type="text" hidden
+           placeholder="Type a command, then Enter…" autocomplete="off" />
+    <p class="nova__hint">
+      “add a goal to squat 315 by december” · “remind me to call mum friday at 4”
+      · “add task gym at 6” · “go to nutrition”
+    </p>
+  </section>
 
   <!-- ───────────────────────────────  BACK TO HUB  ─────────────────────────────── -->
   <button class="hub-back" id="hubBack" type="button" aria-label="Back to main screen">
@@ -1755,7 +1784,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=34" defer></script>
+  <script src="app.js?v=35" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=10" defer></script>

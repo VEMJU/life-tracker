@@ -969,7 +969,25 @@
       });
     }
 
-    return { init, renderWidget, renderAll };
+    /* Voice and any future automation come in HERE rather than writing to
+       storage directly — this is the one path that also persists, re-renders
+       the widget, and refreshes the shopping filter. Bypassing it leaves the
+       screen showing yesterday. */
+    function add(title, deadline, categoryId) {
+      const t = String(title || '').trim(); if (!t) return null;
+      const g = {
+        id: uid(), title: t,
+        categoryId: categoryId || data.categories[0]?.id || 'general',
+        deadline: deadline || '',
+        notes: '', steps: [], legacyProgress: 0,
+        createdAt: Date.now(), open: true, view: 'steps',
+      };
+      data.goals.unshift(g);
+      persist(); renderGoals(); renderWidget(); populateShopFilter();
+      return g;
+    }
+
+    return { init, renderWidget, renderAll, add };
   })();
 
   /* ═══════════════════  REMINDERS  ═══════════════════ */
@@ -1045,7 +1063,8 @@
       render();
     }
 
-    return { init, render };
+    /* `add` already existed privately; voice needs it, so it is exposed. */
+    return { init, render, add };
   })();
 
   /* ═══════════════════  APP IDEAS (home)  ═══════════════════
@@ -1180,7 +1199,23 @@
       }
       render();
     }
-    return { init, render };
+
+    /* voice entry point — same list, same sort, same render */
+    function add(text, kind, target) {
+      const t = String(text || '').trim(); if (!t) return null;
+      const list = load();
+      const it = {
+        id: uid(), at: Date.now(), text: t,
+        kind: KIND[kind] ? kind : 'feature',
+        pri: 1, built: false,
+        target: target || '',
+      };
+      list.push(it);
+      save(list); render();
+      return it;
+    }
+
+    return { init, render, add };
   })();
 
   /* ═══════════════════  NOTICED (home)  ═══════════════════
@@ -7440,6 +7475,330 @@
     return { init, setActive };
   })();
 
+  /* ══════════════════  VOICE  ══════════════════
+     Say it instead of typing it. One mic, every tab, phone included.
+
+     WHAT IT COSTS: nothing. Speech-to-text is the browser's own Web Speech
+     API — no key, no server, no per-request charge. The command is then matched
+     against patterns here, locally. So it is instant, it works when the network
+     is flaky, and your voice goes to no service of ours.
+
+     THE LIMIT, SAID PLAINLY: pattern matching understands commands with a
+     recognisable shape — "add a goal…", "remind me to… at six", "go to gym".
+     It cannot reason. "Work out when I should study and block it out" needs a
+     real language model, which means a key behind an /api proxy like weather
+     and stocks already use. That is a deliberate second version.
+
+     Every action goes through the owning module's own add(), so it persists and
+     re-renders exactly as if you had typed it into the form yourself. */
+  const Voice = (() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const supported = !!SR;
+    let rec = null, listening = false;
+
+    /* Spoken language is not tab names. "Food", "money" and "school" are what
+       a person actually says. */
+    const TAB_WORDS = {
+      home:'home', dashboard:'home',
+      gym:'gym', workout:'gym', workouts:'gym', training:'gym', lift:'gym', lifts:'gym',
+      nutrition:'nutrition', food:'nutrition', macros:'nutrition', meals:'nutrition', calories:'nutrition',
+      supplements:'supplements', stack:'supplements', supplement:'supplements',
+      subscriptions:'subscriptions', subs:'subscriptions',
+      vitals:'vitals', recovery:'vitals',
+      peak:'peak', energy:'peak',
+      map:'map', maps:'map', places:'map', weather:'map',
+      stocks:'stocks', stock:'stocks', portfolio:'stocks',
+      finance:'finance', money:'finance', budget:'finance',
+      photos:'photos', pictures:'photos',
+      academics:'academics', school:'academics', sat:'academics', college:'academics',
+      goals:'goals', goal:'goals',
+      reminders:'reminders',
+      logs:'logs', water:'logs', steps:'logs', sleep:'logs',
+      clothes:'clothes', wardrobe:'clothes', fits:'clothes',
+      sports:'sports', soccer:'sports',
+      calendar:'calendar', schedule:'calendar', agenda:'calendar',
+      stats:'stats', statistics:'stats',
+    };
+
+    const WORD_NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8,
+                       nine:9, ten:10, eleven:11, twelve:12, noon:12, midnight:0 };
+    const WD = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+
+    const fmtHM = (h, m) => {
+      const ap = h < 12 ? 'am' : 'pm';
+      const hh = h % 12 === 0 ? 12 : h % 12;
+      return hh + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
+    };
+    const tidy = (s) => String(s || '')
+      .replace(/^(to|that|a|an|the)\s+/i, '')
+      .replace(/\s+/g, ' ').trim()
+      .replace(/^./, c => c.toUpperCase());
+
+    /* ── WHEN ──────────────────────────────────────────────────────────────
+       Returns the moment AND the leftover text, so what gets saved is "Gym"
+       rather than "gym at six pm tomorrow". */
+    function parseWhen(raw) {
+      let s = ' ' + String(raw).toLowerCase() + ' ';
+      const date = new Date(); date.setSeconds(0, 0);
+      let hour = null, min = 0, saidDate = '';
+
+      if (/\btomorrow\b/.test(s)) {
+        date.setDate(date.getDate() + 1); saidDate = 'tomorrow';
+        s = s.replace(/\btomorrow\b/g, ' ');
+      } else if (/\b(today|tonight)\b/.test(s)) {
+        saidDate = 'today';
+        if (/\btonight\b/.test(s)) hour = 20;
+        s = s.replace(/\b(today|tonight)\b/g, ' ');
+      } else {
+        const m = s.match(/\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+        if (m) {
+          let delta = (WD[m[2]] - date.getDay() + 7) % 7;
+          /* "Monday" spoken on a Monday means the NEXT one — nobody schedules
+             something for a day that is already half gone */
+          if (delta === 0) delta = 7;
+          date.setDate(date.getDate() + delta);
+          saidDate = m[2][0].toUpperCase() + m[2].slice(1);
+          s = s.replace(m[0], ' ');
+        }
+      }
+
+      let t = s.match(/\bat\s+(\d{1,2})[:.](\d{2})\s*(am|pm)?/) || s.match(/\b(\d{1,2})[:.](\d{2})\s*(am|pm)\b/);
+      if (t) {
+        hour = +t[1]; min = +t[2];
+        if (t[3] === 'pm' && hour < 12) hour += 12;
+        if (t[3] === 'am' && hour === 12) hour = 0;
+        s = s.replace(t[0], ' ');
+      } else {
+        t = s.match(/\bat\s+(\d{1,2})\s*(am|pm)?\b/) || s.match(/\b(\d{1,2})\s*(am|pm)\b/);
+        if (t) {
+          hour = +t[1];
+          if (t[2] === 'pm' && hour < 12) hour += 12;
+          else if (t[2] === 'am' && hour === 12) hour = 0;
+          /* No am/pm said. "At 6" nearly always means the evening, "at 9" the
+             morning. Guess — then say the guess back, so a wrong one is caught
+             by ear straight away instead of silently sitting in the calendar. */
+          else if (hour >= 1 && hour <= 7) hour += 12;
+          s = s.replace(t[0], ' ');
+        } else {
+          const w = s.match(/\bat\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|noon|midnight)\s*(am|pm)?\b/);
+          if (w) {
+            hour = WORD_NUM[w[1]];
+            if (w[2] === 'pm' && hour < 12) hour += 12;
+            else if (!w[2] && hour >= 1 && hour <= 7) hour += 12;
+            s = s.replace(w[0], ' ');
+          }
+        }
+      }
+
+      if (hour !== null) date.setHours(hour, min, 0, 0);
+      const said = [saidDate, hour !== null ? fmtHM(hour, min) : ''].filter(Boolean).join(' at ');
+      return { date, hour, min, rest: s.replace(/\s+/g, ' ').trim(), said };
+    }
+
+    /* a day-list item, written the way DayFlow and Cal both already read it */
+    function addDayTask(ds, text) {
+      const key = 'nv.day.' + ds;
+      const cur = Store.get(key, []);
+      const arr = Array.isArray(cur) ? cur : [];
+      arr.push({ text, done: false });
+      Store.set(key, arr);
+      window.dispatchEvent(new CustomEvent('nv-day-changed'));
+      try { if (DayFlow && DayFlow.render) DayFlow.render(); } catch (e) {}
+    }
+
+    /* ── WHAT ──────────────────────────────────────────────────────────────
+       Most specific first. "Add a goal to go to the gym" must not be caught by
+       the navigation rule merely because it contains "go to". */
+    function interpret(raw) {
+      const low = raw.trim().replace(/[.!]+$/, '').toLowerCase();
+
+      let m = low.match(/^(?:add|create|new|set)\s+(?:a\s+|an\s+)?goal\s+(?:to\s+|of\s+|called\s+)?(.+)$/);
+      if (m) {
+        const w = parseWhen(m[1]);
+        const title = tidy(w.rest);
+        if (!title) return { ok:false, say:'I heard "goal" but not what the goal is.' };
+        const deadline = w.said ? localDateKey(w.date) : '';
+        Goals.add(title, deadline);
+        return { ok:true, tab:'goals', say:'Goal added: ' + title + (deadline ? ', due ' + w.said : '') };
+      }
+
+      m = low.match(/^(?:add|create|new|save)\s+(?:an\s+|a\s+)?(?:app\s+)?idea\s+(?:to\s+|for\s+|about\s+)?(.+)$/)
+       || low.match(/^idea\s+(.+)$/);
+      if (m) {
+        const text = tidy(m[1]);
+        if (!text) return { ok:false, say:'I heard "idea" but not what it was.' };
+        const isTab = /\btabs?\b/.test(text.toLowerCase());
+        Ideas.add(text, isTab ? 'tab' : 'feature', isTab ? 'NEW TAB' : '');
+        return { ok:true, tab:'home', say:'Idea saved: ' + text };
+      }
+
+      m = low.match(/^remind\s+me\s+(?:to\s+|about\s+|that\s+)?(.+)$/);
+      if (m) {
+        const w = parseWhen(m[1]);
+        const text = tidy(w.rest);
+        if (!text) return { ok:false, say:'I heard "remind me" but not what about.' };
+        /* no time said → 9am, and say so, rather than filing it at whatever
+           minute it happens to be right now */
+        if (w.hour === null) w.date.setHours(9, 0, 0, 0);
+        Reminders.add(text, w.date.toISOString());
+        return { ok:true, tab:'reminders', say:'Reminder set: ' + text + ', ' + (w.said || 'today at 9am') };
+      }
+
+      m = low.match(/^(?:add|put)\s+(?:a\s+)?(?:task|to-?do|todo)\s+(.+)$/)
+       || low.match(/^(?:add|put)\s+(.+?)\s+(?:to|on|in)\s+(?:my\s+)?(?:day|list|today|calendar|schedule)$/)
+       || low.match(/^(?:schedule|block)\s+(.+)$/);
+      if (m) {
+        const w = parseWhen(m[1]);
+        const text = tidy(w.rest);
+        if (!text) return { ok:false, say:'I did not catch what to add.' };
+        addDayTask(localDateKey(w.date), w.hour !== null ? fmtHM(w.hour, w.min) + ' · ' + text : text);
+        return { ok:true, tab:'home', say:'Added ' + text + (w.said ? ' ' + w.said : ' to today') };
+      }
+
+      /* navigation last, so it never swallows the rules above */
+      m = low.match(/^(?:go\s+to|open|show(?:\s+me)?|take\s+me\s+to|switch\s+to)\s+(?:the\s+|my\s+)?(.+)$/);
+      if (m) {
+        const word = m[1].replace(/\s+tab$/, '').trim();
+        const tab = TAB_WORDS[word] || TAB_WORDS[word.split(' ')[0]];
+        if (tab) return { ok:true, tab, say:'Opening ' + tab };
+        return { ok:false, say:'I have no tab called ' + word };
+      }
+
+      return { ok:false, unknown:true, say:'I did not understand that.' };
+    }
+
+    /* Short, and only on a real action. A machine that narrates everything
+       gets muted within a day. */
+    function speak(text) {
+      try {
+        if (!window.speechSynthesis) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.06; u.volume = .85;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+
+    const panel = () => $('[data-voice-panel]');
+    function show(state, line, sub) {
+      const p = panel(); if (!p) return;
+      p.hidden = false; p.dataset.state = state;
+      const l = $('[data-voice-line]'), s = $('[data-voice-sub]');
+      if (l) l.textContent = line || '';
+      if (s) s.textContent = sub || '';
+    }
+    let hideT = null;
+    function hideSoon(ms) {
+      clearTimeout(hideT);
+      hideT = setTimeout(() => { const p = panel(); if (p) p.hidden = true; }, ms);
+    }
+
+    function run(text) {
+      let r;
+      try { r = interpret(text); }
+      catch (e) { r = { ok:false, say:'That tripped me up.' }; }
+
+      show(r.ok ? 'ok' : 'bad', '“' + text + '”', r.say);
+      const save = $('[data-voice-save]');
+      if (save) save.hidden = true;
+
+      if (r.ok) {
+        speak(r.say);
+        if (r.tab && REAL_PANELS.includes(r.tab)) Tabs.setActive(r.tab);
+        hideSoon(3600);
+      } else {
+        /* an unknown command is never thrown away — it can become a task,
+           which is far kinder than losing the thought */
+        if (r.unknown && save) { save.hidden = false; save.dataset.text = text; }
+        hideSoon(9000);
+      }
+    }
+
+    function start() {
+      if (!supported) {
+        show('bad', 'This browser cannot listen', 'Type it here instead — the commands are the same.');
+        const f = $('[data-voice-fallback]');
+        if (f) { f.hidden = false; f.focus(); }
+        return;
+      }
+      if (listening) { stop(); return; }
+
+      rec = new SR();
+      rec.lang = 'en-US';
+      rec.interimResults = true;
+      rec.continuous = false;
+
+      listening = true;
+      $('[data-voice-fab]')?.classList.add('is-live');
+      show('live', 'Listening…', 'Try “add a goal to run a 10k” or “go to gym”');
+
+      rec.onresult = (e) => {
+        let interim = '', final = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
+        }
+        if (interim) show('live', '“' + interim + '”', 'Listening…');
+        if (final) run(final.trim());
+      };
+      rec.onerror = (e) => {
+        listening = false;
+        $('[data-voice-fab]')?.classList.remove('is-live');
+        const why =
+          (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+            ? 'Microphone permission was refused. Allow it in your browser settings, then try again.'
+          : e.error === 'no-speech' ? 'I did not hear anything.'
+          : e.error === 'network'   ? 'Speech recognition needs a connection and could not reach it.'
+          : 'Listening failed (' + e.error + ').';
+        show('bad', 'Could not listen', why);
+        const f = $('[data-voice-fallback]'); if (f) f.hidden = false;
+        hideSoon(10000);
+      };
+      rec.onend = () => {
+        listening = false;
+        $('[data-voice-fab]')?.classList.remove('is-live');
+      };
+
+      try { rec.start(); }
+      catch (e) {
+        listening = false;
+        $('[data-voice-fab]')?.classList.remove('is-live');
+      }
+    }
+
+    function stop() {
+      try { rec && rec.stop(); } catch (e) {}
+      listening = false;
+      $('[data-voice-fab]')?.classList.remove('is-live');
+    }
+
+    function init() {
+      $('[data-voice-fab]')?.addEventListener('click', start);
+      $('[data-voice-close]')?.addEventListener('click', () => {
+        stop(); const p = panel(); if (p) p.hidden = true;
+      });
+
+      $('[data-voice-save]')?.addEventListener('click', (e) => {
+        const t = e.currentTarget.dataset.text; if (!t) return;
+        addDayTask(localDateKey(new Date()), tidy(t));
+        e.currentTarget.hidden = true;
+        show('ok', '“' + t + '”', 'Saved to today’s list instead.');
+        hideSoon(2800);
+      });
+
+      /* typing is the fallback where the browser cannot listen — and the
+         fastest way to test the parser without talking */
+      const f = $('[data-voice-fallback]');
+      if (f) f.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const v = f.value.trim(); if (!v) return;
+        f.value = ''; run(v);
+      });
+    }
+
+    return { init, run, supported };
+  })();
+
   /* ─────────────────  BOOT  ───────────────── */
   function boot() {
     Countdown.init();
@@ -7450,6 +7809,7 @@
     Ideas.init();
     Noticed.render();
     Alerts.init();
+    Voice.init();             // Nova — the mic beside the bell
     renderTileActions();      // bottom button rows on every rebuilt tile
     BodyWeight.init();
     ProgressLog.init();
