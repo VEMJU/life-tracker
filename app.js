@@ -7088,6 +7088,18 @@
       renderMonth();
       renderDay();
       renderDrawer();
+
+      /* ── WHAT YOU LAND ON ────────────────────────────────────────────────
+         The month is a record; the day is the thing you act on. Opening the
+         tab therefore lands on TODAY's timeline, with the month one close-tap
+         behind it. Entering the tab always returns you to today — a calendar
+         that reopens on whatever date you last poked at is a calendar that
+         has stopped answering "what now?". */
+      view = new Date();
+      selected = dk(new Date());
+      renderMonth();
+      renderDay();
+      openDay();
     }
     return {init, materializeToday};
   })();
