@@ -6642,9 +6642,12 @@
           </span>
         </div>
 
-        <div class="cal-prog">
-          <span class="cal-prog__label">Daily Progress: <b>${pct}%</b> <i>· ${done}/${goals.length || 0} done</i></span>
-          <div class="cal-prog__bar"><i style="width:${pct}%"></i></div>
+        <!-- the hero: what is LEFT, not what is done. A day is read forwards. -->
+        <div class="tile-well cal-well">
+          <span class="tile-kick">✦ ${selected === today ? 'left today' : (goals.length ? 'on this day' : 'nothing yet')}</span>
+          <span class="tile-hero__val">${goals.length ? (goals.length - done) : '—'}</span>
+          <span class="tile-hero__of">${goals.length ? 'of ' + goals.length + ' · ' + pct + '% done' : 'add something below'}</span>
+          <div class="tile-hero__bar ${pct >= 100 ? 'is-over' : ''}"><i style="width:${pct}%"></i></div>
         </div>
 
         ${anytime.length ? `

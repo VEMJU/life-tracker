@@ -4536,6 +4536,14 @@ button.intro-tool {
 
 .tile-rule { height: 1px; background: var(--hairline); margin: var(--sp-5) 0; border: 0; }
 
+/* The calendar's day sits inside a modal that already has a title above it,
+   so the well is tightened and its breathing glow dropped — two atmospheres
+   in one panel reads as noise rather than depth. */
+.cal-well { padding: var(--sp-4) 0 var(--sp-2); }
+.cal-well::before { display: none; }
+.cal-well .tile-hero__val { font-size: clamp(46px, 9vw, 72px); }
+.cal-well .tile-hero__bar { max-width: 260px; margin-left: auto; margin-right: auto; }
+
 /* ── THE MOTION ───────────────────────────────────────────────────────────
    Lifted from their tiles, not approximated. What makes it read as Vitality
    rather than as a fade is the OVERSHOOT: a card rises past its resting
