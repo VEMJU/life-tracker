@@ -6571,20 +6571,39 @@
        agree to it, rather than in March. */
     function renderLoad() {
       const host = $('[data-cal-load]'); if (!host) return;
-      const ws = weekStart(new Date());
+      const v = panelView();
+      const base = view || new Date();
+
+      /* The meter measures whatever you are LOOKING at. A week meter sitting
+         above a month grid answers a question nobody asked. */
+      let from, days, label;
+      if (v === 'month') {
+        from = new Date(base.getFullYear(), base.getMonth(), 1);
+        days = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        label = base.toLocaleDateString('en-US', { month: 'long' });
+      } else if (v === 'year') {
+        from = new Date(base.getFullYear(), 0, 1);
+        days = ((base.getFullYear() % 4 === 0 && base.getFullYear() % 100 !== 0) || base.getFullYear() % 400 === 0) ? 366 : 365;
+        label = String(base.getFullYear());
+      } else {
+        from = weekStart(base); days = 7; label = 'this week';
+      }
+
       let mins = 0, capMin = 0, worst = null;
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(ws); d.setDate(ws.getDate() + i);
+      for (let i = 0; i < days; i++) {
+        const d = new Date(from); d.setDate(from.getDate() + i);
         const L = loadFor(dk(d));
         mins += L.mins; capMin += L.capMin;
-        if (L.over && (!worst || L.pct > worst.pct)) worst = { pct: L.pct, name: WD[d.getDay()] };
+        /* naming the worst day is only useful at week scale — across a year it
+           is noise, and the day name alone would not even identify it */
+        if (v === 'week' && L.over && (!worst || L.pct > worst.pct)) worst = { pct: L.pct, name: WD[d.getDay()] };
       }
       const pct = capMin ? Math.round(mins / capMin * 100) : 0;
       const band = pct > 100 ? 'is-over' : pct > 85 ? 'is-tight' : '';
 
       host.innerHTML =
         `<div class="cal-load__head">
-           <span class="cal-load__kick">✦ this week</span>
+           <span class="cal-load__kick">✦ ${esc(label)}</span>
            <button class="cal-load__edit" data-cal-avail type="button">${hrs(capMin)} available · edit</button>
          </div>
          <div class="cal-load__row">
@@ -6716,6 +6735,7 @@
       if (v === 'week') renderWeek();
       if (v === 'year') renderYear();
       if (v === 'month') renderMonth();
+      renderLoad();          // the meter measures whatever view is showing
       /* renderMonth owns the title; the other two set their own */
       const t = $('[data-cal-title]');
       if (t && v === 'week') {
