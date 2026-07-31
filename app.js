@@ -3175,7 +3175,26 @@
       renderAll();
     }
 
-    return {init, renderMacroWidget, renderHeatmap, renderSuppWidget, renderElecWidget};
+    /* ── LOGGING FROM OUTSIDE THIS MODULE ──────────────────────────────────
+       Nova needs to add food, and she cannot reach nutState — it lives in this
+       closure. Writing to the store behind the module's back would not work
+       either: the module already holds its copy, so the write would render
+       stale. This is the door in. */
+    function logFood(meal, f) {
+      if (!f || !f.name) return '';
+      const key = ['breakfast','lunch','dinner','snacks'].includes(meal) ? meal : mealForNow();
+      const { meals } = todayMeals();
+      meals[key].push({
+        id: uid(), name: String(f.name).slice(0, 60),
+        cal: Math.round(num(f.cal)), protein: Math.round(num(f.protein)),
+        carbs: Math.round(num(f.carbs)), fats: Math.round(num(f.fats)),
+      });
+      pNut();
+      renderMeals(); renderMacroRings(); renderMacroWidget(); renderHeatmap();
+      return key;
+    }
+
+    return {init, logFood, renderMacroWidget, renderHeatmap, renderSuppWidget, renderElecWidget};
   })();
 
   /* ═══════════════════  FINANCE / SHOPPING  ═══════════════════ */
@@ -7927,6 +7946,15 @@
           Reminders.add(a.text, when.toISOString());
           Tabs.setActive('reminders');
           return 'Reminder set: ' + a.text;
+        }
+        if (action === 'log_food') {
+          const items = Array.isArray(a.items) ? a.items : [];
+          if (!items.length) return '';
+          let cal = 0, n = 0;
+          items.forEach(f => { if (Nutrition.logFood(a.meal, f)) { cal += num(f.cal); n++; } });
+          if (!n) return '';
+          Tabs.setActive('nutrition');
+          return 'Logged ' + n + (n === 1 ? ' item' : ' items') + ' · ' + Math.round(cal) + ' kcal';
         }
         if (action === 'add_idea') {
           const it = Ideas.add(a.text, a.kind || 'feature', a.kind === 'tab' ? 'NEW TAB' : '');

@@ -81,6 +81,32 @@ const ACTIONS = [
     },
   },
   {
+    name: 'log_food',
+    description: 'Record something they ate or drank. Call this whenever they mention consuming something ("two eggs and toast", "had a protein shake"). Fill in the macros yourself from ordinary nutrition knowledge — they can correct any figure in the Nutrition tab, so a sensible estimate is far more useful than refusing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        meal: { type: 'string', enum: ['breakfast','lunch','dinner','snacks'], description: 'Omit to use the meal that fits the current time.' },
+        items: {
+          type: 'array',
+          description: 'One entry per distinct food.',
+          items: {
+            type: 'object',
+            properties: {
+              name:    { type: 'string', description: 'Include the amount, e.g. "2 eggs", "200g chicken breast".' },
+              cal:     { type: 'number' },
+              protein: { type: 'number', description: 'grams' },
+              carbs:   { type: 'number', description: 'grams' },
+              fats:    { type: 'number', description: 'grams' },
+            },
+            required: ['name', 'cal', 'protein', 'carbs', 'fats'],
+          },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  {
     name: 'complete_task',
     description: 'Tick off something already on a day\'s list. Call this when they say they finished or did something ("done with the gym", "I called mum"). Match against the open tasks you were given.',
     input_schema: {
@@ -185,14 +211,29 @@ export default async function handler(req, res) {
   while (history.length && history[0].role !== 'user') history.shift();
 
   let messages = [...history, { role: 'user', content: utterance }];
+  /* filled in below, after boardBlock is built */
 
   const board = (req.body && req.body.board) || null;
-  /* The board goes in the SYSTEM prompt, not a user turn: it is context the
-     app supplies, not something they said, and keeping it out of the message
-     history stops it being mistaken for their words on a later turn. */
+
+  /* ── WHY THE BOARD IS A MESSAGE, NOT PART OF `system` ──────────────────────
+     Caching is a prefix match: the cache key is the exact bytes up to the
+     breakpoint. The board changes every single turn, so putting it in `system`
+     (which renders before messages) would change the prefix every time and
+     nothing would ever cache — paying full price for the ~2,000 tokens of
+     instructions and tool definitions on every question.
+
+     A `role: "system"` message sits AFTER the cached prefix instead. It still
+     carries operator authority — it is not something the person said, so it
+     cannot be mistaken for their words on a later turn — while the stable
+     instructions in front of it are read from cache at a tenth of the price.
+
+     It must follow a user turn and be either last or followed by an assistant
+     turn; appended after the utterance, it satisfies both. */
   const boardBlock = board
-    ? `\n\nTHEIR BOARD RIGHT NOW (regenerated this turn — trust it over anything earlier in the conversation):\n${JSON.stringify(board, null, 1).slice(0, 14000)}`
-    : '\n\n(Their board did not load this turn — say so rather than guessing at their numbers.)';
+    ? `Today is ${today}. Local time: ${nowLocal} (${tz}).\n\nTHEIR BOARD RIGHT NOW (regenerated this turn — trust it over anything earlier in the conversation):\n${JSON.stringify(board, null, 1).slice(0, 14000)}`
+    : `Today is ${today}. Local time: ${nowLocal} (${tz}).\n\nTheir board did not load this turn — say so rather than guessing at their numbers.`;
+
+  messages.push({ role: 'system', content: boardBlock });
 
   try {
     let response;
@@ -202,10 +243,20 @@ export default async function handler(req, res) {
     for (let i = 0; i < 4; i++) {
       response = await client.beta.messages.create({
         model: MODEL,
-        max_tokens: 4096,
-        system: `${SYSTEM}\n\nToday is ${today}. Local time: ${nowLocal} (${tz}).${boardBlock}`,
+        max_tokens: 2048,
+        /* The breakpoint goes on the last system block. Render order is
+           tools → system → messages, so this one marker caches BOTH the tool
+           definitions and the instructions — the ~2,000 tokens that are
+           byte-identical on every question. Cache reads cost a tenth. */
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
         tools,
         messages,
+        /* Thinking is billed as output at $25/M, and effort is the dial on how
+           much of it happens. Answering from a board that was handed over, or
+           picking one tool, is a scoped task — `low` handles it well on this
+           model and is the single biggest saving available. Raise it with
+           NOVA_EFFORT if answers ever feel shallow. */
+        output_config: { effort: process.env.NOVA_EFFORT || 'low' },
         /* Opus 5's classifiers can decline a request; "default" re-runs it on
            Anthropic's recommended fallback rather than handing back a refusal */
         betas: ['server-side-fallback-2026-07-01'],
@@ -239,10 +290,20 @@ export default async function handler(req, res) {
 
     const searched = response.content.some(b => b.type === 'web_search_tool_result');
 
+    /* Returned so the browser can surface real spend rather than an estimate.
+       A healthy second-or-later question shows most input arriving as
+       cache_read — if that stays zero, the prefix is being invalidated. */
+    const u = response.usage || {};
     return res.status(200).json({
       kind: 'text',
       text: said || 'I could not find an answer to that.',
       searched,
+      usage: {
+        in: u.input_tokens || 0,
+        out: u.output_tokens || 0,
+        cacheRead: u.cache_read_input_tokens || 0,
+        cacheWrite: u.cache_creation_input_tokens || 0,
+      },
     });
   } catch (e) {
     const status = e && e.status;
