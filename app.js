@@ -6507,6 +6507,55 @@
       if (dirty) setDayRec(ds, goals);
     }
 
+    /* ══════════════════  CAPACITY  ══════════════════
+       The number that makes twenty goals plannable. A plan you cannot fit is
+       not a plan, and you only find that out by measuring — so every view
+       below is built on these two functions.
+
+       Untimed items still cost you something; counting them as zero would let
+       an inbox of thirty tasks read as a free day. Fifteen minutes each is a
+       deliberate under-estimate — enough to register, not enough to panic. */
+    const UNTIMED_MIN = 15;
+    const DEFAULT_AVAIL = [4, 3, 3, 3, 3, 3, 5];   // Sun…Sat, hours you can actually spend
+
+    function availFor(date) {
+      const a = (st && st.avail) || DEFAULT_AVAIL;
+      const h = a[date.getDay()];
+      return typeof h === 'number' ? h : DEFAULT_AVAIL[date.getDay()];
+    }
+
+    /* minutes committed on a date, and how that sits against the day's ceiling */
+    function loadFor(ds) {
+      const goals = getDayRec(ds);
+      let mins = 0;
+      goals.forEach(g => {
+        if (g.at && g.end)      mins += Math.max(0, minutesOf(g.end) - minutesOf(g.at));
+        else if (g.at)          mins += 30;
+        else                    mins += UNTIMED_MIN;
+      });
+      const [y, m, d] = ds.split('-').map(Number);
+      const capMin = availFor(new Date(y, m - 1, d)) * 60;
+      return {
+        mins, capMin,
+        pct: capMin ? Math.round(mins / capMin * 100) : 0,
+        done: goals.filter(g => g.done).length,
+        total: goals.length,
+        over: capMin > 0 && mins > capMin,
+      };
+    }
+
+    const hrs = (m) => {
+      if (!m) return '0h';
+      const h = Math.floor(m / 60), r = Math.round(m % 60);
+      return h ? h + 'h' + (r ? ' ' + r + 'm' : '') : r + 'm';
+    };
+    /* Monday-start week containing a date — planning weeks begin on Monday
+       even where the month grid starts on Sunday */
+    function weekStart(d) {
+      const x = new Date(d); const wd = (x.getDay() + 6) % 7;
+      x.setDate(x.getDate() - wd); x.setHours(0, 0, 0, 0); return x;
+    }
+
     /* cross state for a day: 'white' (all done), 'red' (incomplete + past), null */
     function crossFor(ds, today) {
       const goals = getDayRec(ds);
@@ -6514,6 +6563,167 @@
       const allDone = goals.every(g => g.done);
       if (allDone) return 'white';
       return ds < today ? 'red' : null;
+    }
+
+    /* ══════════════════  THE LOAD METER  ══════════════════
+       This week's committed hours against the hours that exist. Watching this
+       fill while a plan is placed is how you learn it does not fit BEFORE you
+       agree to it, rather than in March. */
+    function renderLoad() {
+      const host = $('[data-cal-load]'); if (!host) return;
+      const ws = weekStart(new Date());
+      let mins = 0, capMin = 0, worst = null;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(ws); d.setDate(ws.getDate() + i);
+        const L = loadFor(dk(d));
+        mins += L.mins; capMin += L.capMin;
+        if (L.over && (!worst || L.pct > worst.pct)) worst = { pct: L.pct, name: WD[d.getDay()] };
+      }
+      const pct = capMin ? Math.round(mins / capMin * 100) : 0;
+      const band = pct > 100 ? 'is-over' : pct > 85 ? 'is-tight' : '';
+
+      host.innerHTML =
+        `<div class="cal-load__head">
+           <span class="cal-load__kick">✦ this week</span>
+           <button class="cal-load__edit" data-cal-avail type="button">${hrs(capMin)} available · edit</button>
+         </div>
+         <div class="cal-load__row">
+           <b class="cal-load__val">${hrs(mins)}</b>
+           <span class="cal-load__of">committed · ${pct}%</span>
+         </div>
+         <div class="cal-load__bar ${band}"><i style="width:${Math.min(100, pct)}%"></i>${
+           pct > 100 ? `<u style="left:100%"></u>` : ''}</div>
+         ${worst ? `<p class="cal-load__warn">${worst.name} is at ${worst.pct}% — something has to move.</p>` : ''}`;
+    }
+
+    /* ══════════════════  THE WEEK  ══════════════════
+       Seven rows, not seven columns: a phone cannot render a true hour grid
+       across seven columns and stay legible, and this is planned on a phone.
+       Each row carries the day's blocks in true time position plus its load,
+       so a week that does not fit announces itself at a glance. */
+    function renderWeek() {
+      const host = $('[data-cal-week]'); if (!host) return;
+      const ws = weekStart(view || new Date());
+      const today = dk(new Date());
+      const DAY_START = 5 * 60, DAY_END = 24 * 60, SPAN = DAY_END - DAY_START;
+
+      const rows = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(ws); d.setDate(ws.getDate() + i);
+        const ds = dk(d);
+        const L = loadFor(ds);
+        const goals = getDayRec(ds);
+
+        const marks = goals.filter(g => g.at).map(g => {
+          const s = Math.max(DAY_START, minutesOf(g.at));
+          const e = Math.min(DAY_END, g.end ? minutesOf(g.end) : s + 30);
+          const left = ((s - DAY_START) / SPAN) * 100;
+          const w = Math.max(1.6, ((e - s) / SPAN) * 100);
+          return `<i class="cal-wk__block ${g.done ? 'is-done' : ''}" style="left:${left.toFixed(2)}%;width:${w.toFixed(2)}%"
+                     title="${esc(g.text)} · ${fmtAt(g.at)}"></i>`;
+        }).join('');
+
+        const nowMark = ds === today
+          ? (() => { const n = new Date(); const m = n.getHours() * 60 + n.getMinutes();
+              if (m < DAY_START || m > DAY_END) return '';
+              return `<i class="cal-wk__now" style="left:${(((m - DAY_START) / SPAN) * 100).toFixed(2)}%"></i>`; })()
+          : '';
+
+        return `<button class="cal-wk ${ds === today ? 'is-today' : ''} ${L.over ? 'is-over' : ''}"
+                        data-cal-openday="${ds}" type="button" style="animation-delay:${i * 45}ms">
+          <span class="cal-wk__day"><b>${WD[d.getDay()]}</b><i>${d.getDate()}</i></span>
+          <span class="cal-wk__track">${marks}${nowMark}</span>
+          <span class="cal-wk__load">
+            <b>${L.total ? hrs(L.mins) : '—'}</b>
+            <span class="cal-wk__bar"><i style="width:${Math.min(100, L.pct)}%"></i></span>
+          </span>
+        </button>`;
+      }).join('');
+
+      const end = new Date(ws); end.setDate(ws.getDate() + 6);
+      host.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">01</span>
+           <span class="eyebrow__lbl">${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+           <span class="eyebrow__rule"></span></div>
+         <div class="cal-wk__scale"><span>5a</span><span>9a</span><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
+         ${rows}`;
+    }
+
+    /* ══════════════════  THE YEAR  ══════════════════
+       Consistency, at the only scale where consistency is visible. Cells
+       cascade in on entry — twenty seconds of work that makes a year of
+       kept promises feel earned. */
+    function renderYear() {
+      const host = $('[data-cal-year]'); if (!host) return;
+      const today = dk(new Date());
+      const y = (view || new Date()).getFullYear();
+      const first = new Date(y, 0, 1);
+      const start = weekStart(first);
+      const cells = [];
+      let streak = 0, best = 0, run = 0, kept = 0;
+
+      for (let w = 0; w < 53; w++) {
+        for (let dow = 0; dow < 7; dow++) {
+          const d = new Date(start); d.setDate(start.getDate() + w * 7 + dow);
+          if (d.getFullYear() !== y) { cells.push({ blank: true, w, dow }); continue; }
+          const ds = dk(d);
+          const g = getDayRec(ds);
+          const lvl = !g.length ? 0
+            : g.every(x => x.done) ? 3
+            : g.filter(x => x.done).length / g.length >= 0.5 ? 2 : 1;
+          if (lvl === 3) kept++;
+          /* a streak survives days with nothing planned; it breaks on a day
+             you planned something and did not do it */
+          if (ds <= today) {
+            if (lvl === 3) { run++; best = Math.max(best, run); }
+            else if (g.length) run = 0;
+          }
+          cells.push({ ds, lvl, w, dow, future: ds > today });
+        }
+      }
+      streak = run;
+
+      const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      host.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">02</span>
+           <span class="eyebrow__lbl">${y} · every day you kept</span><span class="eyebrow__rule"></span></div>
+         <div class="cal-yr__stats">
+           <span><b>${kept}</b><i>days kept</i></span>
+           <span><b>${streak}</b><i>current streak</i></span>
+           <span><b>${best}</b><i>longest</i></span>
+         </div>
+         <div class="cal-yr__scroll"><div class="cal-yr__grid">${
+           cells.map((c, i) => c.blank
+             ? `<i class="cal-yr__c is-blank" style="grid-column:${c.w + 1};grid-row:${c.dow + 1}"></i>`
+             : `<i class="cal-yr__c l${c.lvl} ${c.future ? 'is-future' : ''} ${c.ds === today ? 'is-today' : ''}"
+                    style="grid-column:${c.w + 1};grid-row:${c.dow + 1};animation-delay:${Math.min(900, i * 1.1).toFixed(0)}ms"
+                    data-cal-openday="${c.ds}" title="${c.ds}"></i>`).join('')
+         }</div><div class="cal-yr__months">${
+           MON.map(m => `<span>${m}</span>`).join('')
+         }</div></div>
+         <p class="cal-yr__key"><span>less</span><i class="cal-yr__c l0"></i><i class="cal-yr__c l1"></i><i class="cal-yr__c l2"></i><i class="cal-yr__c l3"></i><span>more</span></p>`;
+    }
+
+    /* which of the three panel views is showing */
+    function panelView() { return (st && st.panelView) || 'week'; }
+    function setPanelView(v) {
+      st.panelView = v; save();
+      ['week','month','year'].forEach(k => {
+        const el = $(k === 'month' ? '[data-cal-grid]' : '[data-cal-' + k + ']');
+        if (el) el.hidden = (k !== v);
+      });
+      $$('[data-cal-view]').forEach(b => b.classList.toggle('is-active', b.dataset.calView === v));
+      const leg = $('[data-cal-legend]'); if (leg) leg.hidden = (v !== 'month');
+      if (v === 'week') renderWeek();
+      if (v === 'year') renderYear();
+      if (v === 'month') renderMonth();
+      /* renderMonth owns the title; the other two set their own */
+      const t = $('[data-cal-title]');
+      if (t && v === 'week') {
+        const ws = weekStart(view || new Date()), we = new Date(ws); we.setDate(ws.getDate() + 6);
+        t.textContent = 'Week of ' + ws.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      } else if (t && v === 'year') {
+        t.textContent = String((view || new Date()).getFullYear());
+      }
     }
 
     function renderMonth() {
@@ -6889,11 +7099,52 @@
     function wire() {
       const panel = $('[data-tab-panel="calendar"]');
 
+      /* Ticking anything anywhere changes the load, so the meter and whichever
+         view is showing follow the data rather than the tab being reopened. */
+      window.addEventListener('nv-day-changed', () => {
+        if (!booted) return;
+        renderLoad();
+        const v = panelView();
+        if (v === 'week') renderWeek(); else if (v === 'year') renderYear();
+      });
+
       /* month grid + drawer live on the panel */
       panel.addEventListener('click', (e) => {
-        if (e.target.closest('[data-cal-prev]')) { view.setMonth(view.getMonth() - 1); renderMonth(); return; }
-        if (e.target.closest('[data-cal-next]')) { view.setMonth(view.getMonth() + 1); renderMonth(); return; }
+        /* prev/next step by whatever unit the current view measures in */
+        const step = (n) => {
+          const v = panelView();
+          if (v === 'week')      view.setDate(view.getDate() + 7 * n);
+          else if (v === 'year') view.setFullYear(view.getFullYear() + n);
+          else                   view.setMonth(view.getMonth() + n);
+          setPanelView(v);
+        };
+        if (e.target.closest('[data-cal-prev]')) { step(-1); return; }
+        if (e.target.closest('[data-cal-next]')) { step(1);  return; }
+
+        const vb = e.target.closest('[data-cal-view]');
+        if (vb) { view = new Date(); setPanelView(vb.dataset.calView); return; }
+
+        /* the availability editor — the ceiling every plan is measured against */
+        if (e.target.closest('[data-cal-avail]')) {
+          const cur = (st.avail || DEFAULT_AVAIL).slice();
+          const names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          const next = cur.slice();
+          for (let i = 1; i <= 7; i++) {
+            const d = i % 7;                                   // ask Mon→Sun, store Sun-first
+            const ans = window.prompt('Hours you can realistically give on ' + names[d] + ':', String(cur[d]));
+            if (ans === null) return;                          // cancel abandons the whole edit
+            const n = parseFloat(ans);
+            next[d] = Number.isFinite(n) ? Math.max(0, Math.min(24, n)) : cur[d];
+          }
+          st.avail = next; save();
+          renderLoad(); setPanelView(panelView());
+          toast('Weekly capacity updated');
+          return;
+        }
+
         if (e.target.closest('[data-cal-today]')) { view = new Date(); selected = dk(new Date()); renderMonth(); renderDay(); openDay(); return; }
+        const openBtn = e.target.closest('[data-cal-openday]');
+        if (openBtn) { selected = openBtn.dataset.calOpenday; view = new Date(selected + 'T00:00:00'); renderMonth(); renderDay(); openDay(); return; }
         const cell = e.target.closest('[data-cal-day]');
         if (cell) { selected = cell.dataset.calDay; renderMonth(); renderDay(); openDay(); return; }
         if (e.target.closest('[data-cal-drawertab]')) {
@@ -7091,6 +7342,8 @@
       renderMonth();
       renderDay();
       renderDrawer();
+      renderLoad();
+      setPanelView(panelView());
 
       /* ── WHAT YOU LAND ON ────────────────────────────────────────────────
          The month is a record; the day is the thing you act on. Opening the

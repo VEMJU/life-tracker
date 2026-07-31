@@ -4536,6 +4536,138 @@ button.intro-tool {
 
 .tile-rule { height: 1px; background: var(--hairline); margin: var(--sp-5) 0; border: 0; }
 
+/* ═══════════════════  §55  CALENDAR — CAPACITY, WEEK, YEAR  ═══════════════════
+   Three views over one question: does this fit? The load meter answers it for
+   the week, the week rows answer it per day, the year answers it for the
+   habit. Everything reads left-to-right as time.                             */
+
+/* ── THE LOAD METER ─────────────────────────────────────────────────────── */
+.cal-load { margin-bottom: var(--sp-5); }
+.cal-load__head { display: flex; align-items: baseline; gap: var(--sp-3); margin-bottom: 6px; }
+.cal-load__kick { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+.cal-load__edit {
+  margin-left: auto; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-fog); border-bottom: 1px dashed var(--hairline); transition: color .18s var(--ease-out);
+}
+.cal-load__edit:hover { color: var(--c-blanc); border-color: var(--accent-soft); }
+.cal-load__row { display: flex; align-items: baseline; gap: 9px; }
+.cal-load__val {
+  font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 34px; line-height: 1;
+  color: var(--c-blanc); font-variant-numeric: tabular-nums;
+}
+.cal-load__of { font-family: var(--ff-mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--c-fog); }
+
+.cal-load__bar {
+  position: relative; height: 3px; margin-top: 11px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,.08);
+}
+.cal-load__bar i {
+  position: absolute; inset: 0 auto 0 0; display: block; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  box-shadow: 0 0 14px -2px var(--accent-glow);
+  transition: width 900ms var(--ease-vt), background 400ms var(--ease-out);
+}
+/* approaching the ceiling turns amber; past it turns hostile and the bar
+   stops pretending there is room */
+.cal-load__bar.is-tight i { background: linear-gradient(90deg, #e0b870, #e0a45a); }
+.cal-load__bar.is-over  i { background: linear-gradient(90deg, #e08a5a, #e0625a); }
+.cal-load__bar.is-over  { overflow: visible; }
+.cal-load__bar u { position: absolute; top: -3px; width: 2px; height: 9px; background: #e0625a; border-radius: 2px; }
+.cal-load__warn {
+  margin-top: 9px; font-family: var(--ff-display); font-style: italic; font-size: 13px; color: #e0a48a;
+}
+
+/* ── VIEW SWITCH ────────────────────────────────────────────────────────── */
+.cal-views { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: var(--sp-4); border-radius: 999px; background: rgba(255,255,255,.04); }
+.cal-view {
+  padding: 6px 15px; border-radius: 999px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--c-fog); transition: color .2s var(--ease-vt), background-color .2s var(--ease-vt);
+}
+.cal-view:hover { color: var(--c-paper); }
+.cal-view.is-active { color: #fff; background: rgba(var(--accent-rgb), .22); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .4); }
+
+/* ── THE WEEK ───────────────────────────────────────────────────────────── */
+.cal-wk__scale {
+  display: flex; justify-content: space-between; padding: 0 92px 6px 46px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .1em; color: rgba(255,255,255,.28);
+}
+.cal-wk {
+  display: grid; grid-template-columns: 40px 1fr 84px; align-items: center; gap: var(--sp-3);
+  width: 100%; padding: 9px 6px; border-radius: var(--r-sm); cursor: pointer; text-align: left;
+  border: 1px solid transparent;
+  transition: background-color .2s var(--ease-vt), border-color .2s var(--ease-vt);
+  animation: cardPop 520ms var(--ease-soft) both;
+}
+.cal-wk:hover { background: rgba(255,255,255,.04); border-color: var(--hairline); }
+.cal-wk.is-today { border-color: rgba(var(--accent-rgb), .32); background: rgba(var(--accent-rgb), .05); }
+.cal-wk__day { display: flex; align-items: baseline; gap: 5px; }
+.cal-wk__day b { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-stone); font-weight: 500; }
+.cal-wk__day i { font-family: var(--ff-display); font-style: italic; font-size: 14px; color: var(--c-fog); }
+.cal-wk.is-today .cal-wk__day b { color: var(--accent); }
+.cal-wk.is-today .cal-wk__day i { color: var(--c-blanc); }
+
+/* the track is the day, 5am to midnight, drawn to scale */
+.cal-wk__track { position: relative; height: 22px; border-radius: 4px; background: rgba(255,255,255,.035); overflow: hidden; }
+.cal-wk__block {
+  position: absolute; top: 4px; bottom: 4px; border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  box-shadow: 0 0 8px -2px var(--accent-glow);
+  transform-origin: left center; animation: barGrow 520ms var(--ease-vt) both;
+}
+.cal-wk__block.is-done { background: rgba(255,255,255,.20); box-shadow: none; }
+@keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cal-wk__now { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--accent-bright); box-shadow: 0 0 6px var(--accent-glow); }
+
+.cal-wk__load { display: flex; align-items: center; gap: 7px; justify-content: flex-end; }
+.cal-wk__load b { font-family: var(--ff-mono); font-size: 10px; color: var(--c-bone); font-variant-numeric: tabular-nums; }
+.cal-wk__bar { width: 34px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.cal-wk__bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width 700ms var(--ease-vt); }
+.cal-wk.is-over .cal-wk__bar i { background: #e0625a; }
+.cal-wk.is-over .cal-wk__load b { color: #e0a48a; }
+
+/* ── THE YEAR ───────────────────────────────────────────────────────────── */
+.cal-yr__stats { display: flex; gap: var(--sp-6); margin-bottom: var(--sp-4); }
+.cal-yr__stats span { display: flex; flex-direction: column; gap: 3px; }
+.cal-yr__stats b {
+  font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 26px; line-height: 1;
+  color: var(--c-blanc); font-variant-numeric: tabular-nums;
+}
+.cal-yr__stats i { font-family: var(--ff-mono); font-style: normal; font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--c-fog); }
+
+.cal-yr__scroll { overflow-x: auto; padding-bottom: 4px; }
+.cal-yr__scroll::-webkit-scrollbar { height: 4px; }
+.cal-yr__scroll::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 4px; }
+.cal-yr__grid {
+  display: grid; grid-template-rows: repeat(7, 11px); grid-auto-flow: column;
+  gap: 3px; width: max-content;
+}
+.cal-yr__c {
+  width: 11px; height: 11px; border-radius: 2.5px; background: rgba(255,255,255,.05);
+  cursor: pointer; transition: transform .16s var(--spring), box-shadow .16s var(--ease-vt);
+  animation: cellIn 320ms var(--ease-vt) both;
+}
+@keyframes cellIn { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+.cal-yr__c.l1 { background: rgba(var(--accent-rgb), .28); }
+.cal-yr__c.l2 { background: rgba(var(--accent-rgb), .58); }
+.cal-yr__c.l3 { background: var(--accent); box-shadow: 0 0 7px -2px var(--accent-glow); }
+.cal-yr__c.is-blank { background: none; cursor: default; animation: none; }
+.cal-yr__c.is-future { opacity: .38; }
+.cal-yr__c.is-today { box-shadow: 0 0 0 1.5px var(--accent-bright); }
+.cal-yr__c:not(.is-blank):hover { transform: scale(1.45); box-shadow: 0 0 0 1px var(--accent-soft); z-index: 2; }
+.cal-yr__months {
+  display: flex; justify-content: space-between; width: max-content; min-width: 100%;
+  margin-top: 7px; padding-right: 4px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .12em; color: rgba(255,255,255,.3);
+}
+.cal-yr__key { display: flex; align-items: center; gap: 5px; margin-top: var(--sp-4); font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--c-fog); }
+.cal-yr__key .cal-yr__c { animation: none; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-wk, .cal-wk__block, .cal-yr__c { animation: none; }
+}
+
 /* The calendar's day sits inside a modal that already has a title above it,
    so the well is tightened and its breathing glow dropped — two atmospheres
    in one panel reads as noise rather than depth. */
