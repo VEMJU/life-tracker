@@ -81,6 +81,27 @@ const ACTIONS = [
     },
   },
   {
+    name: 'complete_task',
+    description: 'Tick off something already on a day\'s list. Call this when they say they finished or did something ("done with the gym", "I called mum"). Match against the open tasks you were given.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Enough of the task text to identify it.' },
+        date: { type: 'string', description: 'YYYY-MM-DD. Today if unstated.' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'complete_goal',
+    description: 'Mark a goal finished. Call this only when they clearly say they achieved it.',
+    input_schema: {
+      type: 'object',
+      properties: { title: { type: 'string', description: 'Enough of the goal title to identify it.' } },
+      required: ['title'],
+    },
+  },
+  {
     name: 'navigate',
     description: 'Open one of the app\'s tabs. Call this when they just want to go somewhere.',
     input_schema: {
@@ -98,18 +119,22 @@ const ACTIONS = [
   },
 ];
 
-const SYSTEM = `You are Nova, the assistant inside one person's personal life-tracking app. You are talking to the person who owns it.
+const SYSTEM = `You are Nova, the assistant inside one person's personal life-tracking app. You are talking to the person who owns it. You know them — their board is given to you below, rebuilt fresh every time they speak.
 
 Do one of two things with every message:
 
-1. If they are telling you to record or open something, call the matching tool. One tool call, then stop — do not also write a paragraph explaining what you did; the app confirms it visually.
-2. If they are asking you something, answer it. Search the web first whenever the answer depends on anything current — prices, news, sports results, dates, whether something is still true. Do not answer from memory when the answer could have changed.
+1. If they are telling you to record, complete, or open something, call the matching tool. One tool call, then stop — do not also write a paragraph explaining what you did; the app confirms it visually.
+2. Otherwise answer them, using their board as the first source. Search the web only when the answer genuinely depends on something outside their data — prices, news, results, whether something is still true.
 
-Answer in two or three sentences. This is read on a phone, in a small panel, often mid-task. Lead with the answer itself, then the one piece of context that matters. No preamble, no bullet lists, no restating their question.
+ABOUT THEIR BOARD. Read it before answering anything about them. It holds their open goals and how far along each is, what is on today's list, this week's sleep/water/steps against their own targets, today's food against their calorie target, their weight trend, their reminders, and their app ideas. Answer from it directly and specifically — name the actual goal, quote the actual number.
 
-When they ask about their own body, training, food, or money, remember you cannot see their data — the app holds it and you do not. Say so plainly in a few words rather than guessing, and tell them which tab has it.
+Notice things. If they ask what is left today and their water is far under target, or a goal is overdue, or they slept five hours and are asking about training — say so in one clause. Do not deliver a list of observations they did not ask for; one relevant noticing, at most, attached to the answer.
 
-Never invent a number. If a search did not find it, say you could not find it.`;
+If something genuinely is not in the board, say which tab would hold it once they log it. Do not guess at a number that is not there, and never present an estimate as their data.
+
+STYLE. Two or three sentences. This is read on a phone, in a small panel, often mid-task. Lead with the answer, then the one piece of context that earns its place. No preamble, no bullet lists, no restating their question, no "great question". Talk like someone who knows them and respects their time.
+
+Never invent a number.`;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'post_only' });
@@ -146,7 +171,28 @@ export default async function handler(req, res) {
     { type: 'web_search_20260209', name: 'web_search', max_uses: 4 },
   ];
 
-  let messages = [{ role: 'user', content: utterance }];
+  /* Prior turns, so a follow-up ("what about tomorrow?") resolves. Only the
+     exchange is carried — the board is rebuilt every turn, so an old copy
+     could otherwise contradict the current one. */
+  const prior = Array.isArray(req.body && req.body.history) ? req.body.history : [];
+  const history = prior
+    .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .slice(-16)
+    .map(m => ({ role: m.role, content: m.content.slice(0, 600) }));
+
+  /* A conversation must begin with a user turn and alternate; a truncated
+     window can start on an assistant reply, which the API rejects. */
+  while (history.length && history[0].role !== 'user') history.shift();
+
+  let messages = [...history, { role: 'user', content: utterance }];
+
+  const board = (req.body && req.body.board) || null;
+  /* The board goes in the SYSTEM prompt, not a user turn: it is context the
+     app supplies, not something they said, and keeping it out of the message
+     history stops it being mistaken for their words on a later turn. */
+  const boardBlock = board
+    ? `\n\nTHEIR BOARD RIGHT NOW (regenerated this turn — trust it over anything earlier in the conversation):\n${JSON.stringify(board, null, 1).slice(0, 14000)}`
+    : '\n\n(Their board did not load this turn — say so rather than guessing at their numbers.)';
 
   try {
     let response;
@@ -157,7 +203,7 @@ export default async function handler(req, res) {
       response = await client.beta.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: `${SYSTEM}\n\nToday is ${today}. Local time: ${nowLocal} (${tz}).`,
+        system: `${SYSTEM}\n\nToday is ${today}. Local time: ${nowLocal} (${tz}).${boardBlock}`,
         tools,
         messages,
         /* Opus 5's classifiers can decline a request; "default" re-runs it on

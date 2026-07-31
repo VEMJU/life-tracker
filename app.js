@@ -7723,6 +7723,101 @@
       await think(text, save);
     }
 
+    /* ══════════════════  WHAT NOVA KNOWS  ══════════════════
+       A briefing of the board, rebuilt on every question so it is never stale.
+
+       This is a SUMMARY, not a dump. Sending the raw stores would cost a
+       fortune per question and bury the answer in noise — so each tab is
+       reduced to the shape a person would actually ask about: what is open,
+       what is due, this week's averages, today's totals.
+
+       Read through Store rather than the modules, because a module holds its
+       state in a closure loaded at init — Store is the truth on disk. */
+    function snapshot() {
+      const day  = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return localDateKey(d); };
+      const today = localDateKey();
+      const s = { today, weekday: new Date().toLocaleDateString(undefined, { weekday: 'long' }) };
+
+      /* ── goals: the open ones, with how far along and what is overdue ── */
+      const gd = Store.get(KEYS.goals, {}) || {};
+      const goals = Array.isArray(gd.goals) ? gd.goals : [];
+      const pct = (g) => !Array.isArray(g.steps) || !g.steps.length
+        ? (g.legacyProgress || 0)
+        : Math.round(g.steps.filter(x => x.done).length / g.steps.length * 100);
+      s.goals = goals.map(g => ({
+        title: g.title,
+        percent: pct(g),
+        deadline: g.deadline || null,
+        openSteps: (g.steps || []).filter(x => !x.done).map(x => x.text).slice(0, 5),
+      })).filter(g => g.percent < 100);
+      s.goalsDone = goals.length - s.goals.length;
+
+      /* ── today, and what rolled over unfinished ── */
+      const rawDay = Store.get('nv.day.' + today, []);
+      const list = Array.isArray(rawDay) ? rawDay : (rawDay && typeof rawDay === 'object' ? [rawDay] : []);
+      s.today = {
+        open: list.filter(t => t && !t.done).map(t => t.text),
+        done: list.filter(t => t && t.done).length,
+      };
+
+      /* ── logs: this week against the goals they set ── */
+      const lg = Store.get('nv.logs', {}) || {};
+      const avg = (a) => { const r = a.filter(v => typeof v === 'number' && !isNaN(v)); return r.length ? Math.round(r.reduce((x, y) => x + y, 0) / r.length) : null; };
+      const sleepBy = {}; ((lg.sleep && lg.sleep.entries) || []).forEach(e => { if (e && e.date) sleepBy[e.date] = num(e.hours); });
+      const water = (lg.water && lg.water.days) || {};
+      const steps = ((lg.vitals || []).find(v => v && v.id === 'steps') || {}).entries || {};
+      const wk = (fn) => Array.from({ length: 7 }, (_, i) => fn(day(6 - i)));
+      s.week = {
+        sleepAvgHours:  avg(wk(d => sleepBy[d])),  sleepGoal: (lg.sleep && lg.sleep.goal) || null,
+        waterAvg:       avg(wk(d => water[d])),    waterGoal: (lg.water && lg.water.goal) || null,
+        stepsAvg:       avg(wk(d => num(steps[d]) || undefined)),
+        sleptLastNight: sleepBy[day(1)] ?? null,
+        waterToday:     water[today] ?? null,
+      };
+
+      /* ── food: today's totals against target ── */
+      const nut = Store.get(KEYS.nutrition, {}) || {};
+      const dayN = (nut.days || {})[today];
+      if (dayN) {
+        const t = Object.values(dayN.meals || {}).reduce((a, items) =>
+          (items || []).reduce((b, f) => ({
+            cal: b.cal + num(f.cal), protein: b.protein + num(f.protein),
+            carbs: b.carbs + num(f.carbs), fats: b.fats + num(f.fats),
+          }), a), { cal: 0, protein: 0, carbs: 0, fats: 0 });
+        s.foodToday = { calories: Math.round(t.cal), protein: Math.round(t.protein), carbs: Math.round(t.carbs), fats: Math.round(t.fats) };
+      }
+      s.foodTargets = nut.targets || null;
+
+      /* ── body weight: latest and the direction of travel ── */
+      const bw = Store.get(KEYS.bodyWeight, null);
+      const bwArr = Array.isArray(bw) ? bw : (bw && Array.isArray(bw.entries) ? bw.entries : []);
+      if (bwArr.length) {
+        const sorted = [...bwArr].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        s.weight = { latest: sorted[sorted.length - 1].weight ?? sorted[sorted.length - 1].value, on: sorted[sorted.length - 1].date };
+        if (sorted.length > 1) s.weight.previous = sorted[Math.max(0, sorted.length - 8)].weight ?? sorted[Math.max(0, sorted.length - 8)].value;
+      }
+
+      /* ── the rest: counts and near-term items only ── */
+      const rem = Store.get(KEYS.reminders, []) || [];
+      s.reminders = (Array.isArray(rem) ? rem : []).filter(r => r && !r.done)
+        .slice(0, 6).map(r => ({ text: r.text, when: r.when || r.at || null }));
+      const ideas = Store.get(KEYS.ideas, []) || [];
+      s.ideas = (Array.isArray(ideas) ? ideas : []).filter(i => i && !i.built).map(i => i.text).slice(0, 8);
+      s.gymSplit = Store.get(KEYS.gymSplit, null);
+
+      const subs = Store.get('nv.subs.v1', null);
+      if (subs && Array.isArray(subs.items)) {
+        s.subscriptions = { count: subs.items.length, monthly: Math.round(subs.items.reduce((a, x) => a + num(x.price || x.amount), 0)) };
+      }
+      return s;
+    }
+
+    /* the last few turns, so a follow-up ("what about tomorrow?") makes sense.
+       Kept in memory only — it dies with the tab, which is the right lifetime
+       for a conversation and keeps it out of any store that syncs. */
+    let history = [];
+    const HISTORY_TURNS = 8;
+
     /* ── ASKING NOVA PROPERLY ───────────────────────────────────────────────
        /api/nova holds the model key server-side — it is never in this file,
        because anything in this file is public. */
@@ -7733,7 +7828,7 @@
         const res = await fetch('/api/nova', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, board: snapshot(), history }),
         });
         const d = await res.json();
 
@@ -7755,12 +7850,14 @@
           const said = perform(d.action, d.input || {});
           show(said ? 'ok' : 'bad', '“' + text + '”', said || 'I understood, but could not do it.');
           if (said) speak(said);
+          remember(text, said || 'could not do it');
           hideSoon(3800);
           return;
         }
 
         show('ok', '“' + text + '”', d.text + (d.searched ? '  ·  from the web' : ''));
         speak(d.text);
+        remember(text, d.text);
         hideSoon(Math.min(30000, 6000 + d.text.length * 55));
       } catch (e) {
         show('bad', '“' + text + '”', 'I could not reach my thinking — you may be offline.');
@@ -7771,10 +7868,49 @@
       }
     }
 
+    /* Only the exchange is kept, never the board — the board is rebuilt fresh
+       each turn, so storing it here would let a stale copy leak into a later
+       answer. */
+    function remember(said, replied) {
+      history.push({ role: 'user', content: said });
+      history.push({ role: 'assistant', content: String(replied).slice(0, 600) });
+      if (history.length > HISTORY_TURNS * 2) history = history.slice(-HISTORY_TURNS * 2);
+    }
+
+    /* mark a task on a given day done, by matching its text loosely */
+    function completeDayTask(dateKey, needle) {
+      const k = 'nv.day.' + dateKey;
+      const raw = Store.get(k, []);
+      const listT = Array.isArray(raw) ? raw : [];
+      const want = String(needle || '').trim().toLowerCase();
+      if (!want) return '';
+      const hit = listT.find(t => t && !t.done && String(t.text || '').toLowerCase().includes(want));
+      if (!hit) return '';
+      hit.done = true; hit.doneAt = Date.now();
+      Store.set(k, listT);
+      DayFlow.render();
+      return hit.text;
+    }
+
     /* the model names an action; this is the only place that maps names to the
        app's real add() functions */
     function perform(action, a) {
       try {
+        if (action === 'complete_task') {
+          const done = completeDayTask(a.date || localDateKey(), a.text);
+          return done ? 'Ticked off: ' + done : '';
+        }
+        if (action === 'complete_goal') {
+          const gd = Store.get(KEYS.goals, {}) || {};
+          const want = String(a.title || '').trim().toLowerCase();
+          const g = (gd.goals || []).find(x => x && String(x.title || '').toLowerCase().includes(want));
+          if (!g) return '';
+          (g.steps || []).forEach(st => { st.done = true; });
+          if (!g.steps || !g.steps.length) g.legacyProgress = 100;
+          Store.set(KEYS.goals, gd);
+          Goals.renderAll(); Goals.renderWidget();
+          return 'Goal complete: ' + g.title;
+        }
         if (action === 'add_goal') {
           const g = Goals.add(a.title, a.deadline || '');
           return g ? 'Goal added: ' + g.title + (a.deadline ? ', due ' + a.deadline : '') : '';
