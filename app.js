@@ -6860,6 +6860,18 @@
           <div class="tile-hero__bar ${pct >= 100 ? 'is-over' : ''}"><i style="width:${pct}%"></i></div>
         </div>
 
+        <!-- This day's capacity, and the door to the planning views. Without
+             it the panel behind this modal is invisible, which is exactly how
+             the week and the year went unnoticed. -->
+        ${(() => {
+          const L = loadFor(selected);
+          return `<div class="cal-dayload ${L.over ? 'is-over' : ''}">
+            <span class="cal-dayload__txt"><b>${hrs(L.mins)}</b> of ${hrs(L.capMin)} ${L.over ? '· over' : 'planned'}</span>
+            <span class="cal-dayload__bar"><i style="width:${Math.min(100, L.pct)}%"></i></span>
+            <button class="cal-dayload__go" data-cal-toweek type="button">Week ›</button>
+          </div>`;
+        })()}
+
         ${anytime.length ? `
         <div class="cal-tray">
           <span class="cal-tray__label">Inbox — unscheduled</span>
@@ -7157,6 +7169,10 @@
       const M = dayModal();
       M.addEventListener('click', (e) => {
         if (e.target.closest('[data-calday-close]')) { closeDay(); renderMonth(); renderDrawer(); return; }
+        /* out of the day and into the planning views behind it */
+        if (e.target.closest('[data-cal-toweek]')) {
+          closeDay(); renderLoad(); setPanelView('week'); return;
+        }
         const dprev = e.target.closest('[data-cal-dprev]'), dnext = e.target.closest('[data-cal-dnext]'), dtoday = e.target.closest('[data-cal-dtoday]');
         if (dprev || dnext || dtoday) {           // Structured-style day hopping inside the planner
           if (dtoday) selected = dk(new Date());

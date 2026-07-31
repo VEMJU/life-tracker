@@ -4664,8 +4664,67 @@ button.intro-tool {
 .cal-yr__key { display: flex; align-items: center; gap: 5px; margin-top: var(--sp-4); font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--c-fog); }
 .cal-yr__key .cal-yr__c { animation: none; cursor: default; }
 
+/* ── THE DAY'S CAPACITY LINE ────────────────────────────────────────────── */
+.cal-dayload {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin: var(--sp-4) 0 var(--sp-5); padding: 9px 13px;
+  border: 1px solid var(--hairline); border-radius: 999px; background: rgba(255,255,255,.025);
+}
+.cal-dayload__txt { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--c-fog); }
+.cal-dayload__txt b { color: var(--c-blanc); font-weight: 600; }
+.cal-dayload__bar { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.cal-dayload__bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width 800ms var(--ease-vt); }
+.cal-dayload.is-over .cal-dayload__bar i { background: #e0625a; }
+.cal-dayload.is-over .cal-dayload__txt b { color: #e0a48a; }
+.cal-dayload__go {
+  flex: none; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--c-stone); transition: color .18s var(--ease-out), transform .18s var(--spring);
+}
+.cal-dayload__go:hover { color: var(--c-blanc); transform: translateX(2px); }
+
+/* ── THE MOTION PASS ─────────────────────────────────────────────────────
+   Ambient rather than decorative. The point is that the day should feel like
+   a time of day, and that finishing something should feel like finishing. */
+
+/* A wash behind the canvas: warm at the top where morning is, cool at the
+   bottom where night is. You feel WHEN you are without reading a clock. */
+.cal-canvas { position: relative; }
+.cal-canvas::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(180deg,
+    rgba(60,42,26,.30) 0%,      /* 5am  — before dawn */
+    rgba(90,64,34,.22) 12%,     /* 8am  — morning */
+    rgba(40,44,58,.10) 34%,     /* noon — flat daylight */
+    rgba(58,40,42,.18) 62%,     /* 6pm  — evening */
+    rgba(14,16,30,.42) 100%);   /* midnight */
+}
+.cal-canvas > * { position: relative; z-index: 1; }
+
+/* the only living thing on the screen */
+.cal-nowline i, .cal-nowline span { animation: nowBreathe 4s ease-in-out infinite; }
+@keyframes nowBreathe { 0%,100% { opacity: .78; } 50% { opacity: 1; } }
+
+/* finishing something should feel like finishing: the block drains, desaturates
+   and gets struck through in one move */
+.cal-block, .flow-item { transition: opacity .4s var(--ease-vt), filter .4s var(--ease-vt), transform .25s var(--spring); }
+.cal-block.is-done, .flow-item.is-done { filter: saturate(.15) brightness(.8); opacity: .55; }
+.cal-block__txt, .flow-card__title { position: relative; }
+.cal-block__txt::after, .flow-card__title::after {
+  content: ''; position: absolute; left: 0; top: 52%; height: 1px; width: 0;
+  background: currentColor; opacity: .55;
+  transition: width .38s var(--ease-vt);
+}
+.cal-block.is-done .cal-block__txt::after,
+.flow-item.is-done .flow-card__title::after { width: 100%; }
+
+/* blocks arrive rather than appear */
+.cal-block { animation: cardPop 460ms var(--ease-soft) both; }
+.flow-item { animation: cardPop 500ms var(--ease-soft) both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .cal-wk, .cal-wk__block, .cal-yr__c { animation: none; }
+  .cal-wk, .cal-wk__block, .cal-yr__c, .cal-block, .flow-item { animation: none; }
+  .cal-nowline i, .cal-nowline span { animation: none; }
 }
 
 /* The calendar's day sits inside a modal that already has a title above it,
