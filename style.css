@@ -4664,6 +4664,39 @@ button.intro-tool {
 .cal-yr__key { display: flex; align-items: center; gap: 5px; margin-top: var(--sp-4); font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--c-fog); }
 .cal-yr__key .cal-yr__c { animation: none; cursor: default; }
 
+/* ═══════════════════  §56  THE APPLICATION  ═══════════════════
+   Every piece a college asks for, its real state, and what has a clock on it.
+   State is carried by a dot, so the column scans in one pass.              */
+.rdy { display: flex; flex-direction: column; }
+.rdy__row {
+  display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: var(--sp-3);
+  padding: 11px 4px; border-bottom: 1px solid var(--hairline);
+  animation: cardPop 480ms var(--ease-soft) both;
+}
+.rdy__row:last-child { border-bottom: 0; }
+.rdy__dot { width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.16); }
+.rdy__row.is-doing .rdy__dot { background: #e0b870; box-shadow: 0 0 7px -1px rgba(224,184,112,.7); }
+.rdy__row.is-done  .rdy__dot { background: #7dd488; box-shadow: 0 0 7px -1px rgba(125,212,136,.7); }
+.rdy__row.is-urgent .rdy__dot { background: var(--accent-bright); box-shadow: 0 0 9px -1px var(--accent-glow); animation: nowBreathe 2s ease-in-out infinite; }
+
+.rdy__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rdy__main b { font-size: 13.5px; font-weight: 600; color: var(--c-paper); letter-spacing: -.005em; }
+.rdy__main i {
+  font-family: var(--ff-display); font-style: italic; font-size: 12.5px; color: var(--c-fog);
+  line-height: 1.45;
+}
+.rdy__row.is-done b { color: var(--c-stone); }
+.rdy__when {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-fog); white-space: nowrap;
+}
+.rdy__row.is-urgent .rdy__when { color: var(--accent-bright); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rdy__row { animation: none; }
+  .rdy__row.is-urgent .rdy__dot { animation: none; }
+}
+
 /* ── THE DAY'S CAPACITY LINE ────────────────────────────────────────────── */
 .cal-dayload {
   display: flex; align-items: center; gap: var(--sp-3);

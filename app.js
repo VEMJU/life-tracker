@@ -4667,6 +4667,99 @@
       seeded: false,
     };
 
+    /* ══════════════════  THE APPLICATION  ══════════════════
+       Colleges ask for a fixed set of things. This is that list, its real
+       state read from the data you already keep, and — where a piece has a
+       date attached — the ability to put it on the calendar rather than
+       leave it as a worry.
+
+       Each row is one entry. Adding a requirement later is one object. */
+    function readiness() {
+      const d = data || {};
+      const sat = (d.sat && d.sat.attempts) || [];
+      const best = sat.reduce((m, a) => Math.max(m, num(a.total)), 0);
+      const recs = d.recs || [];
+      const asked = recs.filter(r => r.status && r.status !== 'planned').length;
+      const ecs   = d.ecs || [];
+      const essay = d.essay || {};
+      const words = String(essay.text || '').trim().split(/\s+/).filter(Boolean).length;
+
+      return [
+        { id: 'regents', label: 'Regents exams',
+          state: 'todo',
+          note: 'ELA + a science still needed — August 18–19',
+          due: '2026-08-18', urgent: true,
+          hint: 'Earth & Space was 64. One point.' },
+        { id: 'enroll', label: 'Stay enrolled',
+          state: 'todo', urgent: true,
+          note: 'Homeschool letter may withdraw you — call the school',
+          due: '2026-07-31',
+          hint: 'Withdrawal means no August Regents.' },
+        { id: 'recs', label: 'Recommendations',
+          state: asked >= 2 ? 'done' : asked ? 'doing' : 'todo',
+          note: asked ? asked + ' asked' : 'Ask Brooks (94) and Zechowski (93)',
+          due: '2026-08-08',
+          hint: 'Ask before you leave the school.' },
+        { id: 'sat', label: 'SAT',
+          state: best >= 1300 ? 'done' : best ? 'doing' : 'todo',
+          note: best ? 'Best ' + best : 'Not taken — register for October',
+          due: '2026-10-03',
+          hint: 'Test-optional: a good score only helps.' },
+        { id: 'essay', label: 'Personal essay',
+          state: words > 500 ? 'done' : words ? 'doing' : 'todo',
+          note: words ? words + ' words · ' + (essay.stage || '') : 'Not started',
+          due: '2026-10-15',
+          hint: 'The app, the building, the business.' },
+        { id: 'ecs', label: 'Activities',
+          state: ecs.length >= 3 ? 'done' : ecs.length ? 'doing' : 'todo',
+          note: ecs.length ? ecs.length + ' listed' : 'Add the app, the building, the business',
+          hint: 'Three real things beat a list.' },
+        { id: 'transcript', label: 'Transcript',
+          state: 'todo', note: 'Request an official sealed copy',
+          due: '2026-08-08' },
+        { id: 'common', label: 'Common App',
+          state: 'todo', note: 'Opens August 1 — create the account',
+          due: '2026-08-01' },
+      ];
+    }
+
+    function renderReadiness() {
+      const host = $('[data-acad-readiness]'); if (!host) return;
+      const rows = readiness();
+      const done = rows.filter(r => r.state === 'done').length;
+      const pct = Math.round(done / rows.length * 100);
+      const today = localDateKey();
+      const daysTo = (ds) => ds ? Math.round((new Date(ds + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) : null;
+
+      host.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">00</span>
+           <span class="eyebrow__lbl">The application</span><span class="eyebrow__rule"></span></div>
+         <div class="tile-well cal-well">
+           <span class="tile-kick">✦ ready</span>
+           <span class="tile-hero__val">${done}</span>
+           <span class="tile-hero__of">of ${rows.length} pieces · ${pct}%</span>
+           <div class="tile-hero__bar"><i style="width:${pct}%"></i></div>
+         </div>
+         <div class="rdy">${rows.map((r, i) => {
+            const n = daysTo(r.due);
+            const late = n !== null && n < 0;
+            return `<div class="rdy__row is-${r.state} ${r.urgent && r.state !== 'done' ? 'is-urgent' : ''}"
+                         style="animation-delay:${i * 45}ms">
+              <span class="rdy__dot"></span>
+              <span class="rdy__main">
+                <b>${esc(r.label)}</b>
+                <i>${esc(r.note || '')}${r.hint ? ' — ' + esc(r.hint) : ''}</i>
+              </span>
+              <span class="rdy__when">${r.due
+                ? (late ? 'overdue' : n === 0 ? 'today' : n + 'd')
+                : ''}</span>
+            </div>`;
+          }).join('')}</div>
+         <div class="tile-actions">
+           <button class="tile-actions__btn is-primary" data-acad-toplan type="button">Put this on my calendar</button>
+         </div>`;
+    }
+
     let data = Store.get(KEY, null);
     if (!data) { data = JSON.parse(JSON.stringify(DEFAULT)); }
     // shallow-ensure shape
@@ -5089,7 +5182,7 @@
         </div>`).join('');
     }
 
-    function renderAll(){ seed(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
+    function renderAll(){ seed(); renderReadiness(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
 
     /* =====================  EVENTS (delegated)  ===================== */
     let wired=false;
@@ -5102,6 +5195,26 @@
       root.addEventListener('click', e => {
         const t = e.target;
         const c = sel => t.closest(sel);
+
+        /* Turn the checklist into dated days. Written straight to the day
+           records so they appear in the calendar, the home list and Nova's
+           board alike — and skipped if already there, so pressing it twice
+           does not duplicate your own plan. */
+        if (c('[data-acad-toplan]')) {
+          let added = 0;
+          readiness().filter(r => r.due && r.state !== 'done').forEach(r => {
+            const k = 'nv.day.' + r.due;
+            const listD = Store.get(k, []);
+            const arr = Array.isArray(listD) ? listD : [];
+            if (arr.some(x => x && String(x.text || '').includes(r.label))) return;
+            arr.push({ text: r.label + ' — ' + (r.note || ''), done: false });
+            Store.set(k, arr);
+            added++;
+          });
+          window.dispatchEvent(new CustomEvent('nv-day-changed'));
+          toast(added ? added + ' added to your calendar' : 'Already on your calendar');
+          return;
+        }
 
         // SAT
         if (c('[data-sat-add]'))      { satAddForm(); return; }
