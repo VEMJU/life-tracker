@@ -4690,10 +4690,13 @@
           note: 'ELA + a science still needed — August 18–19',
           due: '2026-08-18', urgent: true,
           hint: 'Earth & Space was 64. One point.' },
-        { id: 'enroll', label: 'Stay enrolled',
+        /* 08:00 in Puebla is 09:00 in NYC — the hour a school office opens.
+           A reminder that fires when nobody can answer the phone is not a
+           reminder, it is a notification. */
+        { id: 'enroll', label: 'Call the school',
           state: 'todo', urgent: true,
-          note: 'Homeschool letter may withdraw you — call the school',
-          due: '2026-07-31',
+          note: 'Confirm enrollment · pause the homeschool letter · register for Aug 18–19 Regents',
+          due: '2026-07-31', at: '08:00', end: '08:30',
           hint: 'Withdrawal means no August Regents.' },
         { id: 'recs', label: 'Recommendations',
           state: asked >= 2 ? 'done' : asked ? 'doing' : 'todo',
@@ -5207,7 +5210,12 @@
             const listD = Store.get(k, []);
             const arr = Array.isArray(listD) ? listD : [];
             if (arr.some(x => x && String(x.text || '').includes(r.label))) return;
-            arr.push({ text: r.label + ' — ' + (r.note || ''), done: false });
+            const item = { text: r.label + ' — ' + (r.note || ''), done: false };
+            /* a time turns it into a block on the timeline rather than an
+               untimed item sitting in the inbox */
+            if (r.at)  item.at  = r.at;
+            if (r.end) item.end = r.end;
+            arr.push(item);
             Store.set(k, arr);
             added++;
           });
