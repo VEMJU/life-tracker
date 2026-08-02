@@ -376,6 +376,179 @@
     });
   }
 
+  /* ══════════════════  THE STUDY GUIDE  ══════════════════
+     Two exams stand between Nathan and the diploma, and they are seventeen
+     days wide. Kept as data rather than markup so the plan can be rewritten
+     after August without touching a single line of rendering.
+
+     The whole strategy rests on one fact: Earth & Space hands you a reference
+     tables booklet during the exam. Half that paper is knowing where to look,
+     not what you remember — which is the right bet when you have seventeen
+     days and little memory of either science. */
+  const Study = (() => {
+    const KEY = 'nv.study';
+    let st = Store.get(KEY, null) || { ticks: {} };
+    const save = () => Store.set(KEY, st);
+
+    const EXAMS = [
+      { name: 'English Language Arts',   when: '2026-08-18T08:30', note: 'Never taken. Your English average is 86.7.', tone: 'ela' },
+      { name: 'Earth & Space Sciences',  when: '2026-08-19T08:30', note: 'You scored 64. One point.',                  tone: 'ess' },
+      { name: 'Life Science: Biology',   when: '2026-08-19T12:30', note: 'Backup shot. Costs nothing to sit.',          tone: 'alt' },
+    ];
+
+    const PHASES = [
+      { label: 'Days 1–2 · set up', tasks: [
+        { k:'a1', t:'Print the Earth Science Reference Tables', s:'Read every page once. Just learn what lives where.' },
+        { k:'a2', t:'Download 3 past ELA and 3 past Earth Science exams', s:'NYSED publishes them free, with answer keys.' },
+        { k:'a3', t:'Sit one Earth Science paper cold — tables open, untimed', s:'Score it. That is your baseline, not your verdict.' },
+      ]},
+      { label: 'Days 3–9 · the grind', tasks: [
+        { k:'b1', t:'One Earth Science paper a day', s:'Mark every question the tables could have answered. Ninety minutes.' },
+        { k:'b2', t:'Keep a one-page list of what you got wrong TWICE', s:'Only twice-wrong items. Everything else is noise.' },
+        { k:'b3', t:'Write one full ELA argument essay, timed', s:'Use the template. Do not polish — finish it.' },
+        { k:'b4', t:'Write one Text Analysis response, timed' },
+      ]},
+      { label: 'Days 10–15 · sharpen', tasks: [
+        { k:'c1', t:'Two Earth Science papers under real time limits', s:'Three hours, no phone, no pausing.' },
+        { k:'c2', t:'One full ELA paper — all three parts, one sitting', s:'Do this at least once before the day.' },
+        { k:'c3', t:'Re-drill only your twice-wrong list', s:'Not the whole syllabus. The list.' },
+        { k:'c4', t:'Skim Biology notes — two hours TOTAL', s:'That is the entire Biology plan. A free shot, not a second project.' },
+      ]},
+      { label: 'Days 16–17 · taper', tasks: [
+        { k:'d1', t:'Reference tables only — no new content', s:'Until you can find any chart in under five seconds.' },
+        { k:'d2', t:'Re-read your two best essays', s:'Reminding yourself of the shape, not learning.' },
+        { k:'d3', t:'Confirm testing site, room and start time', s:'In writing, from the school.' },
+        { k:'d4', t:'Sleep properly both nights', s:'Worth more than another paper.' },
+      ]},
+    ];
+
+    const SECTIONS = [
+      { n:'01', title:'Why Earth Science, not Biology', tone:'ess', body:
+        `<p>You were <b>one point away</b>. You are closing a gap, not starting from zero.</p>
+         <p>And Earth Science hands you a <b>reference tables booklet during the exam</b> — formulas, mineral charts, the rock cycle, earthquake travel times, half-lives, weather symbols, planetary data. All printed. All given to you.</p>
+         <p>With seventeen days and little memory of either, bet on the exam that lets you look things up. <b>Sit Biology anyway</b> — it is the same afternoon and you only need one science at 65.</p>` },
+
+      { n:'02', title:'The tables ARE the exam', tone:'ess', body:
+        `<p>Students who fail this paper usually did not forget the content — they never learned the booklet, then hunted through fourteen pages under time pressure.</p>
+         <p><b>The drill that wins it:</b> on every past-paper question, ask <i>"is this in the tables?"</i> before trying to remember anything. Do that a hundred times and it becomes automatic — which is exactly what you need on the day.</p>
+         <p class="study__lbl">Worth memorising anyway</p>
+         <ul><li>Earth's motions — seasons, and why Polaris' altitude equals your latitude</li>
+         <li>Topographic maps — contours, gradient, which way a stream flows</li>
+         <li>Plate boundaries — the three types, and what each builds or destroys</li>
+         <li>Erosion and deposition — particle size, sorting, water versus ice</li>
+         <li>Air masses and fronts — what weather follows each</li></ul>` },
+
+      { n:'03', title:'ELA is a format, not a knowledge test', tone:'ela', body:
+        `<p>Nothing to memorise. What you can learn is the shape of the paper, and it barely changes year to year.</p>
+         <p><b>Part 1</b> — 24 multiple choice on three passages. Read the questions first, then the passage. Answer from the text, never from what sounds right.</p>
+         <p><b>Part 2</b> — argument essay from four texts. Pick a side in the first two minutes. Use three of the four. Address the other side once.</p>
+         <p><b>Part 3</b> — Text Analysis. One central idea, one writing device, how the device builds the idea. Two or three paragraphs.</p>` },
+
+      { n:'04', title:'The argument essay, as a template', tone:'ela', body:
+        `<ul><li><b>¶1</b> — state your claim plainly. No throat-clearing.</li>
+         <li><b>¶2–4</b> — one reason each: your point, a quote from a <i>named</i> text, then your explanation of why it proves the point. <b>The explanation is where the marks are.</b></li>
+         <li><b>¶5</b> — the counterclaim. "Some argue X. However…" Then knock it down.</li>
+         <li><b>¶6</b> — restate the claim in different words.</li></ul>
+         <p>Cite by name every time — "Text 2 argues…". Graders are looking for evidence from multiple texts, and naming them makes it impossible to miss.</p>` },
+
+      { n:'05', title:'On the day', tone:'', body:
+        `<ul><li><b>Answer every question.</b> No penalty for wrong answers on any Regents. A blank is a guaranteed zero.</li>
+         <li><b>Use the full three hours.</b> Nobody was ever rewarded for leaving early.</li>
+         <li><b>Open the tables before you think.</b> Every question, first move.</li>
+         <li><b>Two minutes planning each essay.</b> A planned essay beats a longer unplanned one.</li>
+         <li>Pens, pencil, calculator, ID. Arrive thirty minutes early.</li></ul>
+         <p><b>If Earth Science lands 60–64 again</b> that is not a failure — it is the appeal window. You will have sat it twice, which is one of the conditions. Ask the school that same week, in writing.</p>` },
+    ];
+
+    const daysTo = (iso) => Math.max(0, Math.ceil((new Date(iso) - new Date()) / 86400000));
+    const total  = () => PHASES.reduce((a, p) => a + p.tasks.length, 0);
+    const done   = () => PHASES.reduce((a, p) => a + p.tasks.filter(t => st.ticks[t.k]).length, 0);
+
+    /* the card on the Academics board */
+    function renderCard() {
+      const el = $('[data-acad-study]'); if (!el) return;
+      const d = daysTo('2026-08-18T08:30');
+      const n = done(), all = total();
+      el.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">01</span>
+           <span class="eyebrow__lbl">The Regents</span><span class="eyebrow__rule"></span></div>
+         <div class="tile-well cal-well">
+           <span class="tile-kick">✦ days to the first exam</span>
+           <span class="tile-hero__val">${d}</span>
+           <span class="tile-hero__of">ELA · 18 Aug &nbsp;·&nbsp; Sciences · 19 Aug</span>
+           <div class="tile-hero__bar"><i style="width:${all ? Math.round(n / all * 100) : 0}%"></i></div>
+         </div>
+         <p class="study__cardnote">${n} of ${all} steps done — tap to open the guide</p>`;
+    }
+
+    function renderGuide() {
+      const el = $('[data-study-body]'); if (!el) return;
+      const n = done(), all = total();
+
+      el.innerHTML =
+        `<div class="study__exams">${EXAMS.map((e, i) => {
+          const dt = new Date(e.when);
+          return `<div class="study__exam is-${e.tone}" style="animation-delay:${i * 70}ms">
+            <i></i>
+            <span class="study__exam-m"><b>${esc(e.name)}</b><small>${esc(e.note)}</small></span>
+            <span class="study__exam-w">${dt.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'}).toUpperCase()}<br>
+              ${dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>
+          </div>`;
+        }).join('')}</div>
+
+        <p class="study__note">Sit all three. You need <b>one</b> science at 65 or above — Earth Science is the morning, Biology the afternoon. Taking both doubles your chances for the price of one extra afternoon.</p>
+
+        ${SECTIONS.map(s => `
+          <section class="study__sec ${s.tone ? 'is-' + s.tone : ''}">
+            <div class="eyebrow"><span class="eyebrow__num">${s.n}</span>
+              <span class="eyebrow__lbl">${esc(s.title)}</span><span class="eyebrow__rule"></span></div>
+            <div class="study__body">${s.body}</div>
+          </section>`).join('')}
+
+        <section class="study__sec">
+          <div class="eyebrow"><span class="eyebrow__num">06</span>
+            <span class="eyebrow__lbl">Seventeen days · ${n}/${all}</span><span class="eyebrow__rule"></span></div>
+          ${PHASES.map(p => `
+            <p class="study__phase">${esc(p.label)}</p>
+            <ul class="study__tasks">${p.tasks.map(t => `
+              <li><label>
+                <input type="checkbox" data-study-tick="${t.k}" ${st.ticks[t.k] ? 'checked' : ''}>
+                <span><b>${esc(t.t)}</b>${t.s ? `<small>${esc(t.s)}</small>` : ''}</span>
+              </label></li>`).join('')}</ul>`).join('')}
+        </section>
+
+        <p class="study__foot">Confirm format against the newest NYSED sample papers — Earth &amp; Space Sciences and Life Science: Biology are recent replacements for the older Physical Setting and Living Environment exams.</p>`;
+    }
+
+    function open()  { const m = $('#modal-study'); m.classList.add('is-open'); m.setAttribute('aria-hidden','false'); renderGuide(); }
+    function close() { const m = $('#modal-study'); m.classList.remove('is-open'); m.setAttribute('aria-hidden','true'); }
+
+    function init() {
+      renderCard();
+      const board = $('.board--academics'); if (!board) return;
+      board.addEventListener('click', e => { if (e.target.closest('[data-study-open]')) open(); });
+      board.addEventListener('keydown', e => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-study-open]')) { e.preventDefault(); open(); }
+      });
+      const m = $('#modal-study');
+      m.addEventListener('click', e => {
+        if (e.target.closest('[data-study-close]')) { close(); return; }
+        const box = e.target.closest('[data-study-tick]');
+        if (box) {
+          st.ticks[box.dataset.studyTick] = box.checked; save();
+          renderCard();                 // the card's progress follows immediately
+          const head = $('.study__sec:last-of-type .eyebrow__lbl');
+          if (head) head.textContent = 'Seventeen days · ' + done() + '/' + total();
+        }
+      });
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && $('#modal-study').classList.contains('is-open')) close();
+      });
+    }
+
+    return { init, renderCard };
+  })();
+
   /* ══════════════════  STATS  ══════════════════
      The 21st.dev HealthStatCard, rebuilt in this stack.
 
@@ -7832,7 +8005,7 @@
         if (name==='nutrition') Nutrition.init();
         if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
         if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
-        if (name==='academics') Academics.init();
+        if (name==='academics') { Academics.init(); Study.init(); }
         if (name==='logs')      Logs.init();
         if (name==='clothes')   Clothes.init();
         if (name==='sports')    Sports.init();

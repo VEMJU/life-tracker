@@ -4664,6 +4664,85 @@ button.intro-tool {
 .cal-yr__key { display: flex; align-items: center; gap: 5px; margin-top: var(--sp-4); font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--c-fog); }
 .cal-yr__key .cal-yr__c { animation: none; cursor: default; }
 
+/* ═══════════════════  §57  THE STUDY GUIDE  ═══════════════════
+   Two subjects, two colours, so a glance tells you which exam a block belongs
+   to. Amber is Earth Science (rock, mineral, the reference tables); slate is
+   English. Everything else stays quiet so those two carry the meaning.      */
+:root { --ess: #c8873f; --ela: #7fa3ba; }
+
+.card--study { cursor: pointer; transition: border-color .2s var(--ease-vt), box-shadow .2s var(--ease-vt), transform .2s var(--ease-vt); }
+.card--study:hover { border-color: var(--accent-soft); box-shadow: var(--glass-shadow-hover), 0 0 30px -20px var(--accent-glow); transform: translateY(-2px); }
+.study__cardnote {
+  margin-top: var(--sp-3); text-align: center;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--c-fog);
+}
+
+.study { max-width: 46rem; margin: 0 auto; padding: 0 var(--sp-2) var(--sp-8); }
+
+/* the three exams, striped by subject */
+.study__exams { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+.study__exam {
+  display: grid; grid-template-columns: 3px 1fr auto; align-items: center; gap: var(--sp-4);
+  padding: 12px 14px 12px 0; overflow: hidden;
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  background: rgba(255,255,255,.02);
+  animation: cardPop 520ms var(--ease-soft) both;
+}
+.study__exam > i { align-self: stretch; margin: -12px 0; background: var(--c-stone); }
+.study__exam.is-ess > i { background: var(--ess); }
+.study__exam.is-ela > i { background: var(--ela); }
+.study__exam.is-alt > i { background: var(--ess); opacity: .38; }
+.study__exam-m { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.study__exam-m b { font-size: 14px; font-weight: 620; color: var(--c-blanc); }
+.study__exam-m small { font-family: var(--ff-display); font-style: italic; font-size: 12.5px; color: var(--c-fog); }
+.study__exam-w {
+  font-family: var(--ff-mono); font-size: 9.5px; line-height: 1.5; letter-spacing: .1em;
+  text-align: right; color: var(--c-stone); white-space: nowrap;
+}
+
+.study__note {
+  font-family: var(--ff-display); font-style: italic; font-size: 14.5px; line-height: 1.6;
+  color: var(--c-bone); border-left: 2px solid var(--ess);
+  padding-left: var(--sp-4); margin-bottom: var(--sp-7);
+}
+.study__note b { font-style: normal; color: var(--c-blanc); }
+
+.study__sec { margin-bottom: var(--sp-7); animation: cardPop 560ms var(--ease-soft) both; }
+.study__sec.is-ess .eyebrow__num { color: var(--ess); }
+.study__sec.is-ela .eyebrow__num { color: var(--ela); }
+
+.study__body { font-size: 14.5px; line-height: 1.68; color: var(--c-bone); }
+.study__body p { margin: 0 0 var(--sp-3); }
+.study__body b { color: var(--c-blanc); font-weight: 600; }
+.study__body i { font-family: var(--ff-display); font-style: italic; color: var(--c-paper); }
+.study__body ul { margin: 0 0 var(--sp-3); padding-left: 1.1rem; }
+.study__body li { margin-bottom: 6px; }
+.study__lbl {
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--c-fog); margin: var(--sp-4) 0 var(--sp-2) !important;
+}
+
+.study__phase {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ess); margin: var(--sp-5) 0 var(--sp-2);
+}
+.study__tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; }
+.study__tasks li { border: 1px solid var(--hairline); border-radius: var(--r-sm); background: rgba(255,255,255,.02); }
+.study__tasks label { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-3); padding: 11px 13px; cursor: pointer; align-items: start; }
+.study__tasks input { margin-top: 3px; width: 15px; height: 15px; accent-color: var(--ess); flex: none; }
+.study__tasks span { display: flex; flex-direction: column; gap: 2px; }
+.study__tasks b { font-size: 13.5px; font-weight: 560; color: var(--c-paper); transition: color .25s var(--ease-vt); }
+.study__tasks small { font-family: var(--ff-display); font-style: italic; font-size: 12.5px; color: var(--c-fog); line-height: 1.5; }
+.study__tasks input:checked ~ span b { color: var(--c-fog); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.study__foot {
+  margin-top: var(--sp-7); padding-top: var(--sp-4); border-top: 1px solid var(--hairline);
+  font-size: 12px; line-height: 1.6; color: var(--c-fog);
+}
+
+@media (prefers-reduced-motion: reduce) { .study__exam, .study__sec { animation: none; } }
+
 /* ═══════════════════  §56  THE APPLICATION  ═══════════════════
    Every piece a college asks for, its real state, and what has a clock on it.
    State is carried by a dot, so the column scans in one pass.              */
