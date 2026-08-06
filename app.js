@@ -8360,6 +8360,83 @@
       return { ok:false, unknown:true, say:'I did not understand that.' };
     }
 
+    /* ══════════════════  THE WAKE WORD  ══════════════════
+       "Nova" opens her, the way you'd expect. What this is NOT is Siri: a web
+       page cannot wake from a closed tab or a locked phone — only the
+       operating system can do that. This runs while the app is open, and only
+       when switched on, because it holds the microphone the entire time.
+
+       Two browser realities shape the code below. Only ONE recogniser may
+       hold the microphone, so the wake listener must stand down before the
+       command listener starts and resume after. And Chrome ends recognition
+       after a stretch of silence, so it has to restart itself or it quietly
+       dies after a minute and looks broken. */
+    const WAKE_KEY = 'nv.voice.wake';
+    let wakeRec = null, wakeOn = false, wakePaused = false, wakeTimer = null;
+    /* what a speech engine actually hears when someone says "Nova" */
+    const WAKE_RE = /\b(nova|no va|nomad|nover|novah|neva)\b/i;
+
+    function wakeStart() {
+      if (!SR || !wakeOn || wakePaused || wakeRec) return;
+      try {
+        wakeRec = new SR();
+        wakeRec.lang = 'en-US';
+        wakeRec.continuous = true;
+        wakeRec.interimResults = true;
+        wakeRec.onresult = (e) => {
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            if (WAKE_RE.test(e.results[i][0].transcript)) { wakeHit(); return; }
+          }
+        };
+        /* Chrome ends the stream on silence; without this it dies after ~60s */
+        wakeRec.onend = () => { wakeRec = null; if (wakeOn && !wakePaused) wakeTimer = setTimeout(wakeStart, 350); };
+        wakeRec.onerror = (e) => {
+          wakeRec = null;
+          /* a refused mic or an unreachable speech service will never fix
+             itself by retrying — switch off and say so, rather than looping */
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'network') {
+            setWake(false);
+            show('bad', 'Wake word off', e.error === 'network'
+              ? 'The speech service is unreachable from this browser.'
+              : 'The microphone was blocked.');
+            hideSoon(9000);
+          }
+        };
+        wakeRec.start();
+      } catch (err) { wakeRec = null; }
+    }
+
+    function wakeStop() {
+      clearTimeout(wakeTimer);
+      if (wakeRec) { try { wakeRec.onend = null; wakeRec.abort(); } catch (e) {} wakeRec = null; }
+    }
+
+    /* heard it — hand the microphone to the command listener */
+    function wakeHit() {
+      wakePaused = true;
+      wakeStop();
+      show('live', 'Nova', 'Listening…');   // show() reveals the panel itself
+      retried = false;
+      setTimeout(() => { try { start(); } catch (e) {} }, 200);
+    }
+
+    /* the command listener gives the microphone back when it is finished */
+    function wakeResume() {
+      if (!wakeOn) return;
+      wakePaused = false;
+      clearTimeout(wakeTimer);
+      wakeTimer = setTimeout(wakeStart, 600);
+    }
+
+    function setWake(on) {
+      wakeOn = !!on;
+      Store.set(WAKE_KEY, wakeOn);
+      const box = $('[data-voice-wake]'); if (box) box.checked = wakeOn;
+      $('[data-voice-fab]')?.classList.toggle('is-wake', wakeOn);
+      wakePaused = false;
+      if (wakeOn) wakeStart(); else wakeStop();
+    }
+
     /* Navigating from the hub has to dismiss the hub. Calling setActive alone
        switches the tab UNDERNEATH a full-screen overlay, which looks to the
        person like nothing happened. hide() dismisses and routes in one move,
@@ -8726,12 +8803,14 @@
       rec.onend = () => {
         listening = false;
         $('[data-voice-fab]')?.classList.remove('is-live');
+        wakeResume();          // hand the microphone back to the wake listener
       };
 
       try { rec.start(); }
       catch (e) {
         listening = false;
         $('[data-voice-fab]')?.classList.remove('is-live');
+        wakeResume();
       }
     }
 
@@ -8743,7 +8822,21 @@
 
     function init() {
       /* a deliberate tap earns a fresh retry budget */
-      $('[data-voice-fab]')?.addEventListener('click', () => { retried = false; start(); });
+      $('[data-voice-fab]')?.addEventListener('click', () => { retried = false; wakePaused = true; wakeStop(); start(); });
+
+      /* the wake word: restored from last time, and switched off entirely when
+         the tab is hidden — nobody wants a background tab holding their mic */
+      const wakeBox = $('[data-voice-wake]');
+      if (!SR && wakeBox) wakeBox.closest('.nova__wake')?.setAttribute('hidden', '');
+      if (wakeBox) {
+        wakeBox.addEventListener('change', () => setWake(wakeBox.checked));
+        if (Store.get(WAKE_KEY, false)) setWake(true);
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (!wakeOn) return;
+        if (document.hidden) wakeStop();
+        else wakeResume();
+      });
       $('[data-voice-close]')?.addEventListener('click', () => {
         stop(); const p = panel(); if (p) p.hidden = true;
       });

@@ -2745,6 +2745,22 @@ body.intro-locked .alerts-fab { display: none; }
 /* On the hub she is the FIRST thing available, not the last. The hub is a
    z-index 9999 overlay, so she has to climb above it or she is simply behind
    the screen she is meant to sit on. */
+/* listening for her name — a steady ring, distinct from the spin she does
+   while actually taking a command */
+.nova-fab.is-wake { border-color: rgba(var(--accent-rgb), .45); }
+.nova-fab.is-wake .nova-orb__halo { animation-duration: 2.4s; }
+
+.nova__wake {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: auto; margin-right: 4px;
+  cursor: pointer; user-select: none;
+}
+.nova__wake input { width: 13px; height: 13px; accent-color: var(--accent); margin: 0; }
+.nova__wake span {
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-fog); transition: color .18s var(--ease-out);
+}
+.nova__wake input:checked ~ span { color: var(--accent); }
+
 body.intro-locked .nova-fab { z-index: 10001; }
 body.intro-locked .nova       { z-index: 10002; }
 /* a quiet hint, only on the hub, so it is obvious she is the fast way in */
