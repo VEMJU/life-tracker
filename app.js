@@ -8373,8 +8373,35 @@
        dies after a minute and looks broken. */
     const WAKE_KEY = 'nv.voice.wake';
     let wakeRec = null, wakeOn = false, wakePaused = false, wakeTimer = null;
+    let armed = false, armTimer = null;
     /* what a speech engine actually hears when someone says "Nova" */
-    const WAKE_RE = /\b(nova|no va|nomad|nover|novah|neva)\b/i;
+    const WAKE_RE = /\b(nova|no va|nomad|nover|novah|neva|nouveau)\b/i;
+
+    /* ── WHY THE COMMAND RIDES THE SAME STREAM ────────────────────────────
+       The obvious build — hear "Nova", stop the wake listener, start a fresh
+       recogniser for the command — costs a full teardown and a new handshake
+       with the speech service every single time. That handshake IS the lag.
+
+       So we never switch. The words after "Nova" arrive on the stream that is
+       already open, and the panel lights up on the INTERIM result, before the
+       engine has even finalised the word. She answers while you are still
+       talking rather than after you have stopped. */
+    function armGlow() {
+      show('live', 'Nova', 'Listening…');
+      $('[data-voice-fab]')?.classList.add('is-live');
+    }
+    function arm() {
+      armed = true;
+      armGlow();
+      clearTimeout(armTimer);
+      /* said her name and then nothing — stand down rather than staying armed
+         and grabbing the next unrelated sentence in the room */
+      armTimer = setTimeout(() => { armed = false; $('[data-voice-fab]')?.classList.remove('is-live'); hideSoon(1200); }, 7000);
+    }
+    function disarm() {
+      armed = false; clearTimeout(armTimer);
+      $('[data-voice-fab]')?.classList.remove('is-live');
+    }
 
     function wakeStart() {
       if (!SR || !wakeOn || wakePaused || wakeRec) return;
@@ -8385,7 +8412,23 @@
         wakeRec.interimResults = true;
         wakeRec.onresult = (e) => {
           for (let i = e.resultIndex; i < e.results.length; i++) {
-            if (WAKE_RE.test(e.results[i][0].transcript)) { wakeHit(); return; }
+            const res = e.results[i];
+            const txt = String(res[0].transcript || '');
+            const m = txt.match(WAKE_RE);
+
+            if (!armed) {
+              if (!m) continue;
+              /* light up the moment the word appears, final or not */
+              if (!res.isFinal) { armGlow(); continue; }
+              /* "nova open gym" — the command came in the same breath */
+              const cut = txt.toLowerCase().lastIndexOf(m[0].toLowerCase()) + m[0].length;
+              const after = txt.slice(cut).replace(/^[\s,.]+/, '').trim();
+              if (after) { disarm(); spoken = true; run(after); return; }
+              arm();                                   // just her name — wait for it
+            } else if (res.isFinal) {
+              const cmd = txt.replace(WAKE_RE, '').replace(/^[\s,.]+/, '').trim();
+              if (cmd) { disarm(); spoken = true; run(cmd); return; }
+            }
           }
         };
         /* Chrome ends the stream on silence; without this it dies after ~60s */
@@ -8408,16 +8451,8 @@
 
     function wakeStop() {
       clearTimeout(wakeTimer);
+      disarm();
       if (wakeRec) { try { wakeRec.onend = null; wakeRec.abort(); } catch (e) {} wakeRec = null; }
-    }
-
-    /* heard it — hand the microphone to the command listener */
-    function wakeHit() {
-      wakePaused = true;
-      wakeStop();
-      show('live', 'Nova', 'Listening…');   // show() reveals the panel itself
-      retried = false;
-      setTimeout(() => { try { start(); } catch (e) {} }, 200);
     }
 
     /* the command listener gives the microphone back when it is finished */
@@ -8565,7 +8600,10 @@
           misses++;
           show('live', 'Sorry?', 'Say that again');
           speak('Sorry?');
-          setTimeout(() => { retried = false; try { start(); } catch (e) {} }, 420);
+          /* if the wake listener already holds the microphone, re-arm it —
+             starting a second recogniser would collide and both would fail */
+          if (wakeOn && wakeRec) arm();
+          else setTimeout(() => { retried = false; try { start(); } catch (e) {} }, 380);
           return;
         }
         misses = 0;
