@@ -4860,17 +4860,17 @@
       return [
         { id: 'regents', label: 'Regents exams',
           state: 'doing',
-          note: 'Earth & Space confirmed — 19 Aug, room 2072. ELA still to confirm.',
+          note: 'Both registered — ELA 18 Aug · Earth & Space 19 Aug, room 2072.',
           due: '2026-08-18', urgent: true,
           hint: 'Earth & Space was 64. One point.' },
         /* 08:00 in Puebla is 09:00 in NYC — the hour a school office opens.
            A reminder that fires when nobody can answer the phone is not a
            reminder, it is a notification. */
-        { id: 'enroll', label: 'Call with Ms. G',
+        { id: 'enroll', label: 'Meeting with Ms. G',
           state: 'todo', urgent: true,
-          note: 'Raise the homeschool letter first · confirm ELA registration · get your credit total',
-          due: '2026-08-05', at: '09:00', end: '10:00',
-          hint: 'The DOE record still says homeschooled until it is reversed.' },
+          note: 'Credit total · January 2027 on the record · fall program in writing',
+          due: '2026-08-06', at: '09:00', end: '10:00',
+          hint: 'See The meeting above. The letter of intent stays unsaid.' },
         { id: 'recs', label: 'Recommendations',
           state: asked >= 2 ? 'done' : asked ? 'doing' : 'todo',
           note: asked ? asked + ' asked' : 'Ask Acosta, Santana and Ms. Arkin',
@@ -5421,7 +5421,86 @@
         </div>`).join('');
     }
 
-    function renderAll(){ seed(); renderReadiness(); renderRegents(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
+    /* ══════════════════  THE MEETING  ══════════════════
+       Twenty minutes with the school decides January 2027, and the school is
+       not going to raise any of this on its own — the counselor who knew the
+       file retired. So the asks are ordered by what is irreversible if it goes
+       unasked, not by what is comfortable to say.
+
+       ASK 1 is first for a reason: the credit total is the number the whole
+       plan is built on, and nobody outside that office can see it. */
+    const MKEY = 'nv.meetprep';
+    const MEETING = {
+      who: 'Ms. Gahuancela',
+      goal: 'Get the credit number · put January 2027 on the record',
+      asks: [
+        { id: 'credits', rank: 'must',
+          say: 'Can you tell me my exact credit total through June 2026?',
+          why: 'The transcript you have says 31.08 — but that only counts through fall 2025. Every plan depends on the real number, and NYCSA will not open from here.' },
+        { id: 'january', rank: 'must',
+          say: 'I want to graduate in January 2027. Is that possible with where I stand?',
+          why: 'Nobody at the school knows you want this. Until somebody does, it cannot happen.' },
+        { id: 'program', rank: 'must',
+          say: 'If it is possible, can you program me this fall for what I still need — Economics, Government, English, math, the arts credit and PE?',
+          why: 'You can have every credit and still not graduate if the fall schedule is missing a required course.' },
+        { id: 'writing', rank: 'must',
+          say: 'Could you email me a summary of what we agreed?',
+          why: 'Your counselor retired on 30 July. A conversation nobody wrote down does not survive a staff change.' },
+        { id: 'counselor', rank: 'ask',
+          say: 'Who is my counselor now that Ms. Eva has retired?',
+          why: 'You need a name and an email, or your file has no guardian.' },
+        { id: 'transcript', rank: 'ask',
+          say: 'Could you send me an official transcript through June 2026?',
+          why: 'Colleges need it anyway — and it answers the credit question in writing.' },
+        { id: 'regents', rank: 'ask',
+          say: 'Can you confirm the school has me registered for ELA on the 18th and Earth & Space on the 19th?',
+          why: 'Mr. Eng confirmed both. A second check against the school record costs one sentence.' },
+        { id: 'appeal', rank: 'ask',
+          say: 'If Earth & Space comes back 60–64 again, how does the appeal work here?',
+          why: 'A second sitting in that range opens the appeal — and a granted appeal is still a full Regents diploma.' },
+        { id: 'recs', rank: 'ask',
+          say: 'Which teachers would you suggest I ask for recommendation letters?',
+          why: 'You have none yet, and it is August. Her answer is also a warm introduction.' },
+      ],
+      /* The one thing that is safer unsaid: the enrollment record has not been
+         corrected yet, and raising it now risks the August seats. */
+      avoid: 'Do not raise the homeschool letter of intent. Your exams are twelve days away and the seats are registered — that conversation happens after the 19th.',
+      armed: 'If PE comes up as a problem: state rules prorate it — a quarter credit per semester enrolled, so a seven-semester graduate needs 1¾ PE credits, not 4.',
+    };
+
+    function renderMeeting() {
+      const host = $('[data-acad-meeting]'); if (!host) return;
+      const done = Store.get(MKEY, []);
+      const set = Array.isArray(done) ? done : [];
+      const musts = MEETING.asks.filter(a => a.rank === 'must');
+      const hit = musts.filter(a => set.includes(a.id)).length;
+
+      host.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">00</span>
+           <span class="eyebrow__lbl">The meeting</span><span class="eyebrow__rule"></span></div>
+         <div class="tile-well mtg-well">
+           <span class="tile-kick">✦ ${esc(MEETING.who)}</span>
+           <span class="tile-hero__val">${hit}<em>/${musts.length}</em></span>
+           <span class="tile-hero__of">${esc(MEETING.goal)}</span>
+           <div class="tile-hero__bar"><i style="width:${hit / musts.length * 100}%"></i></div>
+         </div>
+         <div class="mtg">${MEETING.asks.map((a, i) => {
+            const on = set.includes(a.id);
+            return `<button class="mtg__row ${on ? 'is-on' : ''} ${a.rank === 'must' ? 'is-must' : ''}"
+                      data-mtg="${a.id}" style="animation-delay:${i * 40}ms">
+              <span class="mtg__box"></span>
+              <span class="mtg__m">
+                <b>${esc(a.say)}</b>
+                <i>${esc(a.why)}</i>
+              </span>
+              ${a.rank === 'must' ? '<span class="mtg__flag">must</span>' : ''}
+            </button>`;
+          }).join('')}</div>
+         <p class="mtg__note mtg__note--warn">${esc(MEETING.avoid)}</p>
+         <p class="mtg__note">${esc(MEETING.armed)}</p>`;
+    }
+
+    function renderAll(){ seed(); renderReadiness(); renderMeeting(); renderRegents(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
 
     /* =====================  EVENTS (delegated)  ===================== */
     let wired=false;
@@ -5434,6 +5513,19 @@
       root.addEventListener('click', e => {
         const t = e.target;
         const c = sel => t.closest(sel);
+
+        /* Tick an ask the moment it is answered — mid-meeting, one thumb. */
+        const mtg = c('[data-mtg]');
+        if (mtg) {
+          const id = mtg.getAttribute('data-mtg');
+          const cur = Store.get(MKEY, []);
+          const arr = Array.isArray(cur) ? cur : [];
+          const i = arr.indexOf(id);
+          if (i >= 0) arr.splice(i, 1); else arr.push(id);
+          Store.set(MKEY, arr);
+          renderMeeting();
+          return;
+        }
 
         /* Turn the checklist into dated days. Written straight to the day
            records so they appear in the calendar, the home list and Nova's
