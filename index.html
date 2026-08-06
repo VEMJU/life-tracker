@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=61" />
+  <link rel="stylesheet" href="style.css?v=62" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -456,9 +456,12 @@
     <input class="nova__type" data-voice-fallback type="text"
            placeholder="Or type it — keyboard 🎤 dictates"
            autocomplete="off" autocapitalize="off" spellcheck="false" />
+    <!-- Voice sets differ wildly by device, so this lists what is actually
+         installed rather than promising one that may not exist. -->
+    <select class="nova__voice" data-voice-picker aria-label="Nova's voice" hidden></select>
     <p class="nova__hint">
-      “add a goal to squat 315 by december” · “remind me to call mum friday at 4”
-      · “add task gym at 6” · “go to nutrition”
+      type a tab name to jump · “add a goal to squat 315 by december”
+      · “remind me to call mum friday at 4” · “add task gym at 6”
     </p>
   </section>
 
@@ -1839,7 +1842,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=50" defer></script>
+  <script src="app.js?v=51" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=11" defer></script>

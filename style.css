@@ -2761,6 +2761,15 @@ body.intro-locked .alerts-fab { display: none; }
 }
 .nova__wake input:checked ~ span { color: var(--accent); }
 
+.nova__voice {
+  width: 100%; margin-top: 8px; padding: 7px 9px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .1em;
+  color: var(--c-fog); background: rgba(255,255,255,.03);
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  transition: color .18s var(--ease-out), border-color .18s var(--ease-out);
+}
+.nova__voice:hover { color: var(--c-paper); border-color: var(--border-strong); }
+
 body.intro-locked .nova-fab { z-index: 10001; }
 body.intro-locked .nova       { z-index: 10002; }
 /* a quiet hint, only on the hub, so it is obvious she is the fast way in */

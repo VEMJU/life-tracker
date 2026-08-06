@@ -8465,11 +8465,48 @@
 
     /* Short, and only on a real action. A machine that narrates everything
        gets muted within a day. */
+    /* ══════════════════  HER VOICE  ══════════════════
+       Browsers ship wildly different voice sets, so rather than name one that
+       may not exist we score what is actually installed. The target is the
+       calm British assistant register: en-GB first, female second, and the
+       Google voices above the robotic system ones. */
+    const VOICE_KEY = 'nv.voice.name';
+    let VOICES = [], chosenVoice = null;
+
+    function voiceScore(v) {
+      let s = 0;
+      if (/en[-_]GB/i.test(v.lang)) s += 12;          // the Jarvis accent
+      else if (/^en/i.test(v.lang)) s += 4;
+      if (/female|woman|hazel|serena|kate|libby|sonia|martha|fiona|karen|moira|tessa|samantha|zira|aria|jenny|ava|allison/i.test(v.name)) s += 9;
+      if (/google/i.test(v.name)) s += 4;             // markedly more natural in Chrome
+      if (/\b(male|david|daniel|george|ryan|mark|alex|fred|arthur|oliver)\b/i.test(v.name)) s -= 10;
+      return s;
+    }
+    function loadVoices() {
+      try { VOICES = window.speechSynthesis.getVoices() || []; } catch (e) { VOICES = []; }
+      if (!VOICES.length) return;
+      const saved = Store.get(VOICE_KEY, null);
+      const match = saved && VOICES.find(v => v.name === saved);
+      chosenVoice = match || VOICES.slice().sort((a, b) => voiceScore(b) - voiceScore(a))[0] || null;
+      renderVoicePicker();
+    }
+    function renderVoicePicker() {
+      const sel = $('[data-voice-picker]'); if (!sel || !VOICES.length) return;
+      const en = VOICES.filter(v => /^en/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
+      sel.innerHTML = (en.length ? en : VOICES).map(v =>
+        `<option value="${esc(v.name)}"${chosenVoice && v.name === chosenVoice.name ? ' selected' : ''}>${esc(v.name.replace(/^(Microsoft|Google)\s+/, ''))}</option>`
+      ).join('');
+      sel.hidden = false;
+    }
+
     function speak(text) {
       try {
         if (!window.speechSynthesis) return;
         const u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.06; u.volume = .85;
+        if (chosenVoice) u.voice = chosenVoice;
+        /* a touch slower and a touch brighter than the default — assistant,
+           not newsreader */
+        u.rate = 1.0; u.pitch = 1.08; u.volume = .9;
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(u);
       } catch (e) {}
@@ -8493,6 +8530,10 @@
        Patterns run first: instant, free, and they work with no signal. Only
        what they cannot parse goes to the model — so "add task gym at 6" never
        costs anything, and "who won the game last night" gets the web. */
+    /* whether the model has ever answered — null until we have tried once, so
+       the first unknown phrase still gets a real attempt */
+    let modelUp = null, misses = 0, spoken = false;
+
     async function run(text) {
       let r;
       try { r = interpret(text); }
@@ -8512,6 +8553,28 @@
       /* A named failure — no tab called that, "goal" with no goal — is a real
          answer. Don't spend a model call telling them the same thing. */
       if (!r.unknown) { show('bad', '“' + text + '”', r.say); hideSoon(9000); return; }
+
+      /* ── MISHEARD, NOT MISUNDERSTOOD ──────────────────────────────────────
+         When there is no model to fall back on, an unrecognised phrase is
+         almost always a mishearing — so ask again rather than making them
+         wait on a network round-trip that can only report that her thinking
+         is not connected. Twice, then stop, because a third "sorry?" is worse
+         than admitting defeat. */
+      if (spoken && modelUp === false) {
+        if (misses < 2) {
+          misses++;
+          show('live', 'Sorry?', 'Say that again');
+          speak('Sorry?');
+          setTimeout(() => { retried = false; try { start(); } catch (e) {} }, 420);
+          return;
+        }
+        misses = 0;
+        show('bad', '“' + text + '”', 'I did not catch that. You can type it below.');
+        if (save) { save.hidden = false; save.dataset.text = text; }
+        hideSoon(10000);
+        return;
+      }
+      misses = 0;
 
       await think(text, save);
     }
@@ -8624,6 +8687,10 @@
           body: JSON.stringify({ text, board: snapshot(), history }),
         });
         const d = await res.json();
+
+        /* remember whether she has a brain, so the next unrecognised phrase
+           can be answered instantly instead of waiting on this again */
+        modelUp = !(d.error === 'no_key' || d.error === 'bad_key');
 
         if (d.error) {
           const why = d.error === 'no_key'
@@ -8768,7 +8835,7 @@
           if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
         }
         if (interim) show('live', '“' + interim + '”', 'Listening…');
-        if (final) run(final.trim());
+        if (final) { spoken = true; run(final.trim()); }
       };
       rec.onerror = (e) => {
         listening = false;
@@ -8824,6 +8891,16 @@
       /* a deliberate tap earns a fresh retry budget */
       $('[data-voice-fab]')?.addEventListener('click', () => { retried = false; wakePaused = true; wakeStop(); start(); });
 
+      /* voices arrive asynchronously in most browsers — the first call is
+         usually empty, and onvoiceschanged is the only reliable signal */
+      loadVoices();
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
+      $('[data-voice-picker]')?.addEventListener('change', (e) => {
+        Store.set(VOICE_KEY, e.target.value);
+        chosenVoice = VOICES.find(v => v.name === e.target.value) || chosenVoice;
+        speak('This is my voice now.');
+      });
+
       /* the wake word: restored from last time, and switched off entirely when
          the tab is hidden — nobody wants a background tab holding their mic */
       const wakeBox = $('[data-voice-wake]');
@@ -8855,7 +8932,7 @@
       if (f) f.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
         const v = f.value.trim(); if (!v) return;
-        f.value = ''; run(v);
+        f.value = ''; spoken = false; misses = 0; run(v);
       });
     }
 
