@@ -4743,6 +4743,46 @@ button.intro-tool {
 
 @media (prefers-reduced-motion: reduce) { .study__exam, .study__sec { animation: none; } }
 
+/* ═══════════════════  §58  THE FIVE REGENTS  ═══════════════════
+   Four states, because 60–64 is genuinely its own thing: not a pass, but the
+   appeal window. Collapsing it into "fail" would hide a live option.       */
+.rgt { display: flex; flex-direction: column; margin-top: var(--sp-4); }
+.rgt__row {
+  display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: var(--sp-3);
+  padding: 11px 4px; border-bottom: 1px solid var(--hairline);
+  animation: cardPop 480ms var(--ease-soft) both;
+}
+.rgt__row:last-child { border-bottom: 0; }
+.rgt__dot { width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.16); }
+.rgt__row.is-pass   .rgt__dot { background: #7dd488; box-shadow: 0 0 7px -1px rgba(125,212,136,.7); }
+.rgt__row.is-appeal .rgt__dot { background: #e0b870; box-shadow: 0 0 7px -1px rgba(224,184,112,.7); }
+.rgt__row.is-fail   .rgt__dot { background: #e0625a; }
+.rgt__row.is-none   .rgt__dot { background: var(--accent-bright); animation: nowBreathe 2s ease-in-out infinite; }
+
+.rgt__m { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rgt__m b { font-size: 13.5px; font-weight: 620; color: var(--c-paper); }
+.rgt__m i { font-family: var(--ff-display); font-style: italic; font-size: 12.5px; color: var(--c-fog); }
+.rgt__row.is-pass .rgt__m b { color: var(--c-stone); }
+
+.rgt__s {
+  font-family: var(--ff-display); font-style: italic; font-weight: 400; font-size: 21px;
+  color: var(--c-fog); font-variant-numeric: tabular-nums;
+}
+.rgt__row.is-pass   .rgt__s { color: #7dd488; }
+.rgt__row.is-appeal .rgt__s { color: #e0b870; }
+.rgt__row.is-fail   .rgt__s { color: #e0625a; }
+
+.rgt__note {
+  margin-top: var(--sp-4); padding-left: var(--sp-4); border-left: 2px solid #e0b870;
+  font-family: var(--ff-display); font-style: italic; font-size: 13px; line-height: 1.55;
+  color: var(--c-fog);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rgt__row { animation: none; }
+  .rgt__row.is-none .rgt__dot { animation: none; }
+}
+
 /* ═══════════════════  §56  THE APPLICATION  ═══════════════════
    Every piece a college asks for, its real state, and what has a clock on it.
    State is carried by a dot, so the column scans in one pass.              */

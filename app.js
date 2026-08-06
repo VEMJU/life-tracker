@@ -4859,21 +4859,21 @@
 
       return [
         { id: 'regents', label: 'Regents exams',
-          state: 'todo',
-          note: 'ELA + a science still needed — August 18–19',
+          state: 'doing',
+          note: 'Earth & Space confirmed — 19 Aug, room 2072. ELA still to confirm.',
           due: '2026-08-18', urgent: true,
           hint: 'Earth & Space was 64. One point.' },
         /* 08:00 in Puebla is 09:00 in NYC — the hour a school office opens.
            A reminder that fires when nobody can answer the phone is not a
            reminder, it is a notification. */
-        { id: 'enroll', label: 'Call the school',
+        { id: 'enroll', label: 'Call with Ms. G',
           state: 'todo', urgent: true,
-          note: 'Confirm enrollment · pause the homeschool letter · register for Aug 18–19 Regents',
-          due: '2026-07-31', at: '08:00', end: '08:30',
-          hint: 'Withdrawal means no August Regents.' },
+          note: 'Raise the homeschool letter first · confirm ELA registration · get your credit total',
+          due: '2026-08-05', at: '09:00', end: '10:00',
+          hint: 'The DOE record still says homeschooled until it is reversed.' },
         { id: 'recs', label: 'Recommendations',
           state: asked >= 2 ? 'done' : asked ? 'doing' : 'todo',
-          note: asked ? asked + ' asked' : 'Ask Brooks (94) and Zechowski (93)',
+          note: asked ? asked + ' asked' : 'Ask Acosta, Santana and Ms. Arkin',
           due: '2026-08-08',
           hint: 'Ask before you leave the school.' },
         { id: 'sat', label: 'SAT',
@@ -4894,9 +4894,72 @@
           state: 'todo', note: 'Request an official sealed copy',
           due: '2026-08-08' },
         { id: 'common', label: 'Common App',
-          state: 'todo', note: 'Opens August 1 — create the account',
-          due: '2026-08-01' },
+          state: 'todo', note: 'Open now — create your account, it is free',
+          due: '2026-08-08' },
+        { id: 'online', label: 'Online school',
+          state: 'todo',
+          note: 'Email Nebraska · call Indiana (800) 334-1011 — credit evaluation',
+          due: '2026-08-08',
+          hint: 'Their answer decides whether the Regents still matter.' },
       ];
+    }
+
+    /* ══════════════════  THE FIVE  ══════════════════
+       A New York diploma needs five Regents at 65 or above — and the five are
+       SLOTS, not exams. Geometry does nothing once Algebra I is passed, and
+       the language exam fills the fifth slot on its own. Showing them as
+       requirements rather than as a list of scores is the difference between
+       "I failed three exams" and "I need two more". Both are true; only one
+       is useful. */
+    const RKEY = 'nv.regents';
+    const REGENTS_SEED = [
+      { slot: 'English',        exam: 'ELA',                   score: null, sitting: '2026-08-18' },
+      { slot: 'Math',           exam: 'Algebra I',             score: 66 },
+      { slot: 'Science',        exam: 'Earth & Space Sciences',score: 64, sitting: '2026-08-19', room: '2072', retake: true },
+      { slot: 'Social Studies', exam: 'Global History II',     score: 73 },
+      { slot: '+1 Pathway',     exam: 'Spanish LOTE',          score: 98 },
+    ];
+    const regents = () => {
+      const saved = Store.get(RKEY, null);
+      return Array.isArray(saved) && saved.length ? saved : REGENTS_SEED;
+    };
+
+    function renderRegents() {
+      const host = $('[data-acad-regents]'); if (!host) return;
+      const rows = regents();
+      const passed = rows.filter(r => num(r.score) >= 65).length;
+      const today = localDateKey();
+
+      host.innerHTML =
+        `<div class="eyebrow"><span class="eyebrow__num">02</span>
+           <span class="eyebrow__lbl">The five</span><span class="eyebrow__rule"></span></div>
+         <div class="tile-well cal-well">
+           <span class="tile-kick">✦ regents passed</span>
+           <span class="tile-hero__val">${passed}</span>
+           <span class="tile-hero__of">of 5 required · ${5 - passed} to go</span>
+           <div class="tile-hero__bar"><i style="width:${passed / 5 * 100}%"></i></div>
+         </div>
+         <div class="rgt">${rows.map((r, i) => {
+            const s = num(r.score);
+            const ok = s >= 65;
+            /* 60–64 is its own state: not a pass, but the appeal window */
+            const appeal = s >= 60 && s < 65;
+            const state = ok ? 'is-pass' : r.score == null ? 'is-none' : appeal ? 'is-appeal' : 'is-fail';
+            const when = r.sitting
+              ? new Date(r.sitting + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+              : '';
+            return `<div class="rgt__row ${state}" style="animation-delay:${i * 45}ms">
+              <span class="rgt__dot"></span>
+              <span class="rgt__m">
+                <b>${esc(r.slot)}</b>
+                <i>${esc(r.exam)}${r.sitting && !ok ? ' · ' + when + (r.room ? ' · room ' + r.room : '') : ''}</i>
+              </span>
+              <span class="rgt__s">${r.score == null ? '—' : r.score}</span>
+            </div>`;
+          }).join('')}</div>
+         ${rows.some(r => num(r.score) >= 60 && num(r.score) < 65)
+            ? `<p class="rgt__note">A score of 60–64 can be appealed once you have sat that exam twice and had extra help in the subject. One granted appeal still earns a full Regents diploma.</p>`
+            : ''}`;
     }
 
     function renderReadiness() {
@@ -5358,7 +5421,7 @@
         </div>`).join('');
     }
 
-    function renderAll(){ seed(); renderReadiness(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
+    function renderAll(){ seed(); renderReadiness(); renderRegents(); renderSAT(); renderCredits(); renderSubjFilter(); renderSubjects(); renderEssay(); renderRecs(); renderECs(); }
 
     /* =====================  EVENTS (delegated)  ===================== */
     let wired=false;
