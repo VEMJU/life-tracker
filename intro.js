@@ -137,7 +137,9 @@
     replay();
     setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 350);
   }
-  window.lifeHub = { open };
+  /* hide() is exposed so Nova can navigate FROM the hub — without it she can
+     switch the tab underneath while the hub stays over the top of it. */
+  window.lifeHub = { open, hide };
   // The moment sign-in completes (or a saved session restores), the lock
   // lifts — play the startup animation: curtain parts, the title decodes,
   // then the cards rise into the ring. Every sign-in, exactly once.

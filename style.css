@@ -2741,7 +2741,21 @@ body.intro-locked .alerts-fab { display: none; }
   box-shadow: var(--glass-shadow-hover), 0 0 26px -6px var(--accent-glow);
 }
 .nova-fab:active { transform: scale(.94); }
-body.intro-locked .nova-fab { display: none; }
+
+/* On the hub she is the FIRST thing available, not the last. The hub is a
+   z-index 9999 overlay, so she has to climb above it or she is simply behind
+   the screen she is meant to sit on. */
+body.intro-locked .nova-fab { z-index: 10001; }
+body.intro-locked .nova       { z-index: 10002; }
+/* a quiet hint, only on the hub, so it is obvious she is the fast way in */
+body.intro-locked .nova-fab::after {
+  content: 'type a tab name';
+  position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; pointer-events: none;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--c-fog); opacity: .75;
+}
+@media (max-width: 560px) { body.intro-locked .nova-fab::after { display: none; } }
 
 /* ── THE ORB ───────────────────────────────────────────────────────────────
    Idle she breathes slowly. Listening, the halo pushes outward in rings and a

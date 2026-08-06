@@ -8342,12 +8342,48 @@
       m = low.match(/^(?:go\s+to|open|show(?:\s+me)?|take\s+me\s+to|switch\s+to)\s+(?:the\s+|my\s+)?(.+)$/);
       if (m) {
         const word = m[1].replace(/\s+tab$/, '').trim();
-        const tab = TAB_WORDS[word] || TAB_WORDS[word.split(' ')[0]];
+        const tab = jumpTo(word);
         if (tab) return { ok:true, tab, say:'Opening ' + tab };
         return { ok:false, say:'I have no tab called ' + word };
       }
 
+      /* ── THE QUICK JUMP ──────────────────────────────────────────────────
+         A bare word that names a tab IS a navigation command. Typing "gym"
+         should not require the ceremony of "go to gym" — this is the fastest
+         way through the app, and it runs entirely here with no model call and
+         no key. Last resort, so it can never shadow a real command. */
+      if (!/\s/.test(low)) {
+        const tab = jumpTo(low);
+        if (tab) return { ok:true, tab, say:'Opening ' + tab };
+      }
+
       return { ok:false, unknown:true, say:'I did not understand that.' };
+    }
+
+    /* Navigating from the hub has to dismiss the hub. Calling setActive alone
+       switches the tab UNDERNEATH a full-screen overlay, which looks to the
+       person like nothing happened. hide() dismisses and routes in one move,
+       and is a no-op once the hub is already gone. */
+    function goTab(tab) {
+      if (document.body.classList.contains('intro-locked') && window.lifeHub && window.lifeHub.hide) {
+        window.lifeHub.hide(tab);
+      } else {
+        Tabs.setActive(tab);
+      }
+    }
+
+    /* exact word first, then a unique prefix — "nut" is nutrition, but "s"
+       matches four tabs and so resolves to nothing rather than a guess */
+    function jumpTo(word) {
+      const w = String(word || '').trim().toLowerCase();
+      if (!w) return null;
+      if (TAB_WORDS[w]) return TAB_WORDS[w];
+      const first = TAB_WORDS[w.split(' ')[0]];
+      if (first) return first;
+      const hits = [...new Set(
+        Object.keys(TAB_WORDS).filter(k => k.startsWith(w)).map(k => TAB_WORDS[k])
+      )];
+      return hits.length === 1 ? hits[0] : null;
     }
 
     /* Short, and only on a real action. A machine that narrates everything
@@ -8391,7 +8427,7 @@
       if (r.ok) {
         show('ok', '“' + text + '”', r.say);
         speak(r.say);
-        if (r.tab && REAL_PANELS.includes(r.tab)) Tabs.setActive(r.tab);
+        if (r.tab && REAL_PANELS.includes(r.tab)) goTab(r.tab);
         hideSoon(3600);
         return;
       }
@@ -8623,7 +8659,7 @@
         }
         if (action === 'navigate') {
           if (!REAL_PANELS.includes(a.tab)) return '';
-          Tabs.setActive(a.tab);
+          goTab(a.tab);
           return 'Opening ' + a.tab;
         }
       } catch (e) {}
