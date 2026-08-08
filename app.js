@@ -839,6 +839,7 @@
         G('Fade the scars', 'mirror', '', 'Treatment depends entirely on scar type. Derm decides, not YouTube.'),
         G('The haircut that actually fits my face', 'mirror'),
         G('Beard, moustache, or clean — decide, then commit', 'mirror'),
+        G('A properly groomed face — the hair everywhere else', 'mirror'),
         G('Eyebrows', 'mirror'),
         G('Smooth lips', 'mirror'),
         G('Perfect nails — hands and feet', 'mirror'),
@@ -878,7 +879,8 @@
         G('Help as many people as I possibly can', 'soul', '',
           'This is also the exact hole in your college application. Faith and application want the same action.'),
         G('Bring people closer to God', 'soul'),
-        G('Make my family proud', 'soul'),
+        G('Love every person, no matter what', 'soul'),
+        G('Make myself proud — and my family', 'soul'),
 
         /* ── BUILD & MONEY ── */
         G('Finish the app so other people can use it', 'build'),
@@ -8451,8 +8453,34 @@
     const navlinks = () => $$('.navlink');
     const toplinks = () => $$('.topbar__link');
 
+    /* Building a panel's contents, separated from deciding which panel to
+       show — because split view needs several built at once, and the old code
+       could only ever mean "the one". */
+    function renderPanelContent(name) {
+      if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
+      if (name==='goals')     Goals.renderAll();
+      if (name==='reminders') Reminders.render();
+      if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
+      if (name==='nutrition') Nutrition.init();
+      if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
+      if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
+      if (name==='academics') { Academics.init(); Study.init(); }
+      if (name==='logs')      Logs.init();
+      if (name==='clothes')   Clothes.init();
+      if (name==='sports')    Sports.init();
+      if (name==='calendar')  Cal.init();
+      if (name==='stats')     Stats.render();
+    }
+
+    /* Split view registers itself here rather than being referenced directly —
+       otherwise Tabs would need Split and Split would need Tabs, and one of
+       them would always be undefined at definition time. */
+    let splitHook = null;
+    function setSplitHook(fn) { splitHook = fn; }
+
     function showPanel(name) {
-      $$('[data-tab-panel]').forEach(p => { p.hidden=true; });
+      if (splitHook && splitHook(name)) return;
+      $$('[data-tab-panel]').forEach(p => { p.hidden=true; p.style.gridArea=''; });
       if (REAL_PANELS.includes(name)) {
         const panel = $(`[data-tab-panel="${name}"]`);
         if (panel) panel.hidden = false;
@@ -8462,22 +8490,10 @@
            paint the switch until every one of them existed — so the tap felt
            dead for as long as the work took. Splitting it costs one frame and
            buys an instant response. A tab you have opened before still shows
-           its previous render in the meantime, so there is nothing to see
-           flicker. */
+           its previous render in the meantime, so nothing flickers. */
         requestAnimationFrame(() => {
           if (document.body.dataset.view !== name) return;   // they moved on
-          if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
-          if (name==='goals')     Goals.renderAll();
-          if (name==='reminders') Reminders.render();
-          if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
-          if (name==='nutrition') Nutrition.init();
-          if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
-          if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
-          if (name==='academics') { Academics.init(); Study.init(); }
-          if (name==='logs')      Logs.init();
-          if (name==='clothes')   Clothes.init();
-          if (name==='sports')    Sports.init();
-          if (name==='calendar')  Cal.init();
+          renderPanelContent(name);
         });
       } else {
         const ph   = $('[data-tab-panel="placeholder"]');
@@ -8563,7 +8579,146 @@
       });
     }
 
-    return { init, setActive };
+    return { init, setActive, renderPanelContent, setSplitHook };
+  })();
+
+  /* ═══════════════════  SPLIT VIEW  ═══════════════════
+     The board was a stack of pages you flick between. This turns it into a
+     desk: two tabs side by side, three, or four — your calendar open beside
+     your goals, your gym log beside your nutrition.
+
+     Nothing is duplicated. The panels already exist as siblings, so a split is
+     just a grid over the container plus more than one of them unhidden. Each
+     pane is placed explicitly (column, row, spans) rather than by source
+     order, which is what lets any tab sit in any pane.                     */
+  const Split = (() => {
+    const KEY = 'nv.split';
+    /* [colStart, rowStart, colSpan, rowSpan] on a 2×2 grid */
+    const LAYOUTS = {
+      single: { label: 'Single',  cells: [[1,1,2,2]] },
+      v2:     { label: 'Two — side by side', cells: [[1,1,1,2],[2,1,1,2]] },
+      h2:     { label: 'Two — stacked',      cells: [[1,1,2,1],[1,2,2,1]] },
+      l3:     { label: 'Three',   cells: [[1,1,1,2],[2,1,1,1],[2,2,1,1]] },
+      q4:     { label: 'Four',    cells: [[1,1,1,1],[2,1,1,1],[1,2,1,1],[2,2,1,1]] },
+    };
+    const ICONS = {
+      single: '<rect x="3" y="4" width="18" height="16" rx="2"/>',
+      v2: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
+      h2: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',
+      l3: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M12 12h9"/>',
+      q4: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/>',
+    };
+
+    let st = Store.get(KEY, null);
+    if (!st || !LAYOUTS[st.layout]) st = { layout: 'single', tabs: ['home'] };
+    const save = () => Store.set(KEY, st);
+
+    const active = () => st.layout !== 'single';
+    const paneCount = () => LAYOUTS[st.layout].cells.length;
+
+    /* Panels build one per frame rather than all at once — four tabs rendering
+       in a single frame is exactly the stall we just spent an hour removing. */
+    function render() {
+      const cells = LAYOUTS[st.layout].cells;
+      document.body.dataset.split = st.layout;
+      $$('[data-tab-panel]').forEach(p => { p.hidden = true; p.style.gridArea = ''; });
+
+      st.tabs.slice(0, cells.length).forEach((tab, i) => {
+        const panel = $(`[data-tab-panel="${tab}"]`);
+        if (!panel) return;
+        const [c, r, cs, rs] = cells[i];
+        panel.hidden = false;
+        panel.style.gridArea = `${r} / ${c} / ${r + rs} / ${c + cs}`;
+        setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
+      });
+    }
+
+    function exit() {
+      st.layout = 'single'; save();
+      delete document.body.dataset.split;
+      $$('[data-tab-panel]').forEach(p => { p.style.gridArea = ''; });
+      Tabs.setActive(st.tabs[0] || 'home');
+    }
+
+    function setLayout(name) {
+      st.layout = name;
+      const need = paneCount();
+      /* Growing keeps what is already open and fills the rest with something
+         other than a repeat — four copies of Home is not a split view. */
+      const pool = REAL_PANELS.filter(t => st.tabs.indexOf(t) < 0);
+      while (st.tabs.length < need) st.tabs.push(pool.shift() || 'home');
+      st.tabs = st.tabs.slice(0, Math.max(need, 1));
+      save();
+      if (name === 'single') exit(); else render();
+      paint();
+    }
+
+    function setPane(i, tab) {
+      st.tabs[i] = tab; save();
+      if (active()) render(); else Tabs.setActive(tab);
+      paint();
+    }
+
+    function paint() {
+      const lay = $('[data-split-layouts]'), panes = $('[data-split-panes]');
+      if (!lay || !panes) return;
+      lay.innerHTML = Object.entries(LAYOUTS).map(([k, v]) =>
+        `<button type="button" class="splitp__lay ${st.layout === k ? 'is-on' : ''}" data-split-lay="${k}"
+                 title="${esc(v.label)}" aria-label="${esc(v.label)}">
+           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round">${ICONS[k]}</svg>
+         </button>`).join('');
+
+      panes.innerHTML = active() ? st.tabs.slice(0, paneCount()).map((tab, i) =>
+        `<label class="splitp__pane">
+           <span>Pane ${i + 1}</span>
+           <select class="input input--sm" data-split-pane="${i}">
+             ${REAL_PANELS.map(t =>
+               `<option value="${t}" ${t === tab ? 'selected' : ''}>${esc((TAB_META[t] || {}).title || t)}</option>`).join('')}
+           </select>
+         </label>`).join('') : '';
+    }
+
+    function open()  { const p = $('[data-split-panel]'); if (p) { paint(); p.hidden = false; } }
+    function close() { const p = $('[data-split-panel]'); if (p) p.hidden = true; }
+
+    function init() {
+      /* When a split is live, a nav tap replaces the FIRST pane rather than
+         collapsing the layout — you are rearranging the desk, not leaving it. */
+      Tabs.setSplitHook((name) => {
+        if (!active()) return false;
+        if (st.tabs[0] !== name && st.tabs.indexOf(name) < 0) { st.tabs[0] = name; save(); paint(); }
+        render();
+        return true;
+      });
+
+      const fab = $('[data-split-open]');
+      if (fab) fab.addEventListener('click', () => {
+        const p = $('[data-split-panel]');
+        if (p && !p.hidden) close(); else open();
+      });
+      const x = $('[data-split-close]'); if (x) x.addEventListener('click', close);
+
+      const panel = $('[data-split-panel]');
+      if (panel) {
+        panel.addEventListener('click', (e) => {
+          const l = e.target.closest('[data-split-lay]');
+          if (l) setLayout(l.getAttribute('data-split-lay'));
+        });
+        panel.addEventListener('change', (e) => {
+          const s = e.target.closest('[data-split-pane]');
+          if (s) setPane(+s.getAttribute('data-split-pane'), s.value);
+        });
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close();
+      });
+
+      if (active()) render();
+    }
+
+    return { init, active, render };
   })();
 
   /* ══════════════════  VOICE  ══════════════════
@@ -9405,6 +9560,7 @@
     GymTimer.init();
     Gym.init();
     Tabs.init();
+    Split.init();
 
     FinHeatmap.init();
     Photos.initWidget();

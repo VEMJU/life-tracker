@@ -5577,3 +5577,101 @@ button.intro-tool {
    and a card you are reading must never be skipped. */
 .goals-grid > .is-open,
 .goals-grid > [data-goal-open="true"] { content-visibility: visible; }
+
+/* ═══════════════════  §62  SPLIT VIEW  ═══════════════════
+   The board stops being a stack of pages and becomes a desk. No panel is
+   duplicated — a split is a grid over the container with more than one panel
+   unhidden, each placed explicitly so any tab can sit in any pane.
+   ═══════════════════════════════════════════════════════════════════════ */
+.split-fab {
+  position: fixed; top: 18px; right: 68px; z-index: 60;
+  display: inline-grid; place-items: center; cursor: pointer;
+  width: 42px; height: 42px; color: var(--c-bone);
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(130%); backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: var(--glass-shadow);
+  transition: color .2s var(--ease-out), border-color .2s, box-shadow .2s, transform .2s;
+}
+.split-fab:hover  { color: #fff; border-color: var(--accent-soft); transform: translateY(-1px); }
+.split-fab:active { transform: scale(.95); }
+body[data-split] .split-fab { color: #fff; border-color: var(--accent-soft); }
+
+/* ── the picker ─────────────────────────────────────────────────────── */
+.splitp {
+  position: fixed; top: 68px; right: 18px; z-index: 61; width: min(300px, calc(100vw - 36px));
+  border: 1px solid var(--border-strong); border-radius: 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: var(--glass-shadow);
+  padding: var(--sp-4); animation: cardPop 420ms var(--ease-soft) both;
+}
+.splitp[hidden] { display: none; }
+.splitp__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-4); }
+.splitp__head h3 {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--c-fog); margin: 0; font-weight: 500;
+}
+.splitp__x {
+  background: none; border: 0; color: var(--c-fog); font-size: 20px; line-height: 1;
+  cursor: pointer; padding: 0 4px; transition: color .2s;
+}
+.splitp__x:hover { color: var(--c-blanc); }
+
+.splitp__layouts { display: flex; gap: 6px; flex-wrap: wrap; }
+.splitp__lay {
+  flex: 1 1 auto; display: grid; place-items: center; padding: 9px 4px; cursor: pointer;
+  color: var(--c-mid); background: none;
+  border: 1px solid var(--hairline); border-radius: 10px;
+  transition: color .2s, border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.splitp__lay:hover  { color: var(--c-bone); border-color: var(--border); }
+.splitp__lay:active { transform: scale(.94); }
+.splitp__lay.is-on {
+  color: var(--accent-bright, #fff);
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .5);
+  background: rgba(var(--accent-br-rgb, 255,255,255), .07);
+}
+
+.splitp__panes { display: flex; flex-direction: column; gap: 8px; margin-top: var(--sp-4); }
+.splitp__panes:empty { margin-top: 0; }
+.splitp__pane { display: flex; align-items: center; gap: 9px; }
+.splitp__pane > span {
+  flex: none; width: 52px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--c-fog);
+}
+.splitp__pane select { flex: 1; min-width: 0; }
+.splitp__note {
+  font-family: var(--ff-display); font-style: italic; font-size: 12px;
+  color: var(--c-fog); margin: var(--sp-4) 0 0; line-height: 1.5;
+}
+.splitp__note b { color: var(--c-bone); font-weight: 400; font-style: normal; }
+
+/* ── the desk ───────────────────────────────────────────────────────── */
+body[data-split] .views {
+  display: grid; gap: var(--sp-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  height: calc(100vh - 150px); min-height: 520px;
+}
+/* Each pane is its own scroller — the whole point is reading two things at
+   once, which fails the moment one of them drags the other down the page. */
+body[data-split] .views > [data-tab-panel] {
+  overflow: auto; min-height: 0; min-width: 0;
+  border: 1px solid var(--hairline); border-radius: 14px;
+  padding: var(--sp-4); background: rgba(255,255,255,.012);
+  -webkit-overflow-scrolling: touch;
+}
+body[data-split] .views > [data-tab-panel][hidden] { display: none; }
+
+/* Below the fold of a phone a two-up grid is two unreadable columns, so the
+   layout collapses to a single scrolling stack — the panes stay, the grid goes. */
+@media (max-width: 780px) {
+  body[data-split] .views {
+    display: flex; flex-direction: column; height: auto; min-height: 0;
+  }
+  body[data-split] .views > [data-tab-panel] { max-height: 78vh; }
+  .split-fab { top: 18px; right: 68px; }
+}
+@media (prefers-reduced-motion: reduce) { .splitp { animation: none; } }
