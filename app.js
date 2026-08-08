@@ -4866,6 +4866,13 @@
           note: 'Financial Skills first — an 85% unlocks dual credit',
           due: '2026-08-08',
           hint: 'You need 5 courses whatever the evaluation says. Do not wait for it.' },
+        /* A decision with no deadline never gets made. This one gets an hour.
+           09:00 in Puebla, so it lands with his coffee rather than at 4am. */
+        { id: 'college', label: 'Decide freshman college',
+          state: 'todo', urgent: true,
+          note: 'ASU W.P. Carey online from Puebla — or Indiana Kelley in person',
+          due: '2026-08-09', at: '09:00', end: '10:00',
+          hint: 'Both roads end at Babson in 2028. Pick where you will get a 3.7.' },
         { id: 'transcript', label: 'HSES transcript request',
           state: 'todo', urgent: true,
           note: 'envirostudies.org form · official · by email · passport as ID',
