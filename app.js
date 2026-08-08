@@ -8611,10 +8611,10 @@
        Choosing a layout and then two tabs is three decisions to see your
        calendar next to your goals; this is one. */
     const PRESETS = [
-      { label: 'Planning',   layout: 'v2', tabs: ['goals', 'calendar'] },
-      { label: 'Training',   layout: 'v2', tabs: ['gym', 'nutrition'] },
-      { label: 'Applying',   layout: 'v2', tabs: ['academics', 'calendar'] },
-      { label: 'The day',    layout: 'l3', tabs: ['home', 'calendar', 'reminders'] },
+      { label: 'Planning', cols: 2, tabs: ['goals', 'calendar'] },
+      { label: 'Training', cols: 2, tabs: ['gym', 'nutrition'] },
+      { label: 'Applying', cols: 2, tabs: ['academics', 'calendar'] },
+      { label: 'The day',  cols: 3, tabs: ['home', 'calendar', 'reminders'] },
     ];
 
     let st = Store.get(KEY, null);
