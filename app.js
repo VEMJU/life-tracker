@@ -822,6 +822,7 @@
           'Growth plates close 16–18. Posture and sleep are the real levers now — posture alone is worth up to an inch.'),
         G('Full health check-up', 'body', '',
           'The one appointment that closes the private-parts question permanently. Routine for a doctor.'),
+        G('Be as healthy as I possibly can', 'body'),
 
         /* ── THE MIRROR ── */
         G('See a dermatologist', 'mirror', '',
@@ -837,12 +838,21 @@
         G('Clean feet, no peeling', 'mirror'),
         G('Orthodontist consult — the one crooked tooth', 'mirror', '',
           'Ask what the options are for ONE tooth, not for Invisalign by name. Often much smaller and cheaper.'),
+        G('Clean body, good smell, smooth skin', 'mirror'),
+        G('Look masculine — and be a gentleman', 'mirror'),
+        G('My natural skin colour', 'mirror', '',
+          'I never asked what you meant by this — evening out tone? tan lines? Tell me and I will sharpen it.'),
+        G('Looksmax — the best version of my own face and body', 'mirror', '',
+          'The umbrella over this whole lane. Natural first; anything else only if the impact is real.'),
         G('My own style — clothes, shoes, watches, rings, fragrance', 'mirror'),
         G('The nose', 'mirror', '',
           'PARKED to 18+. Surgeons want facial growth finished, and it needs your parents. Not a decision to make under pressure.'),
 
         /* ── MIND ── */
         G('Read philosophy — build my own moral spine', 'mind'),
+        G('A strong mind — one that endures hard things', 'mind'),
+        G('Reach my full potential — every area that matters', 'mind', '',
+          'The umbrella over the whole board. Kept as its own line because you named it as its own goal.'),
         G('Be genuinely smarter — psychology, philosophy, what matters', 'mind'),
         G('Write English and Spanish like a professional', 'mind'),
         G('Quit my bad habits', 'mind'),
