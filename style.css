@@ -5475,3 +5475,76 @@ button.intro-tool {
 .rdy__row.is-done { opacity: .45; }
 .rdy__row.is-done b { text-decoration: line-through; text-decoration-thickness: 1px; }
 .rdy__row.is-done .rdy__when { opacity: .6; }
+
+/* ═══════════════════  §60  HABITS  ═══════════════════
+   A goal shows a percentage; a habit shows a history. Thirty dots read as one
+   texture — you see the gaps before you read a single word — and the streak
+   number carries its lane colour so the board still says WHICH part of your
+   life you have been feeding.
+   ═══════════════════════════════════════════════════════════════════════ */
+.hab { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-4); }
+
+.hab__row {
+  display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: var(--sp-3);
+  padding: 10px 4px; border-bottom: 1px solid var(--hairline);
+  animation: cardPop 480ms var(--ease-soft) both;
+  transition: opacity var(--dur-base) var(--ease-vt);
+}
+.hab__row:last-child { border-bottom: 0; }
+
+/* the tick — a ring that fills, with the spring overshoot on the way in */
+.hab__tick {
+  width: 22px; height: 22px; border-radius: 999px; cursor: pointer; padding: 0;
+  background: none; border: 1.5px solid var(--c-mid); position: relative;
+  transition: border-color var(--dur-base) var(--ease-vt), background var(--dur-base) var(--ease-vt);
+}
+.hab__tick:hover  { border-color: var(--c-bone); }
+.hab__tick:active { transform: scale(.92); }
+.hab__tick::after {
+  content: ""; position: absolute; left: 6.5px; top: 3px; width: 5px; height: 10px;
+  border: solid var(--c-void, #0b0b0d); border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0); opacity: 0;
+  transition: transform 420ms var(--spring), opacity var(--dur-fast) var(--ease-vt);
+}
+.hab__row.is-on .hab__tick {
+  background: var(--accent-bright, #fff); border-color: var(--accent-bright, #fff);
+  box-shadow: 0 0 12px -2px var(--accent-glow, rgba(255,255,255,.5));
+}
+.hab__row.is-on .hab__tick::after { transform: rotate(45deg) scale(1); opacity: 1; }
+
+.hab__m { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hab__m b { font-size: 13.5px; font-weight: 600; color: var(--c-paper); letter-spacing: -.005em; }
+
+/* thirty days as one texture — gaps legible at a glance, no counting */
+.hab__dots { display: flex; gap: 2.5px; flex-wrap: nowrap; overflow: hidden; }
+.hab__dots i {
+  flex: 1 1 0; min-width: 0; height: 12px; border-radius: 2px;
+  background: rgba(255,255,255,.07);
+  transition: background var(--dur-base) var(--ease-vt);
+}
+.hab__dots i.is-on    { background: rgba(var(--accent-br-rgb, 255,255,255), .62); }
+.hab__dots i.is-today { box-shadow: inset 0 0 0 1px rgba(255,255,255,.32); }
+
+.hab__streak { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+.hab__streak b {
+  font-family: var(--ff-display); font-style: italic; font-size: 22px;
+  color: var(--c, var(--c-blanc)); font-weight: 400;
+}
+.hab__streak i {
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--c-fog); font-style: normal; margin-top: 3px;
+}
+
+.hab__empty {
+  font-family: var(--ff-display); font-style: italic; font-size: 14px;
+  color: var(--c-fog); line-height: 1.6; margin: var(--sp-4) 0 0;
+}
+
+@media (max-width: 560px) {
+  .hab__dots i { height: 14px; }
+  .hab__m b { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hab__row { animation: none; }
+  .hab__tick::after { transition: opacity var(--dur-fast) linear; }
+}

@@ -681,13 +681,18 @@
     const CAT_PALETTE = ['#6ab0e0','#7dd488','#e0b870','#c89ae0','#e0a0a0','#7dd9d4','#d4c97d','#a0a8e0'];
     const RECUR_OPTS = [14,30,60,90];
     const DEFAULT = {
+      /* THE LANES. Fifty-two stated goals collapse into six places a life is
+         actually lived. A goal without a lane is a goal nobody looks at. */
       categories: [
-        {id:'health',  label:'Health & Fitness'},
-        {id:'career',  label:'Career'},
-        {id:'finance', label:'Finance'},
-        {id:'general', label:'General'},
+        {id:'body',   label:'Body'},
+        {id:'mirror', label:'The Mirror'},
+        {id:'mind',   label:'Mind'},
+        {id:'soul',   label:'Soul'},
+        {id:'build',  label:'Build & Money'},
+        {id:'life',   label:'Life'},
       ],
       goals: [],
+      habits: [],
       shoppingItems: [],
       seeded: false,
     };
@@ -709,6 +714,7 @@
     data.categories    = data.categories    || JSON.parse(JSON.stringify(DEFAULT.categories));
     data.goals         = data.goals         || [];
     data.shoppingItems = data.shoppingItems || [];
+    data.habits        = data.habits        || [];
 
     const persist = () => Store.set(KEYS.goals, data);
     const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || ('c'+uid());
@@ -757,8 +763,100 @@
 
     function seed() {
       if (data.seeded) return;
+      /* THE EIGHT ENGINES. Fifty-two stated wants, but only these move them —
+         each habit here sits underneath four or five of the goals at once. */
+      const H = (label, cat) => ({ id: uid(), label, cat, log: {}, createdAt: Date.now() });
+      data.habits = [
+        H('The 12 minutes — nails, feet, shave, skin', 'mirror'),
+        H('Sleep 8 hours', 'body'),
+        H('Gym', 'body'),
+        H('Hit protein', 'body'),
+        H('Water', 'body'),
+        H('Stand at full height', 'body'),
+        H('Read 20 minutes', 'mind'),
+        H('Prayer', 'soul'),
+      ];
       data.seeded = true;
       persist();
+    }
+
+    /* ══════════════════  HABITS  ══════════════════
+       A goal has a finish line; a habit has a streak. Running both through the
+       same machinery is what makes a board read as failure — a habit sits at
+       "63% complete" forever and never stops accusing you. So: its own lane,
+       its own render. Thirty dots and a number, asking one question only —
+       did you, today.
+
+       The log is a plain date→true map, so a missed day is simply absent and
+       nothing ever needs backfilling. */
+    const HAB_WINDOW = 30;
+    function habStreak(h) {
+      const log = h.log || {};
+      let n = 0;
+      const d = new Date();
+      /* today not yet ticked must not break the streak — the day is not over */
+      if (!log[localDateKey(d)]) d.setDate(d.getDate() - 1);
+      while (log[localDateKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+      return n;
+    }
+    function habBest(h) {
+      const keys = Object.keys(h.log || {}).sort();
+      let best = 0, run = 0, prev = null;
+      keys.forEach(k => {
+        if (prev) {
+          const gap = Math.round((new Date(k + 'T00:00:00') - new Date(prev + 'T00:00:00')) / 86400000);
+          run = gap === 1 ? run + 1 : 1;
+        } else run = 1;
+        if (run > best) best = run;
+        prev = k;
+      });
+      return best;
+    }
+    function habDots(h) {
+      const log = h.log || {}, out = [];
+      for (let i = HAB_WINDOW - 1; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const k = localDateKey(d);
+        out.push({ on: !!log[k], today: i === 0 });
+      }
+      return out;
+    }
+
+    function renderHabits() {
+      const host = $('[data-habits-body]'); if (!host) return;
+      const list = data.habits;
+      const today = localDateKey();
+      const kept = list.filter(h => (h.log || {})[today]).length;
+
+      if (!list.length) {
+        host.innerHTML = `<p class="hab__empty">No habits yet — these are the engines under your goals,
+          the ones with no finish line.</p>`;
+        return;
+      }
+
+      host.innerHTML =
+        `<div class="tile-well hab-well">
+           <span class="tile-kick">✦ today</span>
+           <span class="tile-hero__val">${kept}</span>
+           <span class="tile-hero__of">of ${list.length} kept</span>
+           <div class="tile-hero__bar"><i style="width:${kept / list.length * 100}%"></i></div>
+         </div>
+         <div class="hab">${list.map((h, i) => {
+            const on = !!(h.log || {})[today];
+            const st = habStreak(h), best = habBest(h);
+            return `<div class="hab__row ${on ? 'is-on' : ''}" style="animation-delay:${i * 45}ms">
+              <button type="button" class="hab__tick" data-hab-tick="${h.id}"
+                      aria-label="${esc(h.label)} — mark today"></button>
+              <span class="hab__m">
+                <b>${esc(h.label)}</b>
+                <span class="hab__dots">${habDots(h).map(d =>
+                  `<i class="${d.on ? 'is-on' : ''}${d.today ? ' is-today' : ''}"></i>`).join('')}</span>
+              </span>
+              <span class="hab__streak" style="--c:${catColor(h.cat)}">
+                <b>${st}</b><i>${best > st ? 'best ' + best : 'days'}</i>
+              </span>
+            </div>`;
+          }).join('')}</div>`;
     }
 
     /* =====================  CATEGORY BAR  ===================== */
@@ -996,6 +1094,7 @@
       populateCategorySelects();
       renderCatBar();
       renderGoals();
+      renderHabits();
       populateShopFilter();
       renderShoppingList();
       renderWidget();
@@ -1018,6 +1117,20 @@
       });
 
       root.addEventListener('click', e => {
+        /* One thumb, once a day. Tapping again unmarks it — an honest board
+           has to let you take a day back as well as claim one. */
+        const ht = e.target.closest('[data-hab-tick]');
+        if (ht) {
+          const h = data.habits.find(x => x.id === ht.getAttribute('data-hab-tick'));
+          if (h) {
+            h.log = h.log || {};
+            const k = localDateKey();
+            if (h.log[k]) delete h.log[k]; else h.log[k] = true;
+            persist(); renderHabits();
+          }
+          return;
+        }
+
         if (e.target.closest('[data-goalcat-edit]'))     { catEditing = true; renderCatBar(); return; }
         if (e.target.closest('[data-goalcat-edit-done]')) { catEditing = false; renderCatBar(); return; }
         if (e.target.closest('[data-goalcat-add]')) {
