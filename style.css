@@ -5869,3 +5869,7 @@ body.is-splitdrag .views > [data-tab-panel] { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .chooser, .chooser__box { animation: none; }
 }
+
+/* The chooser scrim referenced a keyframe that did not exist — the overlay
+   still worked, it just appeared without the fade it was written for. */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
