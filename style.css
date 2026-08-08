@@ -5584,7 +5584,8 @@ button.intro-tool {
    unhidden, each placed explicitly so any tab can sit in any pane.
    ═══════════════════════════════════════════════════════════════════════ */
 .split-fab {
-  position: fixed; top: 18px; right: 68px; z-index: 60;
+  /* alerts sits at 18, Nova at 70 — this is the third seat, not a collision */
+  position: fixed; top: 18px; right: 122px; z-index: 60;
   display: inline-grid; place-items: center; cursor: pointer;
   width: 42px; height: 42px; color: var(--c-bone);
   border: 1px solid var(--border-strong); border-radius: 999px;
@@ -5672,6 +5673,51 @@ body[data-split] .views > [data-tab-panel][hidden] { display: none; }
     display: flex; flex-direction: column; height: auto; min-height: 0;
   }
   body[data-split] .views > [data-tab-panel] { max-height: 78vh; }
-  .split-fab { top: 18px; right: 68px; }
+  .split-fab { top: 18px; right: 122px; }
 }
 @media (prefers-reduced-motion: reduce) { .splitp { animation: none; } }
+
+/* ── §62b · pane controls, presets, focus ─────────────────────────────
+   Going back to the picker to change one tab is a trip nobody should have to
+   make, so each pane carries its own. The bar sticks to the top of its own
+   scroller, which is why it survives scrolling inside a pane.            */
+.pane-bar {
+  position: sticky; top: calc(var(--sp-4) * -1); z-index: 5;
+  display: flex; align-items: center; gap: 6px;
+  margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) var(--sp-4);
+  padding: 8px var(--sp-4);
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--c-void, #0b0b0d) 86%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.pane-bar__pick {
+  flex: 1; min-width: 0; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-bone); background: none; border: 0; padding: 3px 0;
+}
+.pane-bar__pick:focus-visible { outline: 1px solid var(--accent-soft); border-radius: 4px; }
+.pane-bar__x {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: 6px; cursor: pointer;
+  color: var(--c-mid); font-size: 16px; line-height: 1;
+  transition: color .2s, background .2s;
+}
+.pane-bar__x:hover { color: var(--c-blanc); background: rgba(255,255,255,.06); }
+
+/* The focused pane is where the next nav tap lands. Stated quietly — a hair
+   of accent on one edge — because it must not compete with the content. */
+body[data-split] .views > [data-tab-panel].is-focused {
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .34);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-br-rgb, 255,255,255), .10);
+}
+
+.splitp__presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--sp-4); }
+.splitp__pre {
+  flex: 1 1 auto; padding: 7px 10px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-bone); background: rgba(255,255,255,.03);
+  border: 1px solid var(--hairline); border-radius: 999px;
+  transition: color .2s, border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.splitp__pre:hover  { color: #fff; border-color: var(--border); background: rgba(255,255,255,.07); }
+.splitp__pre:active { transform: scale(.95); }

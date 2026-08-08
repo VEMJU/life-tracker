@@ -8609,8 +8609,19 @@
       q4: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/>',
     };
 
+    /* Presets, because the useful combinations are few and always the same.
+       Choosing a layout and then two tabs is three decisions to see your
+       calendar next to your goals; this is one. */
+    const PRESETS = [
+      { label: 'Planning',   layout: 'v2', tabs: ['goals', 'calendar'] },
+      { label: 'Training',   layout: 'v2', tabs: ['gym', 'nutrition'] },
+      { label: 'Applying',   layout: 'v2', tabs: ['academics', 'calendar'] },
+      { label: 'The day',    layout: 'l3', tabs: ['home', 'calendar', 'reminders'] },
+    ];
+
     let st = Store.get(KEY, null);
     if (!st || !LAYOUTS[st.layout]) st = { layout: 'single', tabs: ['home'] };
+    if (typeof st.focus !== 'number') st.focus = 0;
     const save = () => Store.set(KEY, st);
 
     const active = () => st.layout !== 'single';
@@ -8621,7 +8632,11 @@
     function render() {
       const cells = LAYOUTS[st.layout].cells;
       document.body.dataset.split = st.layout;
-      $$('[data-tab-panel]').forEach(p => { p.hidden = true; p.style.gridArea = ''; });
+      $$('[data-tab-panel]').forEach(p => {
+        p.hidden = true; p.style.gridArea = ''; p.classList.remove('is-focused');
+        const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
+      });
+      if (st.focus >= cells.length) st.focus = 0;
 
       st.tabs.slice(0, cells.length).forEach((tab, i) => {
         const panel = $(`[data-tab-panel="${tab}"]`);
@@ -8629,14 +8644,41 @@
         const [c, r, cs, rs] = cells[i];
         panel.hidden = false;
         panel.style.gridArea = `${r} / ${c} / ${r + rs} / ${c + cs}`;
+        if (i === st.focus) panel.classList.add('is-focused');
+
+        /* Every pane carries its own controls. Going back to the picker to
+           change one tab is a trip you should not have to make. */
+        const bar = document.createElement('div');
+        bar.className = 'pane-bar';
+        bar.dataset.paneIdx = String(i);
+        bar.innerHTML =
+          `<select class="pane-bar__pick" data-split-pane="${i}" aria-label="Pane ${i + 1} tab">
+             ${REAL_PANELS.map(t =>
+               `<option value="${t}" ${t === tab ? 'selected' : ''}>${esc((TAB_META[t] || {}).title || t)}</option>`).join('')}
+           </select>
+           ${cells.length > 1 ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
+                                   aria-label="Close this pane">×</button>` : ''}`;
+        panel.prepend(bar);
+
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       });
+    }
+
+    /* Closing a pane should shrink the layout, not leave a hole. */
+    function dropPane(i) {
+      st.tabs.splice(i, 1);
+      const order = ['single', 'v2', 'l3', 'q4'];
+      const smaller = { q4: 'l3', l3: 'v2', v2: 'single', h2: 'single', single: 'single' };
+      setLayout(smaller[st.layout] || 'single');
     }
 
     function exit() {
       st.layout = 'single'; save();
       delete document.body.dataset.split;
-      $$('[data-tab-panel]').forEach(p => { p.style.gridArea = ''; });
+      $$('[data-tab-panel]').forEach(p => {
+        p.style.gridArea = ''; p.classList.remove('is-focused');
+        const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
+      });
       Tabs.setActive(st.tabs[0] || 'home');
     }
 
@@ -8662,6 +8704,10 @@
     function paint() {
       const lay = $('[data-split-layouts]'), panes = $('[data-split-panes]');
       if (!lay || !panes) return;
+      const pre = $('[data-split-presets]');
+      if (pre) pre.innerHTML = PRESETS.map((p, i) =>
+        `<button type="button" class="splitp__pre" data-split-pre="${i}">${esc(p.label)}</button>`).join('');
+
       lay.innerHTML = Object.entries(LAYOUTS).map(([k, v]) =>
         `<button type="button" class="splitp__lay ${st.layout === k ? 'is-on' : ''}" data-split-lay="${k}"
                  title="${esc(v.label)}" aria-label="${esc(v.label)}">
@@ -8685,12 +8731,38 @@
     function init() {
       /* When a split is live, a nav tap replaces the FIRST pane rather than
          collapsing the layout — you are rearranging the desk, not leaving it. */
+      /* A nav tap while split replaces the FOCUSED pane — the one you last
+         touched — not always the first. With four panes open, "it went
+         somewhere else" is the difference between a desk and a mess. */
       Tabs.setSplitHook((name) => {
         if (!active()) return false;
-        if (st.tabs[0] !== name && st.tabs.indexOf(name) < 0) { st.tabs[0] = name; save(); paint(); }
+        if (st.tabs.indexOf(name) < 0) { st.tabs[st.focus] = name; save(); paint(); }
         render();
         return true;
       });
+
+      /* Touching a pane focuses it. Cheap, invisible until it matters. */
+      const views = $('.views');
+      if (views) views.addEventListener('pointerdown', (e) => {
+        if (!active()) return;
+        const panel = e.target.closest('[data-tab-panel]'); if (!panel) return;
+        const i = st.tabs.indexOf(panel.getAttribute('data-tab-panel'));
+        if (i < 0 || i === st.focus) return;
+        st.focus = i; save();
+        $$('[data-tab-panel]').forEach(p => p.classList.remove('is-focused'));
+        panel.classList.add('is-focused');
+      }, true);
+
+      if (views) {
+        views.addEventListener('change', (e) => {
+          const s = e.target.closest('[data-split-pane]');
+          if (s) setPane(+s.getAttribute('data-split-pane'), s.value);
+        });
+        views.addEventListener('click', (e) => {
+          const d = e.target.closest('[data-split-drop]');
+          if (d) { e.stopPropagation(); dropPane(+d.getAttribute('data-split-drop')); }
+        });
+      }
 
       const fab = $('[data-split-open]');
       if (fab) fab.addEventListener('click', () => {
@@ -8702,6 +8774,14 @@
       const panel = $('[data-split-panel]');
       if (panel) {
         panel.addEventListener('click', (e) => {
+          const pr = e.target.closest('[data-split-pre]');
+          if (pr) {
+            const p = PRESETS[+pr.getAttribute('data-split-pre')];
+            st.tabs = p.tabs.slice(); st.focus = 0; save();
+            setLayout(p.layout);
+            close();
+            return;
+          }
           const l = e.target.closest('[data-split-lay]');
           if (l) setLayout(l.getAttribute('data-split-lay'));
         });
