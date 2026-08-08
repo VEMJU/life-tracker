@@ -5548,3 +5548,32 @@ button.intro-tool {
   .hab__row { animation: none; }
   .hab__tick::after { transition: opacity var(--dur-fast) linear; }
 }
+
+/* ═══════════════════  §61  SMOOTHNESS  ═══════════════════
+   Three things made tab switching feel slow, and only one of them was slow.
+
+   1. A per-item animation stagger that was charming at five rows and a
+      two-second wait at fifty. Capped in JS.
+   2. Two smooth scrolls firing at once on every switch, so the view was still
+      visibly moving after the tab had already changed. The page lands now.
+   3. Fifty goal cards laid out and painted whether or not you can see them.
+      That is this block.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Each panel is its own world — nothing inside it can force the rest of the
+   page to re-layout, so switching tabs stops costing a full-document reflow. */
+[data-tab-panel] { contain: layout style; }
+
+/* Long lists only render what is on screen. The intrinsic size is a rough
+   stand-in for an unrendered card, which keeps the scrollbar honest and stops
+   the page jumping as you scroll into them. */
+.goals-grid > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px;
+}
+.rdy, .hab { content-visibility: auto; contain-intrinsic-size: auto 420px; }
+
+/* An open goal has to render fully — its height is nothing like the estimate,
+   and a card you are reading must never be skipped. */
+.goals-grid > .is-open,
+.goals-grid > [data-goal-open="true"] { content-visibility: visible; }

@@ -488,7 +488,7 @@
       el.innerHTML =
         `<div class="study__exams">${EXAMS.map((e, i) => {
           const dt = new Date(e.when);
-          return `<div class="study__exam is-${e.tone}" style="animation-delay:${i * 70}ms">
+          return `<div class="study__exam is-${e.tone}" style="animation-delay:${Math.min(350, i * 70)}ms">
             <i></i>
             <span class="study__exam-m"><b>${esc(e.name)}</b><small>${esc(e.note)}</small></span>
             <span class="study__exam-w">${dt.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'}).toUpperCase()}<br>
@@ -769,13 +769,20 @@
          The lanes are different: replacing categories on a board that already
          has goals would orphan every one of them. So they upgrade only on an
          empty board, and otherwise stay exactly as the owner left them. */
+      /* EVERY seed gets its OWN flag. Sharing one means whichever feature
+         ships first closes the door on the next — which is exactly how the
+         goals stayed invisible after the habits went out an hour earlier. */
       if (!data.habitsSeeded && !data.habits.length) {
         data.habitsSeeded = true;
         seedHabits();
-        if (!data.goals.length) {
-          data.categories = JSON.parse(JSON.stringify(DEFAULT.categories));
-          seedGoals();
-        }
+        persist();
+      }
+      if (!data.goalsSeeded && !data.goals.length) {
+        data.goalsSeeded = true;
+        /* Lanes upgrade only on an empty board — replacing categories under
+           existing goals would orphan every one of them. */
+        data.categories = JSON.parse(JSON.stringify(DEFAULT.categories));
+        seedGoals();
         persist();
       }
       if (data.seeded) return;
@@ -956,7 +963,7 @@
          <div class="hab">${list.map((h, i) => {
             const on = !!(h.log || {})[today];
             const st = habStreak(h), best = habBest(h);
-            return `<div class="hab__row ${on ? 'is-on' : ''}" style="animation-delay:${i * 45}ms">
+            return `<div class="hab__row ${on ? 'is-on' : ''}" style="animation-delay:${Math.min(320, i * 45)}ms">
               <button type="button" class="hab__tick" data-hab-tick="${h.id}"
                       aria-label="${esc(h.label)} — mark today"></button>
               <span class="hab__m">
@@ -5230,7 +5237,7 @@
             const when = r.sitting
               ? new Date(r.sitting + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
               : '';
-            return `<div class="rgt__row ${state}" style="animation-delay:${i * 45}ms">
+            return `<div class="rgt__row ${state}" style="animation-delay:${Math.min(320, i * 45)}ms">
               <span class="rgt__dot"></span>
               <span class="rgt__m">
                 <b>${esc(r.slot)}</b>
@@ -5265,7 +5272,7 @@
             const n = daysTo(r.due);
             const late = n !== null && n < 0;
             return `<button type="button" data-rdy="${r.id}" class="rdy__row is-${r.state} ${r.urgent && r.state !== 'done' ? 'is-urgent' : ''}"
-                         style="animation-delay:${i * 45}ms">
+                         style="animation-delay:${Math.min(320, i * 45)}ms">
               <span class="rdy__dot"></span>
               <span class="rdy__main">
                 <b>${esc(r.label)}</b>
@@ -5769,7 +5776,7 @@
          <div class="mtg">${MEETING.asks.map((a, i) => {
             const on = set.includes(a.id);
             return `<button class="mtg__row ${on ? 'is-on' : ''} ${a.rank === 'must' ? 'is-must' : ''}"
-                      data-mtg="${a.id}" style="animation-delay:${i * 40}ms">
+                      data-mtg="${a.id}" style="animation-delay:${Math.min(320, i * 40)}ms">
               <span class="mtg__box"></span>
               <span class="mtg__m">
                 <b>${esc(a.say)}</b>
@@ -7393,7 +7400,7 @@
           : '';
 
         return `<button class="cal-wk ${ds === today ? 'is-today' : ''} ${L.over ? 'is-over' : ''}"
-                        data-cal-openday="${ds}" type="button" style="animation-delay:${i * 45}ms">
+                        data-cal-openday="${ds}" type="button" style="animation-delay:${Math.min(320, i * 45)}ms">
           <span class="cal-wk__day"><b>${WD[d.getDay()]}</b><i>${d.getDate()}</i></span>
           <span class="cal-wk__track">${marks}${nowMark}</span>
           <span class="cal-wk__load">
@@ -8449,18 +8456,29 @@
       if (REAL_PANELS.includes(name)) {
         const panel = $(`[data-tab-panel="${name}"]`);
         if (panel) panel.hidden = false;
-        if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
-        if (name==='goals')     Goals.renderAll();
-        if (name==='reminders') Reminders.render();
-        if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
-        if (name==='nutrition') Nutrition.init();
-        if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
-        if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
-        if (name==='academics') { Academics.init(); Study.init(); }
-        if (name==='logs')      Logs.init();
-        if (name==='clothes')   Clothes.init();
-        if (name==='sports')    Sports.init();
-        if (name==='calendar')  Cal.init();
+
+        /* The panel becomes visible NOW; its contents rebuild on the next
+           frame. Rendering fifty goal cards inline meant the browser could not
+           paint the switch until every one of them existed — so the tap felt
+           dead for as long as the work took. Splitting it costs one frame and
+           buys an instant response. A tab you have opened before still shows
+           its previous render in the meantime, so there is nothing to see
+           flicker. */
+        requestAnimationFrame(() => {
+          if (document.body.dataset.view !== name) return;   // they moved on
+          if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
+          if (name==='goals')     Goals.renderAll();
+          if (name==='reminders') Reminders.render();
+          if (name==='gym')       { Gym.ensureRendered(); ProgressLog.refresh(); WidgetManager.initGymCards(); }
+          if (name==='nutrition') Nutrition.init();
+          if (name==='finance')   { Finance.init(); FinHeatmap.render(); }
+          if (name==='photos')    { Photos.init(); WidgetManager.initPhotoCards(); }
+          if (name==='academics') { Academics.init(); Study.init(); }
+          if (name==='logs')      Logs.init();
+          if (name==='clothes')   Clothes.init();
+          if (name==='sports')    Sports.init();
+          if (name==='calendar')  Cal.init();
+        });
       } else {
         const ph   = $('[data-tab-panel="placeholder"]');
         const meta = TAB_META[name]||{eyebrow:'Module',title:name,desc:'Module reserved.'};
@@ -8492,9 +8510,14 @@
          than at boot — otherwise it would show whatever was true when the app
          started, which is exactly the number you did not want. */
       if (name === 'stats') Stats.render();
+      /* Two smooth scrolls used to fire on every switch — the nav strip sliding
+         and the page easing back to the top — so the view was still visibly
+         moving half a second after the tab had already changed. That reads as
+         lag even when nothing is slow. The page LANDS now; only the nav strip,
+         which you are actually looking at, still glides. */
       const activeTop = toplinks().find(t => t.dataset.tab===name);
       activeTop?.scrollIntoView?.({behavior:'smooth',inline:'center',block:'nearest'});
-      window.scrollTo({top:0,behavior:'smooth'});
+      window.scrollTo(0, 0);
     }
 
     function init() {
