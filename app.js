@@ -8622,7 +8622,68 @@
     let st = Store.get(KEY, null);
     if (!st || !LAYOUTS[st.layout]) st = { layout: 'single', tabs: ['home'] };
     if (typeof st.focus !== 'number') st.focus = 0;
+    /* cols/rows are seam POSITIONS as percentages, not pixel widths — so a desk
+       laid out on a laptop still looks like itself on a monitor. */
+    if (typeof st.cols !== 'number') st.cols = 50;
+    if (typeof st.rows !== 'number') st.rows = 50;
+    if (!Array.isArray(st.saved))   st.saved = [];
     const save = () => Store.set(KEY, st);
+    const clampPct = (v) => Math.max(18, Math.min(82, v));
+
+    /* The grid reads its proportions from two custom properties, so dragging a
+       divider is one style write and nothing else has to be recalculated. */
+    function applySizes() {
+      const views = $('.views'); if (!views) return;
+      views.style.setProperty('--sc', clampPct(st.cols) + '%');
+      views.style.setProperty('--sr', clampPct(st.rows) + '%');
+    }
+
+    /* Dividers exist only where the layout actually HAS a seam — and in the
+       three-pane layout the horizontal one spans the right column only, since
+       that is the only place a horizontal seam exists. */
+    function renderHandles() {
+      const views = $('.views'); if (!views) return;
+      $$('.split-grip', views).forEach(g => g.remove());
+      if (!active() || st.locked) return;
+      const L = st.layout, grips = [];
+      if (L === 'v2' || L === 'l3' || L === 'q4') grips.push('col');
+      if (L === 'h2' || L === 'l3' || L === 'q4') grips.push('row');
+      grips.forEach(kind => {
+        const g = document.createElement('div');
+        g.className = 'split-grip split-grip--' + kind + (L === 'l3' && kind === 'row' ? ' is-right' : '');
+        g.dataset.grip = kind;
+        g.setAttribute('role', 'separator');
+        g.setAttribute('aria-label', kind === 'col' ? 'Resize columns' : 'Resize rows');
+        views.appendChild(g);
+      });
+    }
+
+    function beginDrag(e) {
+      const grip = e.target.closest('.split-grip'); if (!grip) return;
+      const views = $('.views'); if (!views) return;
+      const kind = grip.dataset.grip;
+      const box = views.getBoundingClientRect();
+      grip.setPointerCapture?.(e.pointerId);
+      document.body.classList.add('is-splitdrag');
+      const move = (ev) => {
+        const pct = kind === 'col'
+          ? ((ev.clientX - box.left) / box.width) * 100
+          : ((ev.clientY - box.top)  / box.height) * 100;
+        if (kind === 'col') st.cols = clampPct(pct); else st.rows = clampPct(pct);
+        applySizes();
+      };
+      const up = () => {
+        document.body.classList.remove('is-splitdrag');
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        save();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      e.preventDefault();
+    }
 
     const active = () => st.layout !== 'single';
     const paneCount = () => LAYOUTS[st.layout].cells.length;
@@ -8652,17 +8713,44 @@
         bar.className = 'pane-bar';
         bar.dataset.paneIdx = String(i);
         bar.innerHTML =
-          `<select class="pane-bar__pick" data-split-pane="${i}" aria-label="Pane ${i + 1} tab">
-             ${REAL_PANELS.map(t =>
-               `<option value="${t}" ${t === tab ? 'selected' : ''}>${esc((TAB_META[t] || {}).title || t)}</option>`).join('')}
-           </select>
-           ${cells.length > 1 ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
+          `<button type="button" class="pane-bar__pick" data-split-choose="${i}">
+             <span>${esc((TAB_META[tab] || {}).title || tab)}</span>
+             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+                  stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round"/></svg>
+           </button>
+           ${cells.length > 1 && !st.locked ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
                                    aria-label="Close this pane">×</button>` : ''}`;
         panel.prepend(bar);
 
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       });
+
+      applySizes();
+      renderHandles();
     }
+
+    /* ── choosing a tab ──────────────────────────────────────────────
+       A dropdown makes you read nineteen words to find one. A grid of cards
+       lets you find it by shape and position — which is how you actually
+       remember where your tabs are. */
+    let choosingFor = -1;
+    function openChooser(i) {
+      choosingFor = i;
+      const ov = $('[data-split-chooser]'); if (!ov) return;
+      const taken = st.tabs.slice(0, paneCount());
+      $('[data-split-chooser-grid]').innerHTML = REAL_PANELS.map(t => {
+        const m = TAB_META[t] || {};
+        const here = taken[i] === t;
+        const elsewhere = !here && taken.indexOf(t) >= 0;
+        return `<button type="button" class="chz ${here ? 'is-on' : ''} ${elsewhere ? 'is-elsewhere' : ''}"
+                        data-split-pick="${t}">
+          <b>${esc(m.title || t)}</b>
+          <i>${esc(m.eyebrow || '')}</i>
+        </button>`;
+      }).join('');
+      ov.hidden = false;
+    }
+    function closeChooser() { const ov = $('[data-split-chooser]'); if (ov) ov.hidden = true; choosingFor = -1; }
 
     /* Closing a pane should shrink the layout, not leave a hole. */
     function dropPane(i) {
@@ -8706,6 +8794,29 @@
       const pre = $('[data-split-presets]');
       if (pre) pre.innerHTML = PRESETS.map((p, i) =>
         `<button type="button" class="splitp__pre" data-split-pre="${i}">${esc(p.label)}</button>`).join('');
+
+      /* Your own desks. A layout you built and named survives everything —
+         you come back to the work, not to a blank grid. */
+      const sv = $('[data-split-saved]');
+      if (sv) sv.innerHTML =
+        (st.saved.length
+          ? st.saved.map(w =>
+              `<div class="splitp__ws">
+                 <button type="button" class="splitp__wsgo" data-split-load="${w.id}">
+                   <b>${esc(w.name)}</b><i>${w.tabs.length} panes</i>
+                 </button>
+                 <button type="button" class="splitp__wsx" data-split-del="${w.id}" aria-label="Delete">×</button>
+               </div>`).join('')
+          : '<p class="splitp__hint">Lay out a desk you like, then save it here.</p>') +
+        (active()
+          ? `<div class="splitp__savebar">
+               <input class="input input--sm" data-split-name maxlength="24" placeholder="Name this desk">
+               <button type="button" class="btn btn--sm btn--ghost" data-split-save>Save</button>
+             </div>
+             <button type="button" class="splitp__lock ${st.locked ? 'is-on' : ''}" data-split-lock>
+               ${st.locked ? '🔒 Locked — sizes and panes fixed' : '🔓 Lock this desk'}
+             </button>`
+          : '');
 
       lay.innerHTML = Object.entries(LAYOUTS).map(([k, v]) =>
         `<button type="button" class="splitp__lay ${st.layout === k ? 'is-on' : ''}" data-split-lay="${k}"
@@ -8753,15 +8864,30 @@
       }, true);
 
       if (views) {
-        views.addEventListener('change', (e) => {
-          const s = e.target.closest('[data-split-pane]');
-          if (s) setPane(+s.getAttribute('data-split-pane'), s.value);
-        });
+        views.addEventListener('pointerdown', beginDrag);
         views.addEventListener('click', (e) => {
+          const ch = e.target.closest('[data-split-choose]');
+          if (ch) { e.stopPropagation(); openChooser(+ch.getAttribute('data-split-choose')); return; }
           const d = e.target.closest('[data-split-drop]');
           if (d) { e.stopPropagation(); dropPane(+d.getAttribute('data-split-drop')); }
         });
       }
+
+      const chooser = $('[data-split-chooser]');
+      if (chooser) chooser.addEventListener('click', (e) => {
+        if (e.target === chooser || e.target.closest('[data-split-chooser-close]')) { closeChooser(); return; }
+        const pick = e.target.closest('[data-split-pick]');
+        if (pick && choosingFor >= 0) {
+          const tab = pick.getAttribute('data-split-pick');
+          /* Picking a tab already open elsewhere SWAPS the two panes rather
+             than showing it twice — two copies of one tab is never the intent. */
+          const at = st.tabs.indexOf(tab);
+          if (at >= 0 && at !== choosingFor) st.tabs[at] = st.tabs[choosingFor];
+          st.tabs[choosingFor] = tab;
+          st.focus = choosingFor; save();
+          closeChooser(); render(); paint();
+        }
+      });
 
       const fab = $('[data-split-open]');
       if (fab) fab.addEventListener('click', () => {
@@ -8782,7 +8908,35 @@
             return;
           }
           const l = e.target.closest('[data-split-lay]');
-          if (l) setLayout(l.getAttribute('data-split-lay'));
+          if (l) { setLayout(l.getAttribute('data-split-lay')); return; }
+
+          if (e.target.closest('[data-split-save]')) {
+            const inp = $('[data-split-name]');
+            const name = (inp?.value || '').trim() || LAYOUTS[st.layout].label;
+            st.saved.push({ id: uid(), name, layout: st.layout,
+                            tabs: st.tabs.slice(0, paneCount()), cols: st.cols, rows: st.rows });
+            save(); if (inp) inp.value = ''; paint(); toast('Desk saved ✓');
+            return;
+          }
+          if (e.target.closest('[data-split-lock]')) {
+            st.locked = !st.locked; save(); render(); paint();
+            toast(st.locked ? 'Desk locked' : 'Desk unlocked');
+            return;
+          }
+          const del = e.target.closest('[data-split-del]');
+          if (del) {
+            st.saved = st.saved.filter(w => w.id !== del.getAttribute('data-split-del'));
+            save(); paint(); return;
+          }
+          const load = e.target.closest('[data-split-load]');
+          if (load) {
+            const w = st.saved.find(x => x.id === load.getAttribute('data-split-load'));
+            if (w) {
+              st.layout = w.layout; st.tabs = w.tabs.slice();
+              st.cols = w.cols; st.rows = w.rows; st.focus = 0; save();
+              render(); paint(); close();
+            }
+          }
         });
         panel.addEventListener('change', (e) => {
           const s = e.target.closest('[data-split-pane]');

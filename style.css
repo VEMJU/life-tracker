@@ -5721,3 +5721,151 @@ body[data-split] .views > [data-tab-panel].is-focused {
 }
 .splitp__pre:hover  { color: #fff; border-color: var(--border); background: rgba(255,255,255,.07); }
 .splitp__pre:active { transform: scale(.95); }
+
+/* ── §62c · a real desk ───────────────────────────────────────────────
+   Split view now takes the whole screen, the seams are draggable, and a desk
+   you have built can be named and kept. The grid reads its proportions from
+   --sc / --sr so a drag is one style write and nothing else recalculates. */
+body[data-split] .views {
+  grid-template-columns: var(--sc, 50%) 1fr;
+  grid-template-rows:    var(--sr, 50%) 1fr;
+  position: relative;
+  /* the whole screen: the desk is the work, not a card sitting inside a page */
+  height: calc(100dvh - 96px);
+  gap: 8px;
+}
+body[data-split] .view-head,
+body[data-split] .widget-rail { display: none; }
+body[data-split] .views > [data-tab-panel] { padding: var(--sp-4) var(--sp-4) var(--sp-5); }
+
+/* ── the seams ─────────────────────────────────────────────────────── */
+.split-grip {
+  position: absolute; z-index: 6; touch-action: none;
+  background: transparent; transition: background .18s var(--ease-vt);
+}
+.split-grip::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  background: rgba(var(--accent-br-rgb, 255,255,255), 0);
+  border-radius: 999px; transition: background .18s var(--ease-vt);
+}
+.split-grip--col {
+  top: 0; bottom: 0; width: 14px; cursor: col-resize;
+  left: calc(var(--sc, 50%) - 7px);
+}
+.split-grip--col::after { width: 3px; height: 46px; }
+.split-grip--row {
+  left: 0; right: 0; height: 14px; cursor: row-resize;
+  top: calc(var(--sr, 50%) - 7px);
+}
+.split-grip--row.is-right { left: var(--sc, 50%); }
+.split-grip--row::after { height: 3px; width: 46px; }
+.split-grip:hover::after,
+body.is-splitdrag .split-grip::after { background: rgba(var(--accent-br-rgb, 255,255,255), .55); }
+body.is-splitdrag { cursor: grabbing; user-select: none; }
+body.is-splitdrag .views > [data-tab-panel] { pointer-events: none; }
+
+/* ── the pane title becomes a button ───────────────────────────────── */
+.pane-bar__pick {
+  display: flex; align-items: center; gap: 6px;
+  flex: 1; min-width: 0; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-bone); background: none; border: 0; padding: 3px 0; text-align: left;
+  transition: color .2s;
+}
+.pane-bar__pick:hover { color: #fff; }
+.pane-bar__pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-bar__pick svg  { flex: none; opacity: .55; }
+
+/* ── the chooser ───────────────────────────────────────────────────── */
+.chooser {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  padding: var(--sp-5); background: rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: fadeIn 220ms var(--ease-vt) both;
+}
+.chooser[hidden] { display: none; }
+.chooser__box {
+  width: min(620px, 100%); max-height: 82vh; overflow: auto;
+  border: 1px solid var(--border-strong); border-radius: 20px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: var(--glass-shadow); padding: var(--sp-5);
+  animation: cardPop 460ms var(--ease-soft) both;
+}
+.chooser__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-4); }
+.chooser__head h3 {
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--c-fog); margin: 0; font-weight: 500;
+}
+.chooser__x { background: none; border: 0; color: var(--c-fog); font-size: 22px; line-height: 1; cursor: pointer; }
+.chooser__x:hover { color: var(--c-blanc); }
+.chooser__grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr));
+}
+.chz {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  padding: 12px; border: 1px solid var(--hairline); border-radius: 12px;
+  background: rgba(255,255,255,.02); color: inherit;
+  transition: border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.chz:hover  { border-color: var(--border); background: rgba(255,255,255,.06); }
+.chz:active { transform: scale(.97); }
+.chz b { font-size: 13px; font-weight: 600; color: var(--c-paper); }
+.chz i {
+  font-family: var(--ff-display); font-style: italic; font-size: 11.5px;
+  color: var(--c-fog); line-height: 1.35;
+}
+.chz.is-on {
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .5);
+  background: rgba(var(--accent-br-rgb, 255,255,255), .08);
+}
+.chz.is-elsewhere { opacity: .5; }        /* open in another pane — picking swaps them */
+
+/* ── saved desks ───────────────────────────────────────────────────── */
+.splitp__saved { display: flex; flex-direction: column; gap: 6px; margin-top: var(--sp-4); }
+.splitp__ws { display: flex; align-items: stretch; gap: 4px; }
+.splitp__wsgo {
+  flex: 1; min-width: 0; text-align: left; cursor: pointer; padding: 8px 10px;
+  border: 1px solid var(--hairline); border-radius: 10px;
+  background: rgba(255,255,255,.02); color: inherit;
+  display: flex; flex-direction: column; gap: 2px;
+  transition: border-color .2s, background .2s;
+}
+.splitp__wsgo:hover { border-color: var(--border); background: rgba(255,255,255,.06); }
+.splitp__wsgo b { font-size: 12.5px; color: var(--c-paper); font-weight: 600; }
+.splitp__wsgo i {
+  font-family: var(--ff-mono); font-size: 8px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--c-fog); font-style: normal;
+}
+.splitp__wsx {
+  flex: none; width: 28px; border: 1px solid var(--hairline); border-radius: 10px;
+  background: none; color: var(--c-mid); cursor: pointer; font-size: 15px;
+  transition: color .2s, border-color .2s;
+}
+.splitp__wsx:hover { color: var(--c-blanc); border-color: var(--border); }
+.splitp__hint {
+  font-family: var(--ff-display); font-style: italic; font-size: 12px;
+  color: var(--c-fog); margin: 0; line-height: 1.5;
+}
+.splitp__savebar { display: flex; gap: 6px; margin-top: 6px; }
+.splitp__savebar input { flex: 1; min-width: 0; }
+.splitp__lock {
+  margin-top: 6px; width: 100%; cursor: pointer; padding: 8px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-fog); background: none; border: 1px dashed var(--hairline); border-radius: 10px;
+  transition: color .2s, border-color .2s;
+}
+.splitp__lock:hover { color: var(--c-bone); border-color: var(--border); }
+.splitp__lock.is-on {
+  color: var(--accent-bright, #fff); border-style: solid;
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .4);
+}
+
+@media (max-width: 780px) {
+  body[data-split] .views { height: auto; grid-template-columns: 1fr; grid-template-rows: none; }
+  .split-grip { display: none; }        /* no seams to drag in a single column */
+}
+@media (prefers-reduced-motion: reduce) {
+  .chooser, .chooser__box { animation: none; }
+}
