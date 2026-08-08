@@ -4893,6 +4893,13 @@
           note: asked ? asked + ' asked' : 'Acosta · Zechowski · Ms. Arkin as spare',
           due: '2026-08-08',
           hint: 'Letters are portable. They do not need you enrolled.' },
+        /* The invite has to land AFTER the email, or it reads as a cold link
+           from a stranger. Emails first, then FERPA, then invite. */
+        { id: 'ferpa', label: 'FERPA + invite the three teachers',
+          state: 'todo', urgent: true,
+          note: 'Email Acosta, Santana, Arkin FIRST — then waive FERPA and invite',
+          due: '2026-08-09', at: '11:00', end: '12:00',
+          hint: 'Waive your rights. A letter you can read is one they half-trust.' },
         { id: 'byu', label: 'BYU price check',
           state: 'todo',
           note: 'is@byu.edu — ask about religion course requirements',
