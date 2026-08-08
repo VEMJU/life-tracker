@@ -8690,6 +8690,39 @@
 
     /* Panels build one per frame rather than all at once — four tabs rendering
        in a single frame is exactly the stall we just spent an hour removing. */
+    /* Which pane, if any, is currently picking its tab. An empty pane is
+       ALWAYS picking — that is what makes a new pane self-explanatory instead
+       of a blank rectangle you have to be taught about. */
+    let choosingFor = -1;
+
+    function paneBarHTML(i, tab, canClose) {
+      return `<div class="pane-bar">
+        <button type="button" class="pane-bar__pick" data-split-choose="${i}">
+          <span>${tab ? esc((TAB_META[tab] || {}).title || tab) : 'Choose'}</span>
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+               stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round"/></svg>
+        </button>
+        ${canClose ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
+                        aria-label="Close this pane">×</button>` : ''}
+      </div>`;
+    }
+
+    /* The chooser lives INSIDE the pane it is filling. A modal over the whole
+       screen asks you to remember which rectangle you were pointing at; a grid
+       in the pane itself simply shows you. */
+    function chooserHTML(i) {
+      const taken = st.tabs.slice(0, paneCount());
+      return `<div class="slot__grid">${REAL_PANELS.map(t => {
+        const m = TAB_META[t] || {};
+        const here = taken[i] === t;
+        const elsewhere = !here && taken.indexOf(t) >= 0;
+        return `<button type="button" class="chz ${here ? 'is-on' : ''} ${elsewhere ? 'is-elsewhere' : ''}"
+                        data-split-pick="${t}" data-split-for="${i}">
+          <b>${esc(m.title || t)}</b><i>${esc(m.eyebrow || '')}</i>
+        </button>`;
+      }).join('')}</div>`;
+    }
+
     function render() {
       const cells = LAYOUTS[st.layout].cells;
       document.body.dataset.split = st.layout;
@@ -8697,31 +8730,43 @@
         p.hidden = true; p.style.gridArea = ''; p.classList.remove('is-focused');
         const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
       });
+      const views = $('.views');
+      $$('.pane-slot', views).forEach(s => s.remove());
       if (st.focus >= cells.length) st.focus = 0;
 
-      st.tabs.slice(0, cells.length).forEach((tab, i) => {
+      cells.forEach((cell, i) => {
+        const [c, r, cs, rs] = cell;
+        const area = `${r} / ${c} / ${r + rs} / ${c + cs}`;
+        const tab = st.tabs[i];
+        const canClose = cells.length > 1 && !st.locked;
+        const picking = i === choosingFor || !tab;
+
+        if (picking) {
+          /* An empty or picking pane is a slot: a plus, and every tab as a
+             card, right there in the rectangle it will fill. */
+          const slot = document.createElement('div');
+          slot.className = 'pane-slot' + (i === st.focus ? ' is-focused' : '');
+          slot.style.gridArea = area;
+          slot.dataset.slotIdx = String(i);
+          slot.innerHTML =
+            paneBarHTML(i, tab, canClose) +
+            `<div class="slot__body">
+               <div class="slot__plus" aria-hidden="true">
+                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                      stroke-width="1.8"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+               </div>
+               ${chooserHTML(i)}
+             </div>`;
+          views.appendChild(slot);
+          return;
+        }
+
         const panel = $(`[data-tab-panel="${tab}"]`);
         if (!panel) return;
-        const [c, r, cs, rs] = cells[i];
         panel.hidden = false;
-        panel.style.gridArea = `${r} / ${c} / ${r + rs} / ${c + cs}`;
+        panel.style.gridArea = area;
         if (i === st.focus) panel.classList.add('is-focused');
-
-        /* Every pane carries its own controls. Going back to the picker to
-           change one tab is a trip you should not have to make. */
-        const bar = document.createElement('div');
-        bar.className = 'pane-bar';
-        bar.dataset.paneIdx = String(i);
-        bar.innerHTML =
-          `<button type="button" class="pane-bar__pick" data-split-choose="${i}">
-             <span>${esc((TAB_META[tab] || {}).title || tab)}</span>
-             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
-                  stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round"/></svg>
-           </button>
-           ${cells.length > 1 && !st.locked ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
-                                   aria-label="Close this pane">×</button>` : ''}`;
-        panel.prepend(bar);
-
+        panel.insertAdjacentHTML('afterbegin', paneBarHTML(i, tab, canClose));
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       });
 
@@ -8729,28 +8774,6 @@
       renderHandles();
     }
 
-    /* ── choosing a tab ──────────────────────────────────────────────
-       A dropdown makes you read nineteen words to find one. A grid of cards
-       lets you find it by shape and position — which is how you actually
-       remember where your tabs are. */
-    let choosingFor = -1;
-    function openChooser(i) {
-      choosingFor = i;
-      const ov = $('[data-split-chooser]'); if (!ov) return;
-      const taken = st.tabs.slice(0, paneCount());
-      $('[data-split-chooser-grid]').innerHTML = REAL_PANELS.map(t => {
-        const m = TAB_META[t] || {};
-        const here = taken[i] === t;
-        const elsewhere = !here && taken.indexOf(t) >= 0;
-        return `<button type="button" class="chz ${here ? 'is-on' : ''} ${elsewhere ? 'is-elsewhere' : ''}"
-                        data-split-pick="${t}">
-          <b>${esc(m.title || t)}</b>
-          <i>${esc(m.eyebrow || '')}</i>
-        </button>`;
-      }).join('');
-      ov.hidden = false;
-    }
-    function closeChooser() { const ov = $('[data-split-chooser]'); if (ov) ov.hidden = true; choosingFor = -1; }
 
     /* Closing a pane should shrink the layout, not leave a hole. */
     function dropPane(i) {
@@ -8772,25 +8795,22 @@
     function setLayout(name) {
       st.layout = name;
       const need = paneCount();
-      /* Growing keeps what is already open and fills the rest with something
-         other than a repeat — four copies of Home is not a split view. */
-      const pool = REAL_PANELS.filter(t => st.tabs.indexOf(t) < 0);
-      while (st.tabs.length < need) st.tabs.push(pool.shift() || 'home');
+      /* Growing leaves the new pane EMPTY rather than guessing at a tab. An
+         empty pane shows itself as a plus and asks — which is the moment you
+         actually want to choose, and the only moment you know what for. */
+      while (st.tabs.length < need) st.tabs.push(null);
       st.tabs = st.tabs.slice(0, Math.max(need, 1));
+      if (!st.tabs[0]) st.tabs[0] = 'home';
+      choosingFor = -1;
       save();
       if (name === 'single') exit(); else render();
       paint();
     }
 
-    function setPane(i, tab) {
-      st.tabs[i] = tab; save();
-      if (active()) render(); else Tabs.setActive(tab);
-      paint();
-    }
 
     function paint() {
-      const lay = $('[data-split-layouts]'), panes = $('[data-split-panes]');
-      if (!lay || !panes) return;
+      const lay = $('[data-split-layouts]');
+      if (!lay) return;
       const pre = $('[data-split-presets]');
       if (pre) pre.innerHTML = PRESETS.map((p, i) =>
         `<button type="button" class="splitp__pre" data-split-pre="${i}">${esc(p.label)}</button>`).join('');
@@ -8825,14 +8845,8 @@
                 stroke-width="1.6" stroke-linecap="round">${ICONS[k]}</svg>
          </button>`).join('');
 
-      panes.innerHTML = active() ? st.tabs.slice(0, paneCount()).map((tab, i) =>
-        `<label class="splitp__pane">
-           <span>Pane ${i + 1}</span>
-           <select class="input input--sm" data-split-pane="${i}">
-             ${REAL_PANELS.map(t =>
-               `<option value="${t}" ${t === tab ? 'selected' : ''}>${esc((TAB_META[t] || {}).title || t)}</option>`).join('')}
-           </select>
-         </label>`).join('') : '';
+      /* No pane dropdowns here any more. Choosing a tab happens in the pane
+         that will hold it, which is the only place it ever made sense. */
     }
 
     function open()  { const p = $('[data-split-panel]'); if (p) { paint(); p.hidden = false; } }
@@ -8866,28 +8880,32 @@
       if (views) {
         views.addEventListener('pointerdown', beginDrag);
         views.addEventListener('click', (e) => {
+          const pick = e.target.closest('[data-split-pick]');
+          if (pick) {
+            e.stopPropagation();
+            const tab = pick.getAttribute('data-split-pick');
+            const i = +pick.getAttribute('data-split-for');
+            /* Picking a tab already open elsewhere SWAPS the two panes rather
+               than showing it twice — two copies of one tab is never the intent. */
+            const at = st.tabs.indexOf(tab);
+            if (at >= 0 && at !== i) st.tabs[at] = st.tabs[i];
+            st.tabs[i] = tab;
+            st.focus = i; choosingFor = -1; save();
+            render(); paint();
+            return;
+          }
           const ch = e.target.closest('[data-split-choose]');
-          if (ch) { e.stopPropagation(); openChooser(+ch.getAttribute('data-split-choose')); return; }
+          if (ch) {
+            e.stopPropagation();
+            const i = +ch.getAttribute('data-split-choose');
+            choosingFor = (choosingFor === i) ? -1 : i;   // tapping again closes it
+            render();
+            return;
+          }
           const d = e.target.closest('[data-split-drop]');
           if (d) { e.stopPropagation(); dropPane(+d.getAttribute('data-split-drop')); }
         });
       }
-
-      const chooser = $('[data-split-chooser]');
-      if (chooser) chooser.addEventListener('click', (e) => {
-        if (e.target === chooser || e.target.closest('[data-split-chooser-close]')) { closeChooser(); return; }
-        const pick = e.target.closest('[data-split-pick]');
-        if (pick && choosingFor >= 0) {
-          const tab = pick.getAttribute('data-split-pick');
-          /* Picking a tab already open elsewhere SWAPS the two panes rather
-             than showing it twice — two copies of one tab is never the intent. */
-          const at = st.tabs.indexOf(tab);
-          if (at >= 0 && at !== choosingFor) st.tabs[at] = st.tabs[choosingFor];
-          st.tabs[choosingFor] = tab;
-          st.focus = choosingFor; save();
-          closeChooser(); render(); paint();
-        }
-      });
 
       const fab = $('[data-split-open]');
       if (fab) fab.addEventListener('click', () => {
@@ -8938,14 +8956,12 @@
             }
           }
         });
-        panel.addEventListener('change', (e) => {
-          const s = e.target.closest('[data-split-pane]');
-          if (s) setPane(+s.getAttribute('data-split-pane'), s.value);
-        });
       }
 
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') close();
+        if (e.key !== 'Escape') return;
+        if (choosingFor >= 0) { choosingFor = -1; render(); return; }
+        close();
       });
 
       if (active()) render();

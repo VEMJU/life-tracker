@@ -5873,3 +5873,72 @@ body.is-splitdrag .views > [data-tab-panel] { pointer-events: none; }
 /* The chooser scrim referenced a keyframe that did not exist — the overlay
    still worked, it just appeared without the fade it was written for. */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── §62d · empty panes, and using the sides ──────────────────────────
+   A new pane is not a blank rectangle you have to be taught about — it is a
+   plus and every tab as a card, sitting in the exact space it will fill. And
+   the desk now runs to the edges: at four panes, page gutters were costing
+   more room than they were worth.                                         */
+body[data-split] .app,
+body[data-split] .shell,
+body[data-split] main.shell { padding-left: 10px; padding-right: 10px; }
+body[data-split] .views {
+  gap: 6px;
+  margin-left: calc(var(--sp-5) * -1);
+  margin-right: calc(var(--sp-5) * -1);
+  width: auto;
+  max-width: none;
+}
+body[data-split] .views > [data-tab-panel],
+body[data-split] .pane-slot { padding: 0 12px 14px; border-radius: 12px; }
+
+/* the slot ────────────────────────────────────────────────────────── */
+.pane-slot {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto;
+  border: 1px dashed var(--border); border-radius: 12px;
+  background: rgba(255,255,255,.012);
+  animation: cardPop 460ms var(--ease-soft) both;
+}
+.pane-slot.is-focused { border-color: rgba(var(--accent-br-rgb, 255,255,255), .4); border-style: solid; }
+.slot__body { flex: 1; display: flex; flex-direction: column; gap: var(--sp-4); padding-top: var(--sp-4); }
+.slot__plus {
+  display: grid; place-items: center; width: 40px; height: 40px; margin: 0 auto;
+  border: 1px solid var(--hairline); border-radius: 999px; color: var(--c-mid);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+.slot__grid {
+  display: grid; gap: 6px; align-content: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 132px), 1fr));
+}
+/* an open pane picking a new tab overlays the same grid, so the choice always
+   happens in the rectangle it applies to */
+[data-tab-panel] > .slot__grid { margin-top: var(--sp-4); }
+
+.chz {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: pointer;
+  padding: 9px 10px; border: 1px solid var(--hairline); border-radius: 10px;
+  background: rgba(255,255,255,.02); color: inherit;
+  transition: border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.chz:hover  { border-color: var(--border); background: rgba(255,255,255,.07); }
+.chz:active { transform: scale(.96); }
+.chz b { font-size: 12px; font-weight: 600; color: var(--c-paper); }
+.chz i {
+  font-family: var(--ff-display); font-style: italic; font-size: 10.5px;
+  color: var(--c-fog); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chz.is-on {
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .5);
+  background: rgba(var(--accent-br-rgb, 255,255,255), .08);
+}
+.chz.is-elsewhere { opacity: .45; }   /* open in another pane — picking swaps them */
+
+@media (max-width: 780px) {
+  body[data-split] .views { margin-left: 0; margin-right: 0; }
+  .pane-slot { min-height: 320px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pane-slot { animation: none; }
+  .slot__plus { animation: none; }
+}
