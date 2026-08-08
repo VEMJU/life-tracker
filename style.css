@@ -6036,3 +6036,29 @@ body[data-split] .views > [data-tab-panel]:has(.pane-bar__pin.is-on) {
 }
 .split-add:hover  { color: #fff; border-color: var(--accent-soft); transform: translateY(-1px); }
 .split-add:active { transform: scale(.93); }
+
+/* ── §63b · desks on the first screen ─────────────────────────────────
+   A saved arrangement is worth more than a tab, so it gets to be the first
+   thing you can touch. Sits above the small tools row, quiet until you have
+   actually saved something.                                              */
+.hubdesks {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 7px; margin: var(--sp-4) 0 0;
+  animation: introUp 800ms var(--ease-vt) both; animation-delay: 1.5s;
+}
+.hubdesks[hidden] { display: none; }
+.hubdesk__lbl {
+  font-family: var(--ff-mono); font-size: 8px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--c-fog); margin-right: 3px;
+}
+.hubdesk {
+  padding: 7px 14px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--c-bone); background: rgba(255,255,255,.04);
+  border: 1px solid var(--border); border-radius: 999px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: color .2s, border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.hubdesk:hover  { color: #fff; border-color: var(--accent-soft); background: rgba(255,255,255,.09); }
+.hubdesk:active { transform: scale(.95); }
+@media (prefers-reduced-motion: reduce) { .hubdesks { animation: none; } }

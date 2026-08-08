@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=72" />
+  <link rel="stylesheet" href="style.css?v=73" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -119,6 +119,10 @@
           <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
+
+      <!-- Your saved desks, on the first screen. The morning should be able to
+           start at the arrangement you work in, not at a single tab. -->
+      <div class="hubdesks" data-hub-desks hidden><!-- injected --></div>
 
       <div class="intro__tools">
         <button class="intro-tool" type="button" data-go="home">
@@ -1877,7 +1881,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=70" defer></script>
+  <script src="app.js?v=71" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=11" defer></script>

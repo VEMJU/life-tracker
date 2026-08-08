@@ -8873,7 +8873,8 @@
              </div>
              <button type="button" class="splitp__lock ${st.locked ? 'is-on' : ''}" data-split-lock>
                ${st.locked ? '🔒 Locked — sizes and panes fixed' : '🔓 Lock this desk'}
-             </button>`
+             </button>
+             <button type="button" class="splitp__lock" data-split-reset>↺ Reset — even sizes, no zoom</button>`
           : '');
 
       lay.innerHTML = Object.entries(LAYOUTS).map(([k, v]) =>
@@ -8997,12 +8998,14 @@
           const l = e.target.closest('[data-split-lay]');
           if (l) { setLayout(l.getAttribute('data-split-lay')); return; }
 
+          if (e.target.closest('[data-split-reset]')) { reset(); return; }
           if (e.target.closest('[data-split-save]')) {
             const inp = $('[data-split-name]');
             const name = (inp?.value || '').trim() || LAYOUTS[st.layout].label;
             st.saved.push({ id: uid(), name, layout: st.layout,
-                            tabs: st.tabs.slice(0, paneCount()), cols: st.cols, rows: st.rows });
-            save(); if (inp) inp.value = ''; paint(); toast('Desk saved ✓');
+                            tabs: st.tabs.slice(0, paneCount()), cols: st.cols, rows: st.rows,
+                            zoom: Object.assign({}, st.zoom || {}) });
+            save(); if (inp) inp.value = ''; paint(); paintHub(); toast('Desk saved ✓');
             return;
           }
           if (e.target.closest('[data-split-lock]')) {
@@ -9016,14 +9019,7 @@
             save(); paint(); return;
           }
           const load = e.target.closest('[data-split-load]');
-          if (load) {
-            const w = st.saved.find(x => x.id === load.getAttribute('data-split-load'));
-            if (w) {
-              st.layout = w.layout; st.tabs = w.tabs.slice();
-              st.cols = w.cols; st.rows = w.rows; st.focus = 0; save();
-              render(); paint(); close();
-            }
-          }
+          if (load) openDesk(load.getAttribute('data-split-load'));
         });
       }
 
@@ -9033,10 +9029,74 @@
         close();
       });
 
+      /* The hub gets a row of saved desks. Clicking one opens the arrangement
+         and dismisses the hub in a single move — the first thing you touch in
+         the morning can be the desk you work at, not one tab. */
+      paintHub();
+      const introEl = document.getElementById('intro');
+      if (introEl) introEl.addEventListener('click', (e) => {
+        const d = e.target.closest('[data-hub-desk]');
+        if (d) { e.stopPropagation(); openDesk(d.getAttribute('data-hub-desk')); }
+      }, true);
+
       if (active()) render();
     }
 
-    return { init, active, render };
+    /* ── the outside world ──────────────────────────────────────────────
+       Nova and the hub both need to open a desk by name. Matching is loose on
+       purpose: "work", "my work desk", "work split screen" all find Work. */
+    function findDesk(text) {
+      const t = String(text || '').toLowerCase();
+      if (!t) return null;
+      let best = null;
+      st.saved.forEach(w => {
+        const n = w.name.toLowerCase();
+        if (!n) return;
+        if (t === n) { best = w; return; }
+        if (!best && (t.includes(n) || n.includes(t.replace(/\b(split|screen|desk|layout|open|go to|show|the|my)\b/g, '').trim()))) best = w;
+      });
+      return best;
+    }
+
+    function openDesk(id) {
+      const w = st.saved.find(x => x.id === id); if (!w) return false;
+      st.layout = w.layout; st.tabs = w.tabs.slice();
+      st.cols = w.cols; st.rows = w.rows;
+      st.zoom = Object.assign({}, w.zoom || {});
+      st.focus = 0; choosingFor = -1; save();
+      /* Opening a desk from the hub has to dismiss the hub, or the layout
+         changes behind a full-screen overlay and nothing appears to happen. */
+      if (document.body.classList.contains('intro-locked') && window.lifeHub && window.lifeHub.hide) {
+        window.lifeHub.hide(null);
+      }
+      render(); paint(); close();
+      return true;
+    }
+
+    function single() { setLayout('single'); close(); }
+
+    /* Everything back the way it started: even sizes, no zoom, nothing pinned.
+       The desks you saved are untouched — this resets the arrangement, not
+       your work. */
+    function reset() {
+      st.cols = 50; st.rows = 50; st.zoom = {}; st.pinned = {}; st.locked = false;
+      choosingFor = -1; save();
+      if (active()) render(); paint();
+      toast('Desk reset');
+    }
+
+    /* The hub gets a row of your saved desks, so the first thing you touch in
+       the morning can be the arrangement you work in rather than one tab. */
+    function paintHub() {
+      const host = $('[data-hub-desks]'); if (!host) return;
+      host.innerHTML = st.saved.length
+        ? `<span class="hubdesk__lbl">Desks</span>` + st.saved.map(w =>
+            `<button type="button" class="hubdesk" data-hub-desk="${w.id}">${esc(w.name)}</button>`).join('')
+        : '';
+      host.hidden = !st.saved.length;
+    }
+
+    return { init, active, render, findDesk, openDesk, single, reset, paintHub };
   })();
 
   /* ══════════════════  VOICE  ══════════════════
@@ -9231,12 +9291,30 @@
         return { ok:false, say:'I have no tab called ' + word };
       }
 
+      /* ── DESKS BY NAME ───────────────────────────────────────────────────
+         "open work" or "work split screen" opens the saved desk called Work.
+         Runs here, with no model call and no key — a layout you named should
+         come back the moment you say its name. */
+      if (/\b(split|desk|layout|screen)\b/.test(low) || /^(open|go to|show)\b/.test(low)) {
+        const named = Split.findDesk(low);
+        if (named) {
+          Split.openDesk(named.id);
+          return { ok:true, say:'Opening ' + named.name };
+        }
+      }
+      if (/\bsplit\b/.test(low) && /\b(off|close|single|normal|back)\b/.test(low)) {
+        Split.single();
+        return { ok:true, say:'Back to a single view' };
+      }
+
       /* ── THE QUICK JUMP ──────────────────────────────────────────────────
          A bare word that names a tab IS a navigation command. Typing "gym"
          should not require the ceremony of "go to gym" — this is the fastest
          way through the app, and it runs entirely here with no model call and
          no key. Last resort, so it can never shadow a real command. */
       if (!/\s/.test(low)) {
+        const desk = Split.findDesk(low);
+        if (desk) { Split.openDesk(desk.id); return { ok:true, say:'Opening ' + desk.name }; }
         const tab = jumpTo(low);
         if (tab) return { ok:true, tab, say:'Opening ' + tab };
       }
