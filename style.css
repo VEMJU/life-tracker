@@ -5454,3 +5454,24 @@ button.intro-tool {
   .mtg__m b { font-size: 13.5px; }
   .mtg__flag { display: none; }
 }
+
+/* §56b — the checklist ticks.
+   A row is a button now. Same anatomy, plus a hit target, a tick that lands
+   with the spring, and a done row that fades so what is LEFT stays loud. */
+.rdy__row {
+  width: 100%; text-align: left; background: none; color: inherit; font: inherit;
+  cursor: pointer; border-left: 0; border-right: 0; border-top: 0;
+  border-radius: 8px; padding-left: 8px; padding-right: 8px;
+  transition: background var(--dur-base) var(--ease-vt),
+              opacity var(--dur-base) var(--ease-vt),
+              transform var(--dur-fast) var(--spring);
+}
+.rdy__row:hover  { background: rgba(255,255,255,.04); }
+.rdy__row:active { transform: scale(.995); }
+
+.rdy__dot { transition: background var(--dur-base) var(--ease-vt), box-shadow var(--dur-base) var(--ease-vt); }
+
+/* done fades back and strikes through — the remaining work keeps the contrast */
+.rdy__row.is-done { opacity: .45; }
+.rdy__row.is-done b { text-decoration: line-through; text-decoration-thickness: 1px; }
+.rdy__row.is-done .rdy__when { opacity: .6; }

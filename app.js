@@ -4857,7 +4857,13 @@
       const essay = d.essay || {};
       const words = String(essay.text || '').trim().split(/\s+/).filter(Boolean).length;
 
-      return [
+      /* A checklist you cannot tick is a list of accusations. Ticked ids
+         live in their own key so the computed states (SAT, essay, activities)
+         keep working underneath and a tick simply wins. */
+      const ticked = Store.get(PKEY, []);
+      const tset = Array.isArray(ticked) ? ticked : [];
+      const mark = (list) => list.map(r => tset.indexOf(r.id) >= 0 ? Object.assign({}, r, { state: 'done', urgent: false }) : r);
+      return mark([
         /* THE PLAN, AS OF 8 AUGUST 2026. Nebraska (UNHS) is the route: five
            courses, no PE, no Regents. Ordered by what is irreversible if it
            slips, not by what is comfortable. */
@@ -4944,7 +4950,7 @@
           note: 'Plus Baruch, Syracuse, Temple, Houston, Indiana, Baylor',
           due: '2026-11-01',
           hint: 'The lottery ticket. The real door is transferring in 2028.' },
-      ];
+      ]);
     }
 
     /* ══════════════════  THE FIVE  ══════════════════
@@ -4954,6 +4960,7 @@
        requirements rather than as a list of scores is the difference between
        "I failed three exams" and "I need two more". Both are true; only one
        is useful. */
+    const PKEY = 'nv.plandone';   // ids the user has ticked off by hand
     const RKEY = 'nv.regents';
     const REGENTS_SEED = [
       { slot: 'English',        exam: 'ELA',                   score: null, sitting: '2026-08-18' },
@@ -5025,7 +5032,7 @@
          <div class="rdy">${rows.map((r, i) => {
             const n = daysTo(r.due);
             const late = n !== null && n < 0;
-            return `<div class="rdy__row is-${r.state} ${r.urgent && r.state !== 'done' ? 'is-urgent' : ''}"
+            return `<button type="button" data-rdy="${r.id}" class="rdy__row is-${r.state} ${r.urgent && r.state !== 'done' ? 'is-urgent' : ''}"
                          style="animation-delay:${i * 45}ms">
               <span class="rdy__dot"></span>
               <span class="rdy__main">
@@ -5035,7 +5042,7 @@
               <span class="rdy__when">${r.due
                 ? (late ? 'overdue' : n === 0 ? 'today' : n + 'd')
                 : ''}</span>
-            </div>`;
+            </button>`;
           }).join('')}</div>
          <div class="tile-actions">
            <button class="tile-actions__btn is-primary" data-acad-toplan type="button">Put this on my calendar</button>
@@ -5567,6 +5574,20 @@
           if (i >= 0) arr.splice(i, 1); else arr.push(id);
           Store.set(MKEY, arr);
           renderMeeting();
+          return;
+        }
+
+        /* Tick a piece off. Stored by id, so it survives a reload and the
+           computed rows (SAT, essay, activities) still light up on their own. */
+        const rdy = c('[data-rdy]');
+        if (rdy) {
+          const id = rdy.getAttribute('data-rdy');
+          const cur = Store.get(PKEY, []);
+          const arr = Array.isArray(cur) ? cur : [];
+          const at = arr.indexOf(id);
+          if (at >= 0) arr.splice(at, 1); else arr.push(id);
+          Store.set(PKEY, arr);
+          renderReadiness();
           return;
         }
 
