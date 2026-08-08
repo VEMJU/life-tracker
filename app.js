@@ -774,6 +774,7 @@
         seedHabits();
         if (!data.goals.length) {
           data.categories = JSON.parse(JSON.stringify(DEFAULT.categories));
+          seedGoals();
         }
         persist();
       }
@@ -795,6 +796,89 @@
         H('Stand at full height', 'body'),
         H('Read 20 minutes', 'mind'),
         H('Prayer', 'soul'),
+      ];
+    }
+
+    /* ══════════════════  THE FIFTY-TWO  ══════════════════
+       Everything he named, in the lane it belongs to. Rough on purpose — no
+       dates on most, because a fake deadline is worse than none. The job here
+       is only to get them out of his head; the judgement comes after, looking
+       at them rather than trying to remember them.
+
+       PARKED means real but not this year. Named out loud so his brain stops
+       billing him for them. */
+    function seedGoals() {
+      let n = 0;
+      const G = (title, categoryId, deadline, notes) => ({
+        id: uid(), title, categoryId, deadline: deadline || '', notes: notes || '',
+        steps: [], legacyProgress: 0, createdAt: Date.now() - (n++), open: false, view: 'steps',
+      });
+      data.goals = [
+        /* ── BODY ── */
+        G('My dream physique — and hold it', 'body'),
+        G('The best legs I can build', 'body'),
+        G('A strong, healthy neck', 'body'),
+        G('Reach my full height', 'body', '',
+          'Growth plates close 16–18. Posture and sleep are the real levers now — posture alone is worth up to an inch.'),
+        G('Full health check-up', 'body', '',
+          'The one appointment that closes the private-parts question permanently. Routine for a doctor.'),
+
+        /* ── THE MIRROR ── */
+        G('See a dermatologist', 'mirror', '',
+          'Unlocks five goals at once: red dots, pimples, scars, glowing skin, skin tone. Stop guessing.'),
+        G('Clear, glowing skin — face and body', 'mirror'),
+        G('Treat the red dots', 'mirror', '', 'Nobody can identify these from a photo. Derm question.'),
+        G('Fade the scars', 'mirror', '', 'Treatment depends entirely on scar type. Derm decides, not YouTube.'),
+        G('The haircut that actually fits my face', 'mirror'),
+        G('Beard, moustache, or clean — decide, then commit', 'mirror'),
+        G('Eyebrows', 'mirror'),
+        G('Smooth lips', 'mirror'),
+        G('Perfect nails — hands and feet', 'mirror'),
+        G('Clean feet, no peeling', 'mirror'),
+        G('Orthodontist consult — the one crooked tooth', 'mirror', '',
+          'Ask what the options are for ONE tooth, not for Invisalign by name. Often much smaller and cheaper.'),
+        G('My own style — clothes, shoes, watches, rings, fragrance', 'mirror'),
+        G('The nose', 'mirror', '',
+          'PARKED to 18+. Surgeons want facial growth finished, and it needs your parents. Not a decision to make under pressure.'),
+
+        /* ── MIND ── */
+        G('Read philosophy — build my own moral spine', 'mind'),
+        G('Be genuinely smarter — psychology, philosophy, what matters', 'mind'),
+        G('Write English and Spanish like a professional', 'mind'),
+        G('Quit my bad habits', 'mind'),
+        G('Full concentration on what I have chosen', 'mind'),
+        G('Read people — body language', 'mind'),
+        G('Be good with people, properly', 'mind'),
+        G('Italian', 'mind', '', 'PARKED — real, but not 2026.'),
+        G('German', 'mind', '', 'PARKED — real, but not 2026.'),
+        G('Piano', 'mind', '', 'PARKED — real, but not 2026.'),
+        G('Guitar', 'mind', '', 'PARKED — real, but not 2026.'),
+
+        /* ── SOUL ── */
+        G('Learn Orthodox teaching, practice and the fathers', 'soul'),
+        G('Be like Christ — morally, not just in name', 'soul'),
+        G('Master my temptations', 'soul'),
+        G('Help as many people as I possibly can', 'soul', '',
+          'This is also the exact hole in your college application. Faith and application want the same action.'),
+        G('Bring people closer to God', 'soul'),
+        G('Make my family proud', 'soul'),
+
+        /* ── BUILD & MONEY ── */
+        G('Finish the app so other people can use it', 'build'),
+        G('Smart homes into my family’s builds', 'build', '',
+          'Your first real customer already exists. This is the Babson story.'),
+        G('Help run the Bronx building', 'build'),
+        G('Earn my first real dollar from something I built', 'build'),
+        G('Get rich — and provide for people who have nothing', 'build'),
+        G('Babson', 'build', '2028-08-01',
+          'The real door is transferring in after freshman year — 3.5+ competitive, one full-time semester, March 2028.'),
+
+        /* ── LIFE ── */
+        G('Learn to drive', 'life'),
+        G('Live on my own — and be sure it is the right call', 'life'),
+        G('Help my family with what they are carrying', 'life'),
+        G('Build my own family one day', 'life', '', 'PARKED — the long one. It is on the board so it is not forgotten.'),
+        G('Be genuinely good at a sport', 'life', '', 'PARKED — soccer, basketball, volleyball. Not 2026.'),
       ];
     }
 
