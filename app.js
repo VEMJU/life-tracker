@@ -4901,6 +4901,13 @@
           hint: 'Letters are portable. They do not need you enrolled.' },
         /* The invite has to land AFTER the email, or it reads as a cold link
            from a stranger. Emails first, then FERPA, then invite. */
+        /* He keeps saying he has no activities. He has four. This row exists
+           to make him look at them written down. */
+        { id: 'activities', label: 'Common App — Activities section',
+          state: 'todo', urgent: true,
+          note: 'The app · the smart-home business · the Bronx building',
+          due: '2026-08-09', at: '12:00', end: '13:00',
+          hint: 'Also tick the household-responsibilities box — unpaid family business work counts.' },
         { id: 'ferpa', label: 'FERPA + invite the three teachers',
           state: 'todo', urgent: true,
           note: 'Email Acosta, Santana, Arkin FIRST — then waive FERPA and invite',
