@@ -8647,6 +8647,57 @@
       views.style.setProperty('--srh', st.rowh + 'vh');
     }
 
+    /* ── DRAG A CORNER, LIKE A WINDOW ─────────────────────────────────
+       Spans, not pixels. Dragging sets how many COLUMNS wide and how many
+       ROWS tall a pane is, and the grid's own auto-flow does the rest — make
+       one pane two wide and whatever no longer fits drops to the next row by
+       itself. Pixel dragging would have needed absolute positions and a
+       collision solver; this needs neither, and it can never leave a hole. */
+    const spanOf = (i) => (st.span && st.span[i]) || { c: 1, r: 1 };
+    function applySpan(el, i) {
+      const s = spanOf(i);
+      el.style.gridColumn = s.c > 1 ? `span ${Math.min(s.c, gcols())}` : '';
+      el.style.gridRow    = s.r > 1 ? `span ${s.r}` : '';
+    }
+
+    function beginResize(e) {
+      const grip = e.target.closest('.pane-grip'); if (!grip) return;
+      const i = +grip.getAttribute('data-pane-grip');
+      if (st.pinned && st.pinned[i]) { toast('That pane is locked'); return; }
+      const views = $('.views'); if (!views) return;
+      const pane = grip.closest('[data-tab-panel], .pane-slot'); if (!pane) return;
+
+      const gap = 8;
+      const cw = (views.clientWidth - gap * (gcols() - 1)) / gcols();
+      const rh = (window.innerHeight * st.rowh) / 100;
+      const box = pane.getBoundingClientRect();
+      const start = spanOf(i);
+      grip.setPointerCapture?.(e.pointerId);
+      document.body.classList.add('is-splitdrag');
+
+      const move = (ev) => {
+        const w = ev.clientX - box.left, h = ev.clientY - box.top;
+        const c = Math.max(1, Math.min(gcols(), Math.round(w / (cw + gap)) || 1));
+        const r = Math.max(1, Math.min(4,        Math.round(h / (rh + gap)) || 1));
+        st.span = st.span || {};
+        st.span[i] = { c, r };
+        applySpan(pane, i);
+      };
+      const up = () => {
+        document.body.classList.remove('is-splitdrag');
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        const s = spanOf(i);
+        if (s.c === start.c && s.r === start.r) return;   // a click, not a drag
+        save();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      e.preventDefault();
+    }
+
     /* Panels build one per frame rather than all at once — four tabs rendering
        in a single frame is exactly the stall we just spent an hour removing. */
     /* Which pane, if any, is currently picking its tab. An empty pane is
@@ -8665,6 +8716,8 @@
       const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (at < 0 ? 3 : at) + dir))];
       st.zoom[i] = next; save(); render();
     }
+
+    const gripHTML = (i) => `<div class="pane-grip" data-pane-grip="${i}" title="Drag to resize" aria-hidden="true"></div>`;
 
     function paneBarHTML(i, tab, canClose) {
       const z = zoomOf(i);
@@ -8713,7 +8766,9 @@
       document.body.dataset.panebars = st.bars || 'always';
       $$('[data-tab-panel]').forEach(p => {
         p.hidden = true; p.style.order = ''; p.style.zoom = ''; p.classList.remove('is-focused');
-        p.querySelectorAll(':scope > .pane-bar, :scope > .pane-hot').forEach(el => el.remove());
+        p.style.gridColumn = ''; p.style.gridRow = '';
+        p.querySelectorAll(':scope > .pane-bar, :scope > .pane-hot, :scope > .pane-grip')
+         .forEach(el => el.remove());
       });
       const views = $('.views');
       $$('.pane-slot, .split-add', views).forEach(el => el.remove());
@@ -8733,6 +8788,7 @@
           const slot = document.createElement('div');
           slot.className = 'pane-slot' + (i === st.focus ? ' is-focused' : '');
           slot.style.order = String(i);
+          applySpan(slot, i);
           slot.dataset.slotIdx = String(i);
           slot.innerHTML =
             paneBarHTML(i, tab, canClose) +
@@ -8743,6 +8799,7 @@
                </div>
                ${chooserHTML(i)}
              </div>`;
+          slot.insertAdjacentHTML('beforeend', gripHTML(i));
           views.appendChild(slot);
           continue;
         }
@@ -8751,11 +8808,13 @@
         if (!panel) continue;
         panel.hidden = false;
         panel.style.order = String(i);
+        applySpan(panel, i);
         /* Zoom scales what is inside the pane; the pane keeps its cell, so
            zooming one never pushes the others around. */
         panel.style.zoom = zoomOf(i) === 1 ? '' : String(zoomOf(i));
         if (i === st.focus) panel.classList.add('is-focused');
         panel.insertAdjacentHTML('afterbegin', paneBarHTML(i, tab, canClose));
+        if (!st.locked) panel.insertAdjacentHTML('beforeend', gripHTML(i));
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       }
 
@@ -8790,7 +8849,7 @@
         });
         return out;
       };
-      st.zoom = shift(st.zoom); st.pinned = shift(st.pinned);
+      st.zoom = shift(st.zoom); st.pinned = shift(st.pinned); st.span = shift(st.span);
       setCount(st.count - 1);
     }
 
@@ -8928,6 +8987,7 @@
       }, true);
 
       if (views) {
+        views.addEventListener('pointerdown', beginResize);
         views.addEventListener('click', (e) => {
           const pick = e.target.closest('[data-split-pick]');
           if (pick) {
@@ -9022,7 +9082,8 @@
             const name = (inp?.value || '').trim() || layoutLabel();
             st.saved.push({ id: uid(), name, count: st.count, gcols: st.gcols, rowh: st.rowh,
                             tabs: st.tabs.slice(0, st.count),
-                            zoom: Object.assign({}, st.zoom || {}) });
+                            zoom: Object.assign({}, st.zoom || {}),
+                            span: Object.assign({}, st.span || {}) });
             save(); if (inp) inp.value = ''; paint(); paintHub(); toast('Desk saved ✓');
             return;
           }
@@ -9082,6 +9143,7 @@
       st.gcols = w.gcols || 2; st.rowh = w.rowh || 44;
       st.tabs = (w.tabs || ['home']).slice();
       st.zoom = Object.assign({}, w.zoom || {});
+      st.span = Object.assign({}, w.span || {});
       st.focus = 0; choosingFor = -1; save();
       /* Opening a desk from the hub has to dismiss the hub, or the layout
          changes behind a full-screen overlay and nothing appears to happen. */
@@ -9098,7 +9160,7 @@
        The desks you saved are untouched — this resets the arrangement, not
        your work. */
     function reset() {
-      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.locked = false;
+      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.span = {}; st.locked = false;
       choosingFor = -1; save();
       if (active()) render(); paint();
       toast('Desk reset');
