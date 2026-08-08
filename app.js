@@ -762,7 +762,27 @@
     }
 
     function seed() {
+      /* Habits carry their OWN flag. The board was seeded long before habits
+         existed, so gating them behind `seeded` would mean anyone already
+         using this tab — which is everyone — never sees them at all.
+
+         The lanes are different: replacing categories on a board that already
+         has goals would orphan every one of them. So they upgrade only on an
+         empty board, and otherwise stay exactly as the owner left them. */
+      if (!data.habitsSeeded && !data.habits.length) {
+        data.habitsSeeded = true;
+        seedHabits();
+        if (!data.goals.length) {
+          data.categories = JSON.parse(JSON.stringify(DEFAULT.categories));
+        }
+        persist();
+      }
       if (data.seeded) return;
+      data.seeded = true;
+      persist();
+    }
+
+    function seedHabits() {
       /* THE EIGHT ENGINES. Fifty-two stated wants, but only these move them —
          each habit here sits underneath four or five of the goals at once. */
       const H = (label, cat) => ({ id: uid(), label, cat, log: {}, createdAt: Date.now() });
@@ -776,8 +796,6 @@
         H('Read 20 minutes', 'mind'),
         H('Prayer', 'soul'),
       ];
-      data.seeded = true;
-      persist();
     }
 
     /* ══════════════════  HABITS  ══════════════════
