@@ -142,8 +142,24 @@
   window.lifeHub = { open, hide };
   // The moment sign-in completes (or a saved session restores), the lock
   // lifts — play the startup animation: curtain parts, the title decodes,
-  // then the cards rise into the ring. Every sign-in, exactly once.
-  window.addEventListener('nv-data-ready', () => open());
+  // then the cards rise into the ring.
+  //
+  // UNLESS a split desk is already open. Signing in on a second monitor and
+  // being thrown back to the opening ceremony is not a welcome, it is losing
+  // your place — so a live desk keeps the screen it has.
+  window.addEventListener('nv-data-ready', () => {
+    let desk = null;
+    try { desk = JSON.parse(localStorage.getItem('nv.split') || 'null'); } catch (e) {}
+    if (desk && desk.layout && desk.layout !== 'single') {
+      dismissed = true;
+      intro.style.display = 'none';
+      document.body.classList.remove('intro-locked');
+      stopCanvas();
+      window.dispatchEvent(new CustomEvent('nv-intro-hidden'));
+      return;
+    }
+    open();
+  });
   // boot: let the lettering decode as the cards rise
   setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
 

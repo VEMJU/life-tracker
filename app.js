@@ -8710,7 +8710,11 @@
     function paneBarHTML(i, tab, canClose) {
       const z = zoomOf(i);
       const pinned = !!(st.pinned && st.pinned[i]);
-      return `<div class="pane-bar">
+      /* .pane-hot is an invisible strip across the top of the pane. In
+         auto-hide mode hovering it reveals the bar, and moving away hides it
+         again — so the chrome only exists while you are reaching for it. */
+      return `<div class="pane-hot" aria-hidden="true"></div>
+      <div class="pane-bar">
         <button type="button" class="pane-bar__pick" data-split-choose="${i}">
           <span>${tab ? esc((TAB_META[tab] || {}).title || tab) : 'Choose'}</span>
           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
@@ -8748,9 +8752,10 @@
     function render() {
       const cells = LAYOUTS[st.layout].cells;
       document.body.dataset.split = st.layout;
+      document.body.dataset.panebars = st.bars || 'always';
       $$('[data-tab-panel]').forEach(p => {
         p.hidden = true; p.style.gridArea = ''; p.style.zoom = ''; p.classList.remove('is-focused');
-        const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
+        p.querySelectorAll(':scope > .pane-bar, :scope > .pane-hot').forEach(el => el.remove());
       });
       const views = $('.views');
       $$('.pane-slot, .split-add', views).forEach(el => el.remove());
@@ -8873,6 +8878,9 @@
              </div>
              <button type="button" class="splitp__lock ${st.locked ? 'is-on' : ''}" data-split-lock>
                ${st.locked ? '🔒 Locked — sizes and panes fixed' : '🔓 Lock this desk'}
+             </button>
+             <button type="button" class="splitp__lock ${st.bars === 'auto' ? 'is-on' : ''}" data-split-bars>
+               ${st.bars === 'auto' ? '👁 Bars hidden — hover the top of a pane' : '👁 Hide the pane bars'}
              </button>
              <button type="button" class="splitp__lock" data-split-reset>↺ Reset — even sizes, no zoom</button>`
           : '');
@@ -8998,6 +9006,11 @@
           const l = e.target.closest('[data-split-lay]');
           if (l) { setLayout(l.getAttribute('data-split-lay')); return; }
 
+          if (e.target.closest('[data-split-bars]')) {
+            st.bars = st.bars === 'auto' ? 'always' : 'auto';
+            save(); render(); paint();
+            return;
+          }
           if (e.target.closest('[data-split-reset]')) { reset(); return; }
           if (e.target.closest('[data-split-save]')) {
             const inp = $('[data-split-name]');

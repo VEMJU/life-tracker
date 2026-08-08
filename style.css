@@ -6062,3 +6062,83 @@ body[data-split] .views > [data-tab-panel]:has(.pane-bar__pin.is-on) {
 .hubdesk:hover  { color: #fff; border-color: var(--accent-soft); background: rgba(255,255,255,.09); }
 .hubdesk:active { transform: scale(.95); }
 @media (prefers-reduced-motion: reduce) { .hubdesks { animation: none; } }
+
+/* ── §63c · chrome that only exists when you reach for it ─────────────
+   In auto mode the pane bar lifts out of the way and a hover strip across the
+   top of each pane brings it back. Move away and it goes again — so a desk of
+   four panes reads as four pieces of content, not four toolbars.        */
+.pane-hot { display: none; }
+
+body[data-split][data-panebars="auto"] .pane-hot {
+  display: block; position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 8;
+}
+body[data-split][data-panebars="auto"] .views > [data-tab-panel],
+body[data-split][data-panebars="auto"] .pane-slot { position: relative; }
+
+body[data-split][data-panebars="auto"] .pane-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 9; margin: 0;
+  opacity: 0; transform: translateY(-8px); pointer-events: none;
+  border-radius: 12px 12px 0 0;
+  transition: opacity .18s var(--ease-vt), transform .22s var(--ease-vt);
+}
+/* reaching for it brings it back — and hovering the bar itself keeps it */
+body[data-split][data-panebars="auto"] .pane-hot:hover + .pane-bar,
+body[data-split][data-panebars="auto"] .pane-bar:hover,
+body[data-split][data-panebars="auto"] .pane-bar:focus-within {
+  opacity: 1; transform: translateY(0); pointer-events: auto;
+}
+/* an empty pane always shows its bar — otherwise there is nothing to explain it */
+body[data-split][data-panebars="auto"] .pane-slot .pane-bar {
+  opacity: 1; transform: none; pointer-events: auto;
+}
+/* the space the bar used to hold is given back to the content */
+body[data-split][data-panebars="auto"] .views > [data-tab-panel] { padding-top: 10px; }
+
+/* Touch has no hover, so the strip becomes a tap target instead of a trap. */
+@media (hover: none) {
+  body[data-split][data-panebars="auto"] .pane-bar {
+    opacity: .45; transform: none; pointer-events: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-split][data-panebars="auto"] .pane-bar { transition: opacity .12s linear; }
+}
+
+/* ── §63c · chrome that only exists while you reach for it ────────────
+   The pane bar carries the tab name, the zoom and the lock. Useful, but it is
+   a permanent strip of furniture on top of every pane. In auto mode it lifts
+   away and an invisible hot strip across the top of the pane brings it back —
+   so the panes are pure content until your pointer goes looking.          */
+.pane-hot { display: none; }
+
+body[data-split][data-panebars="auto"] .views > [data-tab-panel],
+body[data-split][data-panebars="auto"] .pane-slot { position: relative; }
+
+body[data-split][data-panebars="auto"] .pane-hot {
+  display: block; position: absolute; top: 0; left: 0; right: 0; height: 46px;
+  z-index: 6;
+}
+body[data-split][data-panebars="auto"] .pane-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 7;
+  margin: 0; opacity: 0; transform: translateY(-8px); pointer-events: none;
+  border-radius: 12px 12px 0 0;
+  transition: opacity .18s var(--ease-vt), transform .22s var(--ease-vt);
+}
+/* revealed by the hot strip, and kept alive while the pointer is on the bar
+   itself — otherwise it would vanish the instant you moved to press anything */
+body[data-split][data-panebars="auto"] .pane-hot:hover + .pane-bar,
+body[data-split][data-panebars="auto"] .pane-bar:hover,
+body[data-split][data-panebars="auto"] .pane-bar:focus-within {
+  opacity: 1; transform: translateY(0); pointer-events: auto;
+}
+/* the pane reclaims the space the bar used to occupy */
+body[data-split][data-panebars="auto"] .views > [data-tab-panel] { padding-top: 12px; }
+body[data-split][data-panebars="auto"] .slot__body { padding-top: 46px; }
+
+/* Touch has no hover, so the bar stays put — there would be no way back. */
+@media (hover: none) {
+  body[data-split][data-panebars="auto"] .pane-bar {
+    position: sticky; opacity: 1; transform: none; pointer-events: auto;
+  }
+  body[data-split][data-panebars="auto"] .pane-hot { display: none; }
+}
