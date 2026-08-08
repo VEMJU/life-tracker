@@ -8594,20 +8594,18 @@
   const Split = (() => {
     const KEY = 'nv.split';
     /* [colStart, rowStart, colSpan, rowSpan] on a 2×2 grid */
-    const LAYOUTS = {
-      single: { label: 'Single',  cells: [[1,1,2,2]] },
-      v2:     { label: 'Two — side by side', cells: [[1,1,1,2],[2,1,1,2]] },
-      h2:     { label: 'Two — stacked',      cells: [[1,1,2,1],[1,2,2,1]] },
-      l3:     { label: 'Three',   cells: [[1,1,1,2],[2,1,1,1],[2,2,1,1]] },
-      q4:     { label: 'Four',    cells: [[1,1,1,1],[2,1,1,1],[1,2,1,1],[2,2,1,1]] },
-    };
-    const ICONS = {
-      single: '<rect x="3" y="4" width="18" height="16" rx="2"/>',
-      v2: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
-      h2: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',
-      l3: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M12 12h9"/>',
-      q4: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/>',
-    };
+    /* A fixed table of five layouts was the wrong shape for this. It capped
+       you at four panes, it hard-coded which cell each pane got, and one of
+       its entries had a placement the grid could not satisfy — which is what
+       turned "stacked" into a white screen.
+
+       Replaced by a real grid: N panes, C columns, every cell the same size.
+       Adding a pane is now arithmetic instead of a lookup, there is no ceiling
+       worth speaking of, and there is no table to get wrong. */
+    const MAX_PANES = 12;
+    const LABELS = { 1:'Single', 2:'Two', 3:'Three', 4:'Four', 5:'Five', 6:'Six' };
+    const layoutLabel = () => (LABELS[st.count] || (st.count + ' panes')) +
+      (st.count > 1 ? ' · ' + st.gcols + ' across' : '');
 
     /* Presets, because the useful combinations are few and always the same.
        Choosing a layout and then two tabs is three decisions to see your
@@ -8620,73 +8618,34 @@
     ];
 
     let st = Store.get(KEY, null);
-    if (!st || !LAYOUTS[st.layout]) st = { layout: 'single', tabs: ['home'] };
+    if (!st || typeof st !== 'object') st = {};
+    /* Migrate anyone carrying the old five-layout state. */
+    if (st.layout) {
+      const OLD = { single: [1, 1], v2: [2, 2], h2: [2, 1], l3: [3, 2], q4: [4, 2] };
+      const m = OLD[st.layout] || [1, 1];
+      st.count = m[0]; st.gcols = m[1]; delete st.layout;
+    }
+    if (typeof st.count !== 'number') st.count = 1;
+    if (typeof st.gcols !== 'number') st.gcols = 2;
+    if (!Array.isArray(st.tabs))    st.tabs = ['home'];
     if (typeof st.focus !== 'number') st.focus = 0;
-    /* cols/rows are seam POSITIONS as percentages, not pixel widths — so a desk
-       laid out on a laptop still looks like itself on a monitor. */
-    if (typeof st.cols !== 'number') st.cols = 50;
-    if (typeof st.rows !== 'number') st.rows = 50;
+    /* Row height in vh. This is the "more space when I scroll" control — the
+       desk is allowed to be taller than the window and simply scroll. */
+    if (typeof st.rowh !== 'number') st.rowh = 44;
     if (!Array.isArray(st.saved))   st.saved = [];
     const save = () => Store.set(KEY, st);
-    const clampPct = (v) => Math.max(18, Math.min(82, v));
 
-    /* The grid reads its proportions from two custom properties, so dragging a
-       divider is one style write and nothing else has to be recalculated. */
+    const active = () => st.count > 1;
+    const paneCount = () => st.count;
+    /* Columns never exceed the pane count — three panes across four columns
+       leaves a hole, which is the one thing an auto grid must not do. */
+    const gcols = () => Math.max(1, Math.min(st.gcols, st.count));
+
     function applySizes() {
       const views = $('.views'); if (!views) return;
-      views.style.setProperty('--sc', clampPct(st.cols) + '%');
-      views.style.setProperty('--sr', clampPct(st.rows) + '%');
+      views.style.setProperty('--sgc', String(gcols()));
+      views.style.setProperty('--srh', st.rowh + 'vh');
     }
-
-    /* Dividers exist only where the layout actually HAS a seam — and in the
-       three-pane layout the horizontal one spans the right column only, since
-       that is the only place a horizontal seam exists. */
-    function renderHandles() {
-      const views = $('.views'); if (!views) return;
-      $$('.split-grip', views).forEach(g => g.remove());
-      if (!active() || st.locked) return;
-      const L = st.layout, grips = [];
-      if (L === 'v2' || L === 'l3' || L === 'q4') grips.push('col');
-      if (L === 'h2' || L === 'l3' || L === 'q4') grips.push('row');
-      grips.forEach(kind => {
-        const g = document.createElement('div');
-        g.className = 'split-grip split-grip--' + kind + (L === 'l3' && kind === 'row' ? ' is-right' : '');
-        g.dataset.grip = kind;
-        g.setAttribute('role', 'separator');
-        g.setAttribute('aria-label', kind === 'col' ? 'Resize columns' : 'Resize rows');
-        views.appendChild(g);
-      });
-    }
-
-    function beginDrag(e) {
-      const grip = e.target.closest('.split-grip'); if (!grip) return;
-      const views = $('.views'); if (!views) return;
-      const kind = grip.dataset.grip;
-      const box = views.getBoundingClientRect();
-      grip.setPointerCapture?.(e.pointerId);
-      document.body.classList.add('is-splitdrag');
-      const move = (ev) => {
-        const pct = kind === 'col'
-          ? ((ev.clientX - box.left) / box.width) * 100
-          : ((ev.clientY - box.top)  / box.height) * 100;
-        if (kind === 'col') st.cols = clampPct(pct); else st.rows = clampPct(pct);
-        applySizes();
-      };
-      const up = () => {
-        document.body.classList.remove('is-splitdrag');
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        window.removeEventListener('pointercancel', up);
-        save();
-      };
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-      window.addEventListener('pointercancel', up);
-      e.preventDefault();
-    }
-
-    const active = () => st.layout !== 'single';
-    const paneCount = () => LAYOUTS[st.layout].cells.length;
 
     /* Panels build one per frame rather than all at once — four tabs rendering
        in a single frame is exactly the stall we just spent an hour removing. */
@@ -8750,22 +8709,22 @@
     }
 
     function render() {
-      const cells = LAYOUTS[st.layout].cells;
-      document.body.dataset.split = st.layout;
+      document.body.dataset.split = String(st.count);
       document.body.dataset.panebars = st.bars || 'always';
       $$('[data-tab-panel]').forEach(p => {
-        p.hidden = true; p.style.gridArea = ''; p.style.zoom = ''; p.classList.remove('is-focused');
+        p.hidden = true; p.style.order = ''; p.style.zoom = ''; p.classList.remove('is-focused');
         p.querySelectorAll(':scope > .pane-bar, :scope > .pane-hot').forEach(el => el.remove());
       });
       const views = $('.views');
       $$('.pane-slot, .split-add', views).forEach(el => el.remove());
-      if (st.focus >= cells.length) st.focus = 0;
+      if (st.focus >= st.count) st.focus = 0;
 
-      cells.forEach((cell, i) => {
-        const [c, r, cs, rs] = cell;
-        const area = `${r} / ${c} / ${r + rs} / ${c + cs}`;
+      /* Every pane is one equal cell placed by ORDER, not by coordinates.
+         That is what lets the count be anything — nothing has to know where
+         pane seven belongs, only that it comes after pane six. */
+      for (let i = 0; i < st.count; i++) {
         const tab = st.tabs[i];
-        const canClose = cells.length > 1 && !st.locked;
+        const canClose = st.count > 1 && !st.locked;
         const picking = i === choosingFor || !tab;
 
         if (picking) {
@@ -8773,7 +8732,7 @@
              card, right there in the rectangle it will fill. */
           const slot = document.createElement('div');
           slot.className = 'pane-slot' + (i === st.focus ? ' is-focused' : '');
-          slot.style.gridArea = area;
+          slot.style.order = String(i);
           slot.dataset.slotIdx = String(i);
           slot.innerHTML =
             paneBarHTML(i, tab, canClose) +
@@ -8785,24 +8744,24 @@
                ${chooserHTML(i)}
              </div>`;
           views.appendChild(slot);
-          return;
+          continue;
         }
 
         const panel = $(`[data-tab-panel="${tab}"]`);
-        if (!panel) return;
+        if (!panel) continue;
         panel.hidden = false;
-        panel.style.gridArea = area;
+        panel.style.order = String(i);
         /* Zoom scales what is inside the pane; the pane keeps its cell, so
            zooming one never pushes the others around. */
         panel.style.zoom = zoomOf(i) === 1 ? '' : String(zoomOf(i));
         if (i === st.focus) panel.classList.add('is-focused');
         panel.insertAdjacentHTML('afterbegin', paneBarHTML(i, tab, canClose));
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
-      });
+      }
 
       /* A plus that adds a pane, floating over the desk rather than living in
          a menu — adding a screen should cost one tap from where you are. */
-      if (!st.locked && st.layout !== 'q4') {
+      if (!st.locked && st.count < MAX_PANES) {
         const add = document.createElement('button');
         add.type = 'button';
         add.className = 'split-add';
@@ -8814,40 +8773,62 @@
       }
 
       applySizes();
-      renderHandles();
     }
 
 
     /* Closing a pane should shrink the layout, not leave a hole. */
     function dropPane(i) {
       st.tabs.splice(i, 1);
-      const smaller = { q4: 'l3', l3: 'v2', v2: 'single', h2: 'single', single: 'single' };
-      setLayout(smaller[st.layout] || 'single');
+      /* zoom and pin are keyed by index, so closing pane 1 has to shuffle
+         everything above it down or the wrong pane inherits the settings */
+      const shift = (obj) => {
+        if (!obj) return obj;
+        const out = {};
+        Object.keys(obj).forEach(k => {
+          const n = +k;
+          if (n < i) out[n] = obj[k]; else if (n > i) out[n - 1] = obj[k];
+        });
+        return out;
+      };
+      st.zoom = shift(st.zoom); st.pinned = shift(st.pinned);
+      setCount(st.count - 1);
     }
 
     function exit() {
-      st.layout = 'single'; save();
+      st.count = 1; save();
       delete document.body.dataset.split;
+      delete document.body.dataset.panebars;
       $$('[data-tab-panel]').forEach(p => {
-        p.style.gridArea = ''; p.classList.remove('is-focused');
-        const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
+        p.style.order = ''; p.style.zoom = ''; p.classList.remove('is-focused');
+        p.querySelectorAll(':scope > .pane-bar, :scope > .pane-hot').forEach(el => el.remove());
       });
+      const views = $('.views');
+      if (views) $$('.pane-slot, .split-add', views).forEach(el => el.remove());
       Tabs.setActive(st.tabs[0] || 'home');
     }
 
-    function setLayout(name) {
-      st.layout = name;
-      const need = paneCount();
+    /* One function for every layout change now. Panes are a number. */
+    function setCount(n) {
+      st.count = Math.max(1, Math.min(MAX_PANES, n));
       /* Growing leaves the new pane EMPTY rather than guessing at a tab. An
          empty pane shows itself as a plus and asks — which is the moment you
          actually want to choose, and the only moment you know what for. */
-      while (st.tabs.length < need) st.tabs.push(null);
-      st.tabs = st.tabs.slice(0, Math.max(need, 1));
+      while (st.tabs.length < st.count) st.tabs.push(null);
+      st.tabs = st.tabs.slice(0, Math.max(st.count, 1));
       if (!st.tabs[0]) st.tabs[0] = 'home';
       choosingFor = -1;
       save();
-      if (name === 'single') exit(); else render();
+      if (st.count === 1) exit(); else render();
       paint();
+    }
+
+    function setCols(c) {
+      st.gcols = Math.max(1, Math.min(6, c)); save();
+      if (active()) { applySizes(); paint(); }
+    }
+    function setRowH(v) {
+      st.rowh = Math.max(20, Math.min(100, v)); save();
+      if (active()) { applySizes(); paint(); }
     }
 
 
@@ -8885,15 +8866,37 @@
              <button type="button" class="splitp__lock" data-split-reset>↺ Reset — even sizes, no zoom</button>`
           : '');
 
-      lay.innerHTML = Object.entries(LAYOUTS).map(([k, v]) =>
-        `<button type="button" class="splitp__lay ${st.layout === k ? 'is-on' : ''}" data-split-lay="${k}"
-                 title="${esc(v.label)}" aria-label="${esc(v.label)}">
-           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
-                stroke-width="1.6" stroke-linecap="round">${ICONS[k]}</svg>
-         </button>`).join('');
-
-      /* No pane dropdowns here any more. Choosing a tab happens in the pane
-         that will hold it, which is the only place it ever made sense. */
+      /* Three sliders instead of five fixed pictures: how many panes, how many
+         across, and how tall each row is. Every arrangement the old table had
+         is still reachable, plus every one it did not. */
+      lay.innerHTML =
+        `<div class="splitc">
+           <span class="splitc__lbl">Panes</span>
+           <div class="splitc__step">
+             <button type="button" data-split-count="-1" aria-label="One fewer pane">−</button>
+             <b>${st.count}</b>
+             <button type="button" data-split-count="1" aria-label="One more pane">+</button>
+           </div>
+         </div>
+         ${active() ? `
+         <div class="splitc">
+           <span class="splitc__lbl">Across</span>
+           <div class="splitc__step">
+             <button type="button" data-split-cols="-1" aria-label="Fewer columns">−</button>
+             <b>${gcols()}</b>
+             <button type="button" data-split-cols="1" aria-label="More columns">+</button>
+           </div>
+         </div>
+         <div class="splitc">
+           <span class="splitc__lbl">Height</span>
+           <div class="splitc__step">
+             <button type="button" data-split-rowh="-6" aria-label="Shorter rows">−</button>
+             <b>${st.rowh}<i>vh</i></b>
+             <button type="button" data-split-rowh="6" aria-label="Taller rows">+</button>
+           </div>
+         </div>
+         <p class="splitc__note">${esc(layoutLabel())} — every pane the same size.
+           Taller rows than the window simply scroll.</p>` : ''}`;
     }
 
     function open()  { const p = $('[data-split-panel]'); if (p) { paint(); p.hidden = false; } }
@@ -8925,7 +8928,6 @@
       }, true);
 
       if (views) {
-        views.addEventListener('pointerdown', beginDrag);
         views.addEventListener('click', (e) => {
           const pick = e.target.closest('[data-split-pick]');
           if (pick) {
@@ -8961,9 +8963,8 @@
           const add = e.target.closest('[data-split-add]');
           if (add) {
             e.stopPropagation();
-            const up = { single: 'v2', v2: 'l3', h2: 'l3', l3: 'q4', q4: 'q4' };
-            if (st.layout !== 'q4') setLayout(up[st.layout]);
-            else toast('Four panes is the most this grid holds');
+            if (st.count < MAX_PANES) setCount(st.count + 1);
+            else toast(MAX_PANES + ' panes is the most this desk holds');
             return;
           }
           const ch = e.target.closest('[data-split-choose]');
@@ -8998,13 +8999,17 @@
           const pr = e.target.closest('[data-split-pre]');
           if (pr) {
             const p = PRESETS[+pr.getAttribute('data-split-pre')];
-            st.tabs = p.tabs.slice(); st.focus = 0; save();
-            setLayout(p.layout);
+            st.tabs = p.tabs.slice(); st.focus = 0; st.gcols = p.cols || 2; save();
+            setCount(p.tabs.length);
             close();
             return;
           }
-          const l = e.target.closest('[data-split-lay]');
-          if (l) { setLayout(l.getAttribute('data-split-lay')); return; }
+          const cnt = e.target.closest('[data-split-count]');
+          if (cnt) { setCount(st.count + (+cnt.getAttribute('data-split-count'))); return; }
+          const col = e.target.closest('[data-split-cols]');
+          if (col) { setCols(gcols() + (+col.getAttribute('data-split-cols'))); return; }
+          const rh = e.target.closest('[data-split-rowh]');
+          if (rh) { setRowH(st.rowh + (+rh.getAttribute('data-split-rowh'))); return; }
 
           if (e.target.closest('[data-split-bars]')) {
             st.bars = st.bars === 'auto' ? 'always' : 'auto';
@@ -9014,9 +9019,9 @@
           if (e.target.closest('[data-split-reset]')) { reset(); return; }
           if (e.target.closest('[data-split-save]')) {
             const inp = $('[data-split-name]');
-            const name = (inp?.value || '').trim() || LAYOUTS[st.layout].label;
-            st.saved.push({ id: uid(), name, layout: st.layout,
-                            tabs: st.tabs.slice(0, paneCount()), cols: st.cols, rows: st.rows,
+            const name = (inp?.value || '').trim() || layoutLabel();
+            st.saved.push({ id: uid(), name, count: st.count, gcols: st.gcols, rowh: st.rowh,
+                            tabs: st.tabs.slice(0, st.count),
                             zoom: Object.assign({}, st.zoom || {}) });
             save(); if (inp) inp.value = ''; paint(); paintHub(); toast('Desk saved ✓');
             return;
@@ -9073,8 +9078,9 @@
 
     function openDesk(id) {
       const w = st.saved.find(x => x.id === id); if (!w) return false;
-      st.layout = w.layout; st.tabs = w.tabs.slice();
-      st.cols = w.cols; st.rows = w.rows;
+      st.count = w.count || (w.tabs || ['home']).length;
+      st.gcols = w.gcols || 2; st.rowh = w.rowh || 44;
+      st.tabs = (w.tabs || ['home']).slice();
       st.zoom = Object.assign({}, w.zoom || {});
       st.focus = 0; choosingFor = -1; save();
       /* Opening a desk from the hub has to dismiss the hub, or the layout
@@ -9086,13 +9092,13 @@
       return true;
     }
 
-    function single() { setLayout('single'); close(); }
+    function single() { setCount(1); close(); }
 
     /* Everything back the way it started: even sizes, no zoom, nothing pinned.
        The desks you saved are untouched — this resets the arrangement, not
        your work. */
     function reset() {
-      st.cols = 50; st.rows = 50; st.zoom = {}; st.pinned = {}; st.locked = false;
+      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.locked = false;
       choosingFor = -1; save();
       if (active()) render(); paint();
       toast('Desk reset');

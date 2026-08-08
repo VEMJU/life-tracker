@@ -6142,3 +6142,74 @@ body[data-split][data-panebars="auto"] .slot__body { padding-top: 46px; }
   }
   body[data-split][data-panebars="auto"] .pane-hot { display: none; }
 }
+
+/* ═══════════════════  §64  THE DESK IS A REAL GRID  ═══════════════════
+   The five fixed layouts are gone. N panes, C columns, every cell the same
+   size, and the desk allowed to be taller than the window — because a big
+   monitor should be able to hold six panes and scroll, not be capped at four.
+
+   These rules come last on purpose: they supersede §62's fixed 2×2.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-split] .views {
+  display: grid;
+  grid-template-columns: repeat(var(--sgc, 2), minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: minmax(var(--srh, 44vh), auto);
+  height: auto; min-height: 0; gap: 8px;
+  position: relative;
+  padding-bottom: 64px;            /* room for the floating plus */
+}
+body[data-split] .views > [data-tab-panel],
+body[data-split] .pane-slot { min-height: 0; overflow: auto; }
+
+/* The widget rail carries the daily macros, the pill and the rest. Hiding it
+   in split view quietly deleted half of Home — that was my doing, and wrong. */
+body[data-split] .widget-rail { display: block; }
+
+/* No seams to drag on an even grid — the columns control does that job now. */
+body[data-split] .split-grip { display: none; }
+
+/* ── the three controls ─────────────────────────────────────────────── */
+.splitc {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3); padding: 6px 0;
+}
+.splitc__lbl {
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--c-fog);
+}
+.splitc__step {
+  display: flex; align-items: center; gap: 2px;
+  border: 1px solid var(--hairline); border-radius: 999px; padding: 2px;
+}
+.splitc__step button {
+  width: 24px; height: 24px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: 999px; cursor: pointer;
+  color: var(--c-mid); font-size: 15px; line-height: 1;
+  transition: color .18s, background .18s;
+}
+.splitc__step button:hover { color: #fff; background: rgba(255,255,255,.09); }
+.splitc__step b {
+  min-width: 40px; text-align: center;
+  font-family: var(--ff-display); font-style: italic; font-size: 17px;
+  color: var(--c-blanc); font-weight: 400;
+}
+.splitc__step b i {
+  font-family: var(--ff-mono); font-style: normal; font-size: 8px;
+  letter-spacing: .1em; color: var(--c-fog); margin-left: 1px;
+}
+.splitc__note {
+  font-family: var(--ff-display); font-style: italic; font-size: 11.5px;
+  color: var(--c-fog); margin: 4px 0 0; line-height: 1.45;
+}
+
+/* the plus follows the desk down rather than pinning to the window, so it is
+   always reachable no matter how tall the arrangement gets */
+.split-add { position: sticky; bottom: 12px; margin-left: auto; }
+
+@media (max-width: 780px) {
+  body[data-split] .views {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(min(var(--srh, 44vh), 70vh), auto);
+  }
+}
