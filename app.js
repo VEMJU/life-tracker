@@ -8667,7 +8667,6 @@
     /* Closing a pane should shrink the layout, not leave a hole. */
     function dropPane(i) {
       st.tabs.splice(i, 1);
-      const order = ['single', 'v2', 'l3', 'q4'];
       const smaller = { q4: 'l3', l3: 'v2', v2: 'single', h2: 'single', single: 'single' };
       setLayout(smaller[st.layout] || 'single');
     }
