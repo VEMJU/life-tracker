@@ -8695,13 +8695,35 @@
        of a blank rectangle you have to be taught about. */
     let choosingFor = -1;
 
+    /* Zoom is per pane and remembered per pane. A narrow pane wants smaller
+       type so more of the thing fits; a pane you are working in wants larger.
+       One number each, and it survives a reload. */
+    const ZOOMS = [0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5];
+    const zoomOf = (i) => (st.zoom && typeof st.zoom[i] === 'number') ? st.zoom[i] : 1;
+    function bumpZoom(i, dir) {
+      st.zoom = st.zoom || {};
+      const at = ZOOMS.indexOf(zoomOf(i));
+      const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (at < 0 ? 3 : at) + dir))];
+      st.zoom[i] = next; save(); render();
+    }
+
     function paneBarHTML(i, tab, canClose) {
+      const z = zoomOf(i);
+      const pinned = !!(st.pinned && st.pinned[i]);
       return `<div class="pane-bar">
         <button type="button" class="pane-bar__pick" data-split-choose="${i}">
           <span>${tab ? esc((TAB_META[tab] || {}).title || tab) : 'Choose'}</span>
           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
                stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round"/></svg>
         </button>
+        ${tab ? `<span class="pane-bar__zoom">
+          <button type="button" data-split-zoom="${i}:-1" aria-label="Zoom out">−</button>
+          <b data-split-zoom="${i}:0" title="Reset zoom">${Math.round(z * 100)}%</b>
+          <button type="button" data-split-zoom="${i}:1" aria-label="Zoom in">+</button>
+        </span>
+        <button type="button" class="pane-bar__pin ${pinned ? 'is-on' : ''}" data-split-pin="${i}"
+                aria-label="${pinned ? 'Unlock this pane' : 'Lock this pane'}"
+                title="${pinned ? 'Unlocked it to change' : 'Lock this pane'}">${pinned ? '🔒' : '🔓'}</button>` : ''}
         ${canClose ? `<button type="button" class="pane-bar__x" data-split-drop="${i}"
                         aria-label="Close this pane">×</button>` : ''}
       </div>`;
@@ -8727,11 +8749,11 @@
       const cells = LAYOUTS[st.layout].cells;
       document.body.dataset.split = st.layout;
       $$('[data-tab-panel]').forEach(p => {
-        p.hidden = true; p.style.gridArea = ''; p.classList.remove('is-focused');
+        p.hidden = true; p.style.gridArea = ''; p.style.zoom = ''; p.classList.remove('is-focused');
         const old = p.querySelector(':scope > .pane-bar'); if (old) old.remove();
       });
       const views = $('.views');
-      $$('.pane-slot', views).forEach(s => s.remove());
+      $$('.pane-slot, .split-add', views).forEach(el => el.remove());
       if (st.focus >= cells.length) st.focus = 0;
 
       cells.forEach((cell, i) => {
@@ -8765,10 +8787,26 @@
         if (!panel) return;
         panel.hidden = false;
         panel.style.gridArea = area;
+        /* Zoom scales what is inside the pane; the pane keeps its cell, so
+           zooming one never pushes the others around. */
+        panel.style.zoom = zoomOf(i) === 1 ? '' : String(zoomOf(i));
         if (i === st.focus) panel.classList.add('is-focused');
         panel.insertAdjacentHTML('afterbegin', paneBarHTML(i, tab, canClose));
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       });
+
+      /* A plus that adds a pane, floating over the desk rather than living in
+         a menu — adding a screen should cost one tap from where you are. */
+      if (!st.locked && st.layout !== 'q4') {
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'split-add';
+        add.dataset.splitAdd = '1';
+        add.setAttribute('aria-label', 'Add a pane');
+        add.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+          stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>`;
+        views.appendChild(add);
+      }
 
       applySizes();
       renderHandles();
@@ -8894,16 +8932,47 @@
             render(); paint();
             return;
           }
+          const z = e.target.closest('[data-split-zoom]');
+          if (z) {
+            e.stopPropagation();
+            const [i, dir] = z.getAttribute('data-split-zoom').split(':').map(Number);
+            if (dir === 0) { st.zoom = st.zoom || {}; st.zoom[i] = 1; save(); render(); }
+            else bumpZoom(i, dir);
+            return;
+          }
+          const pin = e.target.closest('[data-split-pin]');
+          if (pin) {
+            e.stopPropagation();
+            const i = +pin.getAttribute('data-split-pin');
+            st.pinned = st.pinned || {};
+            st.pinned[i] = !st.pinned[i];
+            save(); render();
+            return;
+          }
+          const add = e.target.closest('[data-split-add]');
+          if (add) {
+            e.stopPropagation();
+            const up = { single: 'v2', v2: 'l3', h2: 'l3', l3: 'q4', q4: 'q4' };
+            if (st.layout !== 'q4') setLayout(up[st.layout]);
+            else toast('Four panes is the most this grid holds');
+            return;
+          }
           const ch = e.target.closest('[data-split-choose]');
           if (ch) {
             e.stopPropagation();
             const i = +ch.getAttribute('data-split-choose');
+            if (st.pinned && st.pinned[i]) { toast('That pane is locked'); return; }
             choosingFor = (choosingFor === i) ? -1 : i;   // tapping again closes it
             render();
             return;
           }
           const d = e.target.closest('[data-split-drop]');
-          if (d) { e.stopPropagation(); dropPane(+d.getAttribute('data-split-drop')); }
+          if (d) {
+            e.stopPropagation();
+            const i = +d.getAttribute('data-split-drop');
+            if (st.pinned && st.pinned[i]) { toast('That pane is locked'); return; }
+            dropPane(i);
+          }
         });
       }
 

@@ -5942,3 +5942,97 @@ body[data-split] .pane-slot { padding: 0 12px 14px; border-radius: 12px; }
   .pane-slot { animation: none; }
   .slot__plus { animation: none; }
 }
+
+/* ═══════════════════  §63  PANES THAT KNOW THEIR OWN WIDTH  ═══════════════
+   The real bug behind "it looks weird when it's small": every layout inside a
+   panel was asking the WINDOW how wide things were. On a big screen a 400px
+   pane still got the desktop layout — two-up cards squeezed into a column,
+   stat rows in five columns, text wrapping badly.
+
+   Container queries fix it at the root: each pane declares itself a container,
+   and the content asks the PANE how much room it has. Resize a pane now and
+   its contents reflow the way they would if you had resized the window.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-split] .views > [data-tab-panel] {
+  container-type: inline-size;
+  container-name: pane;
+}
+
+/* ── narrow: one column, everywhere ─────────────────────────────────── */
+@container pane (max-width: 560px) {
+  .goals-grid, .subjects-grid { grid-template-columns: 1fr; }
+  .acad-dual-row { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .slot__grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 110px), 1fr)); }
+  .card { padding: var(--sp-4); }
+  .card__head { flex-wrap: wrap; gap: 6px; }
+}
+
+/* ── very narrow: strip anything that only exists to fill space ─────── */
+@container pane (max-width: 380px) {
+  .stat-row { grid-template-columns: 1fr; }
+  .slot__grid { grid-template-columns: 1fr; }
+  .rdy__when, .hab__streak i { display: none; }
+  .hab__row { grid-template-columns: 26px 1fr auto; gap: 8px; }
+  .card__title { font-size: 15px; }
+  .tile-hero__val { font-size: clamp(28px, 14cqw, 44px); }
+}
+
+/* ── wide pane on a big monitor: stop pretending it is a phone ──────── */
+@container pane (min-width: 900px) {
+  .goals-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+  .acad-dual-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── use the whole monitor ──────────────────────────────────────────────
+   Split view was inheriting the reading-width cap the single-tab view wants.
+   A desk does not want a reading width; it wants the glass.               */
+body[data-split] .views,
+body[data-split] .shell,
+body[data-split] .app { max-width: none !important; width: auto; }
+body[data-split] { --shell-max: none; }
+
+/* ── per-pane zoom controls ─────────────────────────────────────────── */
+.pane-bar__zoom {
+  flex: none; display: flex; align-items: center; gap: 1px;
+  border: 1px solid var(--hairline); border-radius: 999px; padding: 1px;
+}
+.pane-bar__zoom button {
+  width: 19px; height: 19px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: 999px; cursor: pointer;
+  color: var(--c-mid); font-size: 13px; line-height: 1;
+  transition: color .18s, background .18s;
+}
+.pane-bar__zoom button:hover { color: #fff; background: rgba(255,255,255,.09); }
+.pane-bar__zoom b {
+  font-family: var(--ff-mono); font-size: 8px; letter-spacing: .06em;
+  color: var(--c-fog); min-width: 30px; text-align: center; cursor: pointer;
+  font-weight: 500;
+}
+.pane-bar__zoom b:hover { color: var(--c-bone); }
+
+.pane-bar__pin {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: 6px; cursor: pointer;
+  font-size: 10px; opacity: .5; transition: opacity .18s, background .18s;
+}
+.pane-bar__pin:hover  { opacity: 1; background: rgba(255,255,255,.06); }
+.pane-bar__pin.is-on  { opacity: 1; }
+
+/* a locked pane says so quietly, and loses its seams */
+body[data-split] .views > [data-tab-panel]:has(.pane-bar__pin.is-on) {
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .28);
+}
+
+/* ── the plus ───────────────────────────────────────────────────────── */
+.split-add {
+  position: absolute; right: 12px; bottom: 12px; z-index: 7;
+  width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer;
+  color: var(--c-bone); border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(130%); backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: var(--glass-shadow);
+  transition: color .2s, border-color .2s, transform var(--dur-fast) var(--spring);
+}
+.split-add:hover  { color: #fff; border-color: var(--accent-soft); transform: translateY(-1px); }
+.split-add:active { transform: scale(.93); }
