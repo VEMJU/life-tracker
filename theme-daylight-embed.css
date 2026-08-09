@@ -104,3 +104,8 @@
 /* the map is a photographic surface — leave its tiles alone, only its chrome */
 :root[data-mode="light"] .leaflet-container { background: #eef1f4; }
 :root[data-mode="light"] .leaflet-tile-pane { filter: none; }
+
+/* Vitals, Peak and Stocks paint body with a literal #000 rather than --bg,
+   so redefining the token alone never reached them. Named explicitly. */
+:root[data-mode="light"] body,
+:root[data-mode="light"] html { background: #ffffff !important; color: var(--fg); }

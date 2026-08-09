@@ -19,11 +19,11 @@
        change underneath us. Split view falls back to a plain CSS grid if
        this ever fails to load. -->
   <link rel="stylesheet" href="vendor/gridstack.min.css?v=1" />
-  <link rel="stylesheet" href="style.css?v=82" />
+  <link rel="stylesheet" href="style.css?v=83" />
   <!-- Daylight loads after style.css so it overrides without fighting
        specificity. Every rule inside is scoped to [data-theme="daylight"],
        so it costs the other themes nothing. -->
-  <link rel="stylesheet" href="theme-daylight.css?v=4" />
+  <link rel="stylesheet" href="theme-daylight.css?v=5" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -1372,7 +1372,7 @@
              Embedded from the standalone page so both share the exact same code
              and data (nv.lifts.v2) — nothing to keep in sync by hand. -->
         <div class="gl-embed">
-          <iframe class="gl-frame" src="lifts.html?v=4" title="Workout logger"></iframe>
+          <iframe class="gl-frame" src="lifts.html?v=5" title="Workout logger"></iframe>
         </div>
 
         <!-- legacy gym modules (5-day split · bodyweight · timer) — parked, not deleted -->
@@ -1484,7 +1484,7 @@
            code and one copy of the data. -->
       <section class="board board--supplements" data-tab-panel="supplements" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="stack.html?v=4" title="Supplement stack"></iframe>
+          <iframe class="gl-frame" src="stack.html?v=5" title="Supplement stack"></iframe>
         </div>
       </section>
 
@@ -1492,7 +1492,7 @@
       <!-- The Radar — every recurring charge on a schedule. Same embed pattern. -->
       <section class="board board--subscriptions" data-tab-panel="subscriptions" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="subs.html?v=4" title="Subscription radar"></iframe>
+          <iframe class="gl-frame" src="subs.html?v=5" title="Subscription radar"></iframe>
         </div>
       </section>
 
@@ -1500,7 +1500,7 @@
       <!-- Daily recovery + sleep, from a manual HRV / RHR / sleep entry. -->
       <section class="board board--vitals" data-tab-panel="vitals" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="vitals.html?v=4" title="Vitals"></iframe>
+          <iframe class="gl-frame" src="vitals.html?v=5" title="Vitals"></iframe>
         </div>
       </section>
 
@@ -1509,7 +1509,7 @@
            (onset → peak → half-life) scaled by bodyweight, plus today's plan. -->
       <section class="board board--peak" data-tab-panel="peak" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="peak.html?v=5" title="Your peak today"></iframe>
+          <iframe class="gl-frame" src="peak.html?v=6" title="Your peak today"></iframe>
         </div>
       </section>
 
@@ -1518,7 +1518,7 @@
            dark tiles: free, no API key. The one tab that needs internet. -->
       <section class="board board--map" data-tab-panel="map" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="map.html?v=13" title="The Map"></iframe>
+          <iframe class="gl-frame" src="map.html?v=14" title="The Map"></iframe>
         </div>
       </section>
 
@@ -1528,7 +1528,7 @@
            Finance owns accounts / net worth / subscriptions, this owns holdings. -->
       <section class="board board--stocks" data-tab-panel="stocks" hidden>
         <div class="gl-embed">
-          <iframe class="gl-frame" src="stocks.html?v=9#page" title="Stocks"></iframe>
+          <iframe class="gl-frame" src="stocks.html?v=10#page" title="Stocks"></iframe>
         </div>
       </section>
 

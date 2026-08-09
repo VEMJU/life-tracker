@@ -68,6 +68,15 @@
   /* the card no longer blurs, so it carries its own weight — opaque enough to
      read against the drifting backdrop without sampling it */
   --card-bg:         rgba(19, 19, 21, .82);
+
+  /* one meaning per colour: accent, attention, done. Defined here so the
+     dark themes carry them too, not only Daylight. */
+  --warn:      #E0A030;
+  --warn-rgb:    224, 160, 48;
+  --warn-soft: rgba(224, 160, 48, .14);
+  --done:      #7DD488;
+  --done-rgb:    125, 212, 136;
+  --done-soft: rgba(125, 212, 136, .14);
   --glass-bg-soft:   rgba(14, 14, 14, .28);
   --glass-blur:      24px;
   --glass-sat:       130%;
@@ -6423,3 +6432,31 @@ body[data-split] .split-add { position: fixed; right: 22px; bottom: 22px; z-inde
 .board--supplements, .board--subscriptions,
 .board--stocks, .board--vitals, .board--peak { width: 100%; }
 
+
+/* ═══════════════════  §69  ONE MEANING PER COLOUR  ═══════════════════
+   Cyan (or crimson) is the accent — it says "this is the app". Amber says
+   THIS NEEDS YOU. Green says done. Nothing else may use either, because a
+   colour only carries meaning while it stays scarce.
+
+   Applied at the point where the board already knows the state, so nothing
+   has to be tagged by hand.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* overdue and urgent → amber */
+.rdy__row.is-urgent .rdy__dot { background: var(--warn); box-shadow: 0 0 9px -1px rgba(var(--warn-rgb), .55); }
+.rdy__row.is-urgent .rdy__when { color: var(--warn); }
+.reminder.is-overdue .reminder__meta,
+.goal-deadline.is-overdue { color: var(--warn); }
+.goal-deadline.is-overdue { background: var(--warn-soft); }
+.alert.is-urgent::before { background: var(--warn); box-shadow: 0 0 9px rgba(var(--warn-rgb), .55); }
+.alert.is-urgent .alert__tag { color: var(--warn); border-color: rgba(var(--warn-rgb), .45); }
+
+/* done → green */
+.rdy__row.is-done .rdy__dot { background: var(--done); box-shadow: 0 0 7px -1px rgba(var(--done-rgb), .6); }
+.rgt__row.is-pass .rgt__dot { background: var(--done); box-shadow: 0 0 7px -1px rgba(var(--done-rgb), .6); }
+.rgt__row.is-appeal .rgt__dot { background: var(--warn); box-shadow: 0 0 7px -1px rgba(var(--warn-rgb), .6); }
+.mtg__row.is-on .mtg__box { background: var(--done); border-color: var(--done); }
+.hab__row.is-on .hab__tick {
+  background: var(--done); border-color: var(--done);
+  box-shadow: 0 0 12px -2px rgba(var(--done-rgb), .5);
+}

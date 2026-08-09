@@ -26,7 +26,7 @@
   /* the monochrome ladder, end for end.
      The page is PURE white and so are the cards — grey is kept for structure
      and for recessed surfaces only, never for the field itself. */
-  --c-void:        #ffffff;
+  --c-void:        #fcfcfd;
   --c-abyss:       #fbfcfd;
   --c-coal:        #f7f9fb;
   --c-graphite:    #f2f4f7;
@@ -68,6 +68,17 @@
   --accent-wine-rgb: 103, 209, 224;
   --accent-soft:   rgba(var(--accent-rgb), .42);
   --accent-glow:   rgba(var(--accent-br-rgb), .24);
+
+  /* THREE COLOURS, ONE MEANING EACH. Everything was cyan or grey, so an
+     overdue exam looked exactly like a habit streak. Cyan is the accent,
+     amber means THIS NEEDS YOU, green means done — and nothing else uses
+     either. Colour only carries meaning while it is scarce. */
+  --warn:          #B45309;
+  --warn-rgb:        180, 83, 9;
+  --warn-soft:     rgba(180, 83, 9, .12);
+  --done:          #047857;
+  --done-rgb:        4, 120, 87;
+  --done-soft:     rgba(4, 120, 87, .12);
 
   /* glass over a light page is frosted white; the shadow does the lifting a
      bright inset edge used to do on black */
@@ -159,7 +170,7 @@
   background: var(--c-crimson-br); border-color: var(--c-crimson-br);
 }
 :root[data-theme="daylight"] .hab__dots i          { background: rgba(10,13,17,.08); }
-:root[data-theme="daylight"] .hab__dots i.is-on    { background: rgba(var(--accent-br-rgb), .72); }
+:root[data-theme="daylight"] .hab__dots i.is-on    { background: rgba(var(--done-rgb), .78); }
 :root[data-theme="daylight"] .hab__dots i.is-today { box-shadow: inset 0 0 0 1px rgba(10,13,17,.28); }
 :root[data-theme="daylight"] .tile-hero__bar       { background: rgba(10,13,17,.07); }
 :root[data-theme="daylight"] .tile-hero__bar i     { background: var(--c-crimson-br); }
