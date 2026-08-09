@@ -65,6 +65,9 @@
 
   /* glass system */
   --glass-bg:        rgba(16, 16, 16, .42);
+  /* the card no longer blurs, so it carries its own weight — opaque enough to
+     read against the drifting backdrop without sampling it */
+  --card-bg:         rgba(19, 19, 21, .82);
   --glass-bg-soft:   rgba(14, 14, 14, .28);
   --glass-blur:      24px;
   --glass-sat:       130%;
@@ -357,11 +360,17 @@ ul { padding: 0; list-style: none; }
 .board--placeholder { grid-template-columns: 1fr; min-height: 50vh; }
 
 .card {
-  /* Vitality card geometry: a softer 18px corner and the long settle curve. */
+  /* Vitality card geometry: a softer 18px corner and the long settle curve.
+
+     NO BACKDROP FILTER, deliberately. A card sits ON the page — it does not
+     float over scrolling content — so the blur was invisible and cost a full
+     backdrop sample, blur and saturate PER CARD PER FRAME. With 196 cards in
+     the document and an animated canvas underneath guaranteeing the backdrop
+     never settled, that single line was the app's biggest expense by a long
+     way. Blur is now reserved for things that genuinely float: modals,
+     drawers, the hub, the floating buttons. */
   position: relative; border-radius: var(--r-xl);
-  background: var(--glass-bg); border: 1px solid var(--border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  background: var(--card-bg); border: 1px solid var(--border);
   box-shadow: var(--glass-shadow);
   padding: var(--sp-5); overflow: hidden;
   transition: border-color var(--dur-base) var(--ease-vt), box-shadow var(--dur-base) var(--ease-vt), transform var(--dur-base) var(--ease-vt);

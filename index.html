@@ -19,11 +19,11 @@
        change underneath us. Split view falls back to a plain CSS grid if
        this ever fails to load. -->
   <link rel="stylesheet" href="vendor/gridstack.min.css?v=1" />
-  <link rel="stylesheet" href="style.css?v=81" />
+  <link rel="stylesheet" href="style.css?v=82" />
   <!-- Daylight loads after style.css so it overrides without fighting
        specificity. Every rule inside is scoped to [data-theme="daylight"],
        so it costs the other themes nothing. -->
-  <link rel="stylesheet" href="theme-daylight.css?v=2" />
+  <link rel="stylesheet" href="theme-daylight.css?v=3" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -157,7 +157,11 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>
           </svg>
-          Theme
+          <!-- names the theme you are actually on. A cycle button that only
+               ever says "Theme" tells you nothing about where you are in a
+               five-deep cycle — press once, see a slightly different red, and
+               reasonably conclude that nothing happened. -->
+          <span data-theme-name>Theme</span>
         </button>
         <button class="intro-tool" id="signOutBtn" type="button">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
@@ -1890,10 +1894,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
-  <script src="sync.js?v=7" defer></script>
+  <script src="sync.js?v=8" defer></script>
   <script src="vendor/gridstack-all.js?v=1" defer></script>
-  <script src="app.js?v=80" defer></script>
-  <script src="bg.js?v=4" defer></script>
+  <script src="app.js?v=81" defer></script>
+  <script src="bg.js?v=5" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=12" defer></script>
   <script src="gallery.js?v=8" defer></script>

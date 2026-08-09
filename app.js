@@ -121,6 +121,9 @@
     clearTimeout(_toastT);
     _toastT = setTimeout(() => el.classList.remove('is-show'), 1600);
   }
+  /* sync.js is a separate script and cannot see in here, but it has things
+     worth saying — which theme you just switched to, for one. */
+  window.NVToast = toast;
 
   /* ─────────────────  DEFAULT SPLIT  ───────────────── */
   const DEFAULT_SPLIT = [

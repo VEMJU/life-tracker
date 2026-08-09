@@ -119,9 +119,17 @@
     if (W && H) { seedCrosses(); seedDust(); }
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-  let t = 0;
-  function frame() {
-    if (document.hidden) { raf = requestAnimationFrame(frame); return; }
+  /* THIRTY FRAMES, NOT SIXTY. Nothing here moves faster than a slow drift —
+     a cross climbs a fifth of a pixel per frame — so half the frames are
+     literally identical work. Halving the rate halves the cost of the one
+     thing that runs the entire time the app is open, and you cannot see the
+     difference. */
+  let t = 0, lastPaint = 0;
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (document.hidden) return;
+    if (now - lastPaint < 32) return;
+    lastPaint = now;
     t += 1;
     ctx.clearRect(0, 0, W, H);
 
@@ -149,7 +157,6 @@
       drawCross(c);
     }
     ctx.globalAlpha = 1;
-    raf = requestAnimationFrame(frame);
   }
 
   /* ---- cursor-trailing crimson glow ---- */
@@ -160,12 +167,22 @@
       tx = e.clientX; ty = e.clientY;
       if (!on) { on = true; glow.classList.add('is-on'); }
     }, { passive: true });
-    (function glowLoop() {
-      gx += (tx - gx) * 0.12;
-      gy += (ty - gy) * 0.12;
+    /* The glow used to chase the cursor forever, at sixty frames a second,
+       whether or not the pointer had moved in the last ten minutes. It now
+       runs only while it still has ground to cover and parks itself once it
+       has caught up — a loop that costs nothing when nothing is happening. */
+    let glowRaf = null;
+    function glowLoop() {
+      const dx = tx - gx, dy = ty - gy;
+      gx += dx * 0.12;
+      gy += dy * 0.12;
       glow.style.transform = `translate3d(${gx}px, ${gy}px, 0)`;
-      requestAnimationFrame(glowLoop);
-    })();
+      if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) { glowRaf = null; return; }
+      glowRaf = requestAnimationFrame(glowLoop);
+    }
+    const kickGlow = () => { if (!glowRaf) glowRaf = requestAnimationFrame(glowLoop); };
+    window.addEventListener('pointermove', kickGlow, { passive: true });
+    kickGlow();
   }
 
   let raf;

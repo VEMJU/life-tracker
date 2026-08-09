@@ -103,6 +103,23 @@
   window.addEventListener('message', (e) => {
     if (e.data && e.data.source === 'nv-embed' && e.data.type === 'theme:request') broadcastTheme();
   });
+  /* A cycle button with no label tells you nothing about where you are in the
+     cycle. Five themes deep, you press it once, see a slightly different red,
+     and conclude nothing changed — so it names what it just switched to, and
+     the button itself carries the current name. */
+  const THEME_NAMES = {
+    crimson: 'Crimson', violet: 'Violet', blue: 'Blue',
+    mono: 'Mono', daylight: 'Daylight — white',
+  };
+  function labelThemeBtn() {
+    const el = document.getElementById('themeCycle');
+    if (!el) return;
+    let cur = 'crimson';
+    try { cur = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
+    const lbl = el.querySelector('[data-theme-name]');
+    if (lbl) lbl.textContent = THEME_NAMES[cur] || cur;
+    el.title = 'Theme: ' + (THEME_NAMES[cur] || cur) + ' — click to change';
+  }
   const themeBtn = document.getElementById('themeCycle');
   if (themeBtn) themeBtn.addEventListener('click', () => {
     let cur = 'crimson';
@@ -110,7 +127,10 @@
     const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
     localStorage.setItem('nv.theme', JSON.stringify(next));   // patched → syncs to the account
     applyTheme();
+    labelThemeBtn();
+    if (window.NVToast) window.NVToast(THEME_NAMES[next] || next);
   });
+  labelThemeBtn();
   const signOutBtn = document.getElementById('signOutBtn');
   if (signOutBtn) signOutBtn.addEventListener('click', () => {
     if (window.NVSync && window.NVSync.signOut) window.NVSync.signOut();
