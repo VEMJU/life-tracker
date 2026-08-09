@@ -8470,6 +8470,8 @@
       if (name==='sports')    Sports.init();
       if (name==='calendar')  Cal.init();
       if (name==='stats')     Stats.render();
+      /* a tab left in arrange mode comes back arranged */
+      if (Arrange.has(name)) Arrange.refresh(name);
     }
 
     /* Split view registers itself here rather than being referenced directly —
@@ -9328,6 +9330,182 @@
 
      Every action goes through the owning module's own add(), so it persists and
      re-renders exactly as if you had typed it into the form yourself. */
+
+  /* ══════════════════  ARRANGE  ══════════════════
+     Gridstack, but inside an ordinary tab: pick up a card, put it where you
+     want it, make it wider. One module for every tab, so switching a new tab
+     on is a single line in TABS below rather than a rebuild each time.
+
+     It is a MODE, deliberately, not always-on. Two reasons. Cards you can drag
+     by accident are cards you cannot tap with confidence — every press becomes
+     a small gamble. And a card's natural height is its content; the moment a
+     grid owns its height, a card that grows has to scroll instead. Both of
+     those are fine while you are arranging on purpose and wrong the rest of
+     the time. So: off by default, on when you say so, and remembered.
+
+     Cards are static markup and the modules render INSIDE them, so wrapping a
+     card never disturbs what draws into it. */
+  const Arrange = (() => {
+    const KEY = 'nv.arrange';
+    /* tab → the board selector. Add a line, get the feature. */
+    const TABS = {
+      home:      '.board--home',
+      academics: '.board--academics',
+      nutrition: '.board--nutrition',
+      goals:     '.board--goals-pro',
+      finance:   '.board--finance',
+    };
+    const COLS = 12;
+
+    let store = Store.get(KEY, null) || {};
+    const save = () => Store.set(KEY, store);
+    const grids = {};                       // tab → live GridStack instance
+
+    const on = (tab) => !!(store[tab] && store[tab].on);
+    const has = (tab) => !!TABS[tab];
+    const board = (tab) => $(TABS[tab]);
+
+    function cardsOf(el) {
+      /* direct children only — a card inside a card is that card's business */
+      return $$(':scope > article.card, :scope > .acad-dual-row, :scope > form.card', el);
+    }
+
+    function wrap(el, id) {
+      if (el.parentElement && el.parentElement.classList.contains('grid-stack-item-content')) {
+        return el.parentElement.parentElement;
+      }
+      const item = document.createElement('div');
+      item.className = 'grid-stack-item';
+      item.dataset.arrId = id;
+      const content = document.createElement('div');
+      content.className = 'grid-stack-item-content';
+      el.parentElement.insertBefore(item, el);
+      item.appendChild(content);
+      content.appendChild(el);
+      return item;
+    }
+
+    function unwrap(tab) {
+      const el = board(tab); if (!el) return;
+      $$('.grid-stack-item', el).forEach(item => {
+        const c = item.querySelector(':scope > .grid-stack-item-content');
+        if (c) while (c.firstChild) el.insertBefore(c.firstChild, item);
+        item.remove();
+      });
+      el.classList.remove('grid-stack', 'is-arranging');
+    }
+
+    function stop(tab) {
+      if (grids[tab]) { try { grids[tab].destroy(false); } catch (e) {} delete grids[tab]; }
+      unwrap(tab);
+    }
+
+    /* A stable id per card so a saved layout survives a reload. Falls back to
+       position when a card has no class of its own to be named by. */
+    function idOf(el, i) {
+      const named = [...el.classList].find(c => c.startsWith('card--'));
+      return named || (el.getAttribute('data-arr') || 'card-' + i);
+    }
+
+    function start(tab) {
+      const el = board(tab);
+      if (!el || typeof window.GridStack === 'undefined') return false;
+      stop(tab);
+      const saved = (store[tab] && store[tab].items) || {};
+      const cards = cardsOf(el);
+      if (!cards.length) return false;
+
+      el.classList.add('grid-stack', 'is-arranging');
+      cards.forEach((c, i) => {
+        const id = idOf(c, i);
+        const item = wrap(c, id);
+        const s = saved[id];
+        item.setAttribute('gs-w', String(s ? s.w : COLS / 2));
+        item.setAttribute('gs-h', String(s ? s.h : 4));
+        if (s && typeof s.x === 'number') item.setAttribute('gs-x', String(s.x));
+        if (s && typeof s.y === 'number') item.setAttribute('gs-y', String(s.y));
+      });
+
+      grids[tab] = window.GridStack.init({
+        column: COLS, cellHeight: 68, margin: 6,
+        float: false, animate: true,
+        handle: '.card__head, .eyebrow',    // drag a card by its own heading
+        resizable: { handles: 'e, se, s, sw, w' },
+      }, el);
+
+      const persist = () => {
+        const items = {};
+        grids[tab].getGridItems().forEach(item => {
+          const n = item.gridstackNode; if (!n) return;
+          items[item.dataset.arrId] = { x: n.x, y: n.y, w: n.w, h: n.h };
+        });
+        store[tab] = { on: true, items };
+        save();
+      };
+      grids[tab].on('change', persist);
+      grids[tab].on('resizestop dragstop', persist);
+      return true;
+    }
+
+    function toggle(tab) {
+      store[tab] = store[tab] || {};
+      store[tab].on = !store[tab].on;
+      save();
+      if (store[tab].on) {
+        if (!start(tab)) { store[tab].on = false; save(); toast('Nothing to arrange here'); }
+        else toast('Drag a card by its heading');
+      } else { stop(tab); toast('Layout locked'); }
+      paint(tab);
+    }
+
+    function reset(tab) {
+      store[tab] = { on: false }; save();
+      stop(tab); paint(tab); toast('Layout reset');
+    }
+
+    /* The toggle lives in the board itself, top-right, so it is where the
+       cards are rather than in a menu three taps away. */
+    function paint(tab) {
+      const el = board(tab); if (!el) return;
+      let bar = el.querySelector(':scope > .arr-bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'arr-bar';
+        el.insertBefore(bar, el.firstChild);
+      }
+      bar.innerHTML =
+        `<button type="button" class="arr-btn ${on(tab) ? 'is-on' : ''}" data-arr-toggle="${tab}">
+           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                stroke-width="1.8" aria-hidden="true">
+             <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+             <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+           </svg>
+           ${on(tab) ? 'Done' : 'Arrange'}
+         </button>
+         ${on(tab) ? `<button type="button" class="arr-btn" data-arr-reset="${tab}">Reset</button>` : ''}`;
+    }
+
+    /* Called every time a tab is shown — a tab left in arrange mode comes back
+       arranged, and one that was not is untouched. */
+    function refresh(tab) {
+      if (!has(tab)) return;
+      paint(tab);
+      if (on(tab) && !grids[tab]) start(tab);
+    }
+
+    function init() {
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-arr-toggle]');
+        if (t) { e.preventDefault(); toggle(t.getAttribute('data-arr-toggle')); return; }
+        const r = e.target.closest('[data-arr-reset]');
+        if (r) { e.preventDefault(); reset(r.getAttribute('data-arr-reset')); }
+      });
+      Object.keys(TABS).forEach(paint);
+    }
+
+    return { init, refresh, has };
+  })();
+
   const Voice = (() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const supported = !!SR;
@@ -10170,6 +10348,7 @@
     Gym.init();
     Tabs.init();
     Split.init();
+    Arrange.init();
 
     FinHeatmap.init();
     Photos.initWidget();

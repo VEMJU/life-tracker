@@ -6316,3 +6316,65 @@ body[data-split] .split-add { position: fixed; right: 22px; bottom: 22px; z-inde
   .grid-stack-item-content > .pane-slot { max-height: 78vh; }
   .grid-stack-item > .ui-resizable-handle { display: none; }
 }
+
+/* ═══════════════════  §66  ARRANGE MODE  ═══════════════════
+   Gridstack inside an ordinary tab. It is a mode, not a permanent state — a
+   card you can drag by accident is a card you cannot tap with confidence — so
+   nothing below applies until .is-arranging is on the board.
+   ═══════════════════════════════════════════════════════════════════════ */
+.arr-bar {
+  display: flex; justify-content: flex-end; gap: 6px;
+  margin-bottom: var(--sp-3);
+}
+/* the toolbar must never become a draggable grid item itself */
+.grid-stack > .arr-bar { position: static !important; width: auto !important; height: auto !important; }
+.arr-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 6px 12px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--c-fog); background: rgba(255,255,255,.02);
+  border: 1px solid var(--hairline); border-radius: 999px;
+  transition: color .2s, border-color .2s, background .2s, transform var(--dur-fast) var(--spring);
+}
+.arr-btn:hover  { color: var(--c-blanc); border-color: var(--border); }
+.arr-btn:active { transform: scale(.96); }
+.arr-btn.is-on {
+  color: var(--accent-bright, #fff);
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .45);
+  background: rgba(var(--accent-br-rgb, 255,255,255), .08);
+}
+
+/* ── while arranging ────────────────────────────────────────────────── */
+.is-arranging .grid-stack-item-content { inset: 0; display: flex; flex-direction: column; }
+.is-arranging .grid-stack-item-content > .card {
+  flex: 1; min-height: 0; overflow: auto; margin: 0;
+}
+/* the heading is the handle, so it should say so */
+.is-arranging .card__head, .is-arranging .eyebrow { cursor: grab; }
+.is-arranging .card__head:active, .is-arranging .eyebrow:active { cursor: grabbing; }
+/* …but buttons in a heading stay buttons */
+.is-arranging .card__head button, .is-arranging .card__head select { cursor: pointer; }
+
+.is-arranging .grid-stack-item > .ui-resizable-handle { opacity: 0; transition: opacity .18s var(--ease-vt); }
+.is-arranging .grid-stack-item:hover > .ui-resizable-handle { opacity: .75; }
+.is-arranging .grid-stack-item > .ui-resizable-se::after {
+  content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px;
+  border-right: 2px solid var(--c-bone); border-bottom: 2px solid var(--c-bone);
+}
+/* a faint dotted field, so it is obvious the board is in a different mode */
+.is-arranging {
+  background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border-radius: 14px;
+}
+
+@media (max-width: 780px) {
+  /* dragging cards around a phone is not a feature — the mode simply flattens */
+  .is-arranging { background-image: none; }
+  .is-arranging.grid-stack { display: flex !important; flex-direction: column; gap: var(--sp-4); }
+  .is-arranging .grid-stack-item {
+    position: static !important; width: auto !important; height: auto !important; transform: none !important;
+  }
+  .is-arranging .grid-stack-item-content > .card { overflow: visible; }
+  .is-arranging .grid-stack-item > .ui-resizable-handle { display: none; }
+}
