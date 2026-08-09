@@ -49,6 +49,62 @@
     window.nvErrorsClear = () => { try { localStorage.removeItem(ERRKEY); } catch (e) {} return 'cleared'; };
   })();
 
+  /* ═══════════════════  THE STOPWATCH  ═══════════════════
+     Three rounds of "it feels laggy" and three rounds of me guessing at the
+     cause is two rounds too many. This measures instead.
+
+     Run nvPerf() and use the app normally for ten seconds — switch tabs, scroll,
+     move the pointer. It reports the frame rate, the worst single frame, and
+     every LONG TASK: a block of JavaScript that held the main thread for more
+     than 50ms, which is what "laggy" actually is. Long tasks name their own
+     source, so the answer comes back as a place in the code rather than a hunch. */
+  window.nvPerf = function nvPerf(seconds = 10) {
+    const frames = [];
+    const longs = [];
+    let obs = null;
+    try {
+      obs = new PerformanceObserver((list) => {
+        list.getEntries().forEach(e => longs.push({ ms: Math.round(e.duration), at: e.name }));
+      });
+      obs.observe({ entryTypes: ['longtask'] });
+    } catch (e) { /* Safari has no longtask observer; frame timing still works */ }
+
+    let prev = performance.now(), stop = false;
+    (function tick(now) {
+      if (stop) return;
+      frames.push(now - prev); prev = now;
+      requestAnimationFrame(tick);
+    })(prev);
+
+    console.log('Measuring for ' + seconds + 's — use the app normally: switch tabs, scroll, move the mouse.');
+
+    setTimeout(() => {
+      stop = true;
+      if (obs) obs.disconnect();
+      const f = frames.slice(1).filter(x => x < 2000);
+      const avg = f.reduce((a, b) => a + b, 0) / (f.length || 1);
+      const worst = Math.max.apply(null, f.concat(0));
+      const over32 = f.filter(x => x > 32).length;
+      const report = [
+        '─── nvPerf ───────────────────────────────',
+        'average frame : ' + avg.toFixed(1) + 'ms  (' + Math.round(1000 / avg) + ' fps)',
+        'worst frame   : ' + worst.toFixed(0) + 'ms',
+        'frames > 32ms : ' + over32 + ' of ' + f.length +
+          '  (' + Math.round(over32 / (f.length || 1) * 100) + '%)',
+        'long tasks    : ' + longs.length + (longs.length
+          ? '  — worst ' + Math.max.apply(null, longs.map(l => l.ms)) + 'ms' : ''),
+        longs.length ? 'sources       : ' + [...new Set(longs.map(l => l.at))].join(', ') : '',
+        '──────────────────────────────────────────',
+        avg > 24 ? 'VERDICT: genuinely slow. Send this whole block back.'
+                 : 'VERDICT: frame rate is fine — the lag is somewhere else.',
+      ].filter(Boolean).join('\n');
+      console.log(report);
+      return report;
+    }, seconds * 1000);
+
+    return 'measuring…';
+  };
+
   /* ─────────────────  HELPERS  ───────────────── */
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));

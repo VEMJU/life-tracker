@@ -6563,3 +6563,31 @@ body.stage-locked { overflow: hidden; }
   text-transform: uppercase; color: rgba(255,255,255,.4); white-space: nowrap;
 }
 .stage__pick { position: relative; }
+
+/* ═══════════════════  §71  THE COMPOSITOR BILL  ═══════════════════
+   Two layers were costing far more than they looked worth.
+
+   THE CURSOR GLOW: a 540px circle with mix-blend-mode AND a blur filter, moved
+   every time the pointer moves. A blend mode forces its own compositing layer
+   and makes the browser blend it against everything behind it; a blur filter
+   makes it re-rasterise. Doing both, on a moving element, every frame, is one
+   of the most expensive things a page can casually do.
+
+   The blur was also pointless — it was blurring a RADIAL GRADIENT, which is
+   already perfectly smooth. It bought nothing and cost a rasterisation.
+
+   THE NOISE: a full-page turbulence texture, also blended. Kept, but it no
+   longer forces its own layer.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cursor-glow {
+  filter: none;                 /* a gradient does not need blurring */
+  mix-blend-mode: plus-lighter; /* cheaper than screen, and near-identical here */
+  will-change: transform;       /* promoted once, so moving it is a transform only */
+}
+.backdrop__noise { will-change: auto; }
+
+/* The whole backdrop stops existing while a split desk is open — you are looking
+   at four panes of content, not at drifting crosses behind them. */
+body[data-split] .backdrop__canvas,
+body[data-split] .backdrop__noise,
+body[data-split] .cursor-glow { display: none; }
