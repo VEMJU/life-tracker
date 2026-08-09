@@ -1,0 +1,406 @@
+/* ============================================================================
+   THE STAGE — a 3D boot screen that sits in front of the hub.
+
+   Scope, decided deliberately and kept small: one object on a black stage, a
+   three-light rig, forge sparks, a slow turn, a tilt that follows the pointer,
+   and a way in. No scroll choreography, no text slides, no full-screen shader.
+   Those belong to a landing page; this is a door you look at for four seconds.
+
+   THE ORDER IS: stage → Enter → the existing hub → tabs. Nothing the hub does
+   is lost; this arrives in front of it.
+
+   DESKTOP ONLY, on purpose. A WebGL scene with shadow maps and 450 additive
+   particles is the wrong thing to hand a phone, and the phone already has a
+   perfectly good hub to boot into.
+
+   THE CROSS IS BUILT IN CODE, not downloaded. An Orthodox cross is four beams
+   and a bevel — geometry I can write — and writing it means no licence to
+   verify, nothing to download, and a REAL gold material rather than a
+   photograph of one. The figure is a different matter: that has to be a model.
+   ========================================================================== */
+
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const HOST   = document.getElementById('stage');
+const CANVAS = document.getElementById('stageCanvas');
+
+/* ── THE GATE, DECIDED UP FRONT ───────────────────────────────────────────
+   Phones, reduced-motion, no WebGL, or already seen this session → the stage
+   never runs at all. Nothing is built and then thrown away.
+
+   The answer is published on window immediately, because intro.js has to know
+   whether to open the hub itself or wait for the stage to hand over. Two
+   things both opening on sign-in is the one failure this must not have. */
+function hasWebGL() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+  } catch (e) { return false; }
+}
+
+const ARMED = !!(HOST && CANVAS)
+  && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  && !window.matchMedia('(max-width: 900px), (pointer: coarse)').matches
+  && sessionStorage.getItem('nv.stage.seen') !== '1'
+  && hasWebGL();
+
+window.lifeStage = { armed: ARMED };
+
+/* The stage arrives AFTER sign-in, in the same beat the hub used to. */
+if (ARMED) window.addEventListener('nv-data-ready', () => boot(), { once: true });
+
+function boot() {
+  HOST.hidden = false;
+  document.body.classList.add('stage-locked');
+
+  /* ── state ──────────────────────────────────────────────────────────── */
+  const sizes = { w: window.innerWidth, h: window.innerHeight };
+  let scene, camera, renderer, pivot, sparks, raf;
+  let mouseX = 0, mouseY = 0, tMouseX = 0, tMouseY = 0;
+  const clock = new THREE.Clock();
+  const sparkData = [];
+  const SPARKS = 380;
+
+  let cross = null, figure = null;
+  let which = localStorage.getItem('nv.stage.model') || 'cross';
+
+  /* ── scene, camera, renderer ────────────────────────────────────────── */
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color('#000000');
+  scene.fog = new THREE.FogExp2('#000000', 0.055);
+
+  camera = new THREE.PerspectiveCamera(42, sizes.w / sizes.h, 0.1, 60);
+  camera.position.set(0, 0.25, 5.2);
+
+  renderer = new THREE.WebGLRenderer({ canvas: CANVAS, antialias: true, alpha: false });
+  renderer.setSize(sizes.w, sizes.h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.5;
+
+  /* ── THE THING THAT MAKES METAL LOOK LIKE METAL ──────────────────────
+     Gold is not a colour, it is a reflection. A metallic surface with nothing
+     around it to reflect renders as flat grey plastic no matter how the
+     roughness is tuned — which is why coded metal usually looks cheap.
+
+     So the scene is given something to see: a small gradient sky, cooked into
+     a cube map once at boot. It costs one frame, needs no HDRI download, and
+     is the single biggest reason the cross below reads as gold. */
+  function makeEnvironment() {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 256;
+    const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 256);
+    grd.addColorStop(0.00, '#0b1220');   // cold sky above
+    grd.addColorStop(0.42, '#6f6252');   // warm horizon — the light gold catches
+    grd.addColorStop(0.52, '#c9a978');
+    grd.addColorStop(0.70, '#241b13');
+    grd.addColorStop(1.00, '#000000');   // dark floor below
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 256);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const env = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose(); pmrem.dispose();
+    return env;
+  }
+  scene.environment = makeEnvironment();
+
+  /* ── the light rig ──────────────────────────────────────────────────
+     Chiaroscuro: one hard key from high right, a cold rim from behind left to
+     cut the silhouette out of the black, and a whisper of warm fill from below
+     so the shadow side is not a hole. */
+  scene.add(new THREE.AmbientLight('#ffffff', 0.08));
+
+  const key = new THREE.SpotLight('#fff6ea', 26, 0, Math.PI / 4, 0.9, 1.2);
+  key.position.set(4, 6, 3.4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);      // 1024 is plenty for one object
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 18;
+  key.shadow.bias = -0.0015;
+  scene.add(key);
+
+  const rim = new THREE.DirectionalLight('#cfe6ff', 5.5);
+  rim.position.set(-5, 2.5, -4);
+  scene.add(rim);
+
+  const fill = new THREE.DirectionalLight('#ffdcb0', 0.7);
+  fill.position.set(-2.4, -3.2, 2.5);
+  scene.add(fill);
+
+  pivot = new THREE.Group();
+  scene.add(pivot);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     THE RUSSIAN ORTHODOX CROSS, IN CODE
+
+     Eight points: the vertical beam, the short title board at the top, the
+     main crossbar, and the slanted footrest. Every beam is an extruded
+     rounded rectangle with a BEVEL — and the bevel is the whole trick. A flat
+     box has one flat face per side and reads as cardboard; a bevelled edge
+     gives the light a narrow rim to run along as the object turns, which is
+     what the eye reads as "solid metal".
+
+     Each beam also carries an inset panel a hair proud of the face, so it
+     reads as worked metal rather than a slab.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const GOLD = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#caa14a'),
+    metalness: 1.0,
+    roughness: 0.26,              // polished, but not a mirror — a mirror reads as chrome
+    envMapIntensity: 1.35,
+  });
+
+  /* the recessed panels sit duller and darker, which is what makes the eye
+     read them as recessed rather than as a differently coloured sticker */
+  const GOLD_DEEP = GOLD.clone();
+  GOLD_DEEP.color = new THREE.Color('#8a6a2c');
+  GOLD_DEEP.roughness = 0.42;
+
+  function roundedBar(w, h, d, r) {
+    const s = new THREE.Shape();
+    const x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y);
+    s.lineTo(x + w - r, y);         s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + h - r);     s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h);         s.quadraticCurveTo(x, y + h, x, y + h - r);
+    s.lineTo(x, y + r);             s.quadraticCurveTo(x, y, x + r, y);
+    const geo = new THREE.ExtrudeGeometry(s, {
+      depth: d, bevelEnabled: true,
+      bevelThickness: d * 0.16, bevelSize: d * 0.14, bevelSegments: 3, curveSegments: 6,
+    });
+    geo.center();
+    return geo;
+  }
+
+  function beam(w, h, d, r, panel) {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(roundedBar(w, h, d, r), GOLD);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    if (panel) {
+      /* the inset: a smaller, duller bar standing a whisker proud of each face */
+      const pw = w - d * 1.5, ph = h - d * 1.5;
+      if (pw > 0.01 && ph > 0.01) {
+        [-1, 1].forEach(side => {
+          const p = new THREE.Mesh(roundedBar(pw, ph, d * 0.22, r * 0.6), GOLD_DEEP);
+          p.position.z = side * (d * 0.5);
+          p.castShadow = true;
+          g.add(p);
+        });
+      }
+    }
+    return g;
+  }
+
+  function buildCross() {
+    const g = new THREE.Group();
+    const D = 0.17;                       // beam depth, shared so joints read as one object
+
+    const stem = beam(0.30, 3.30, D, 0.05, true);          g.add(stem);
+    const title = beam(0.92, 0.24, D, 0.05, false);         title.position.y =  1.16;  g.add(title);
+    const main  = beam(1.86, 0.34, D, 0.06, true);          main.position.y  =  0.44;  g.add(main);
+
+    const foot = beam(1.06, 0.22, D, 0.05, false);
+    foot.position.y = -0.92;
+    foot.rotation.z = THREE.MathUtils.degToRad(18);         // the slant, raised to Christ's right
+    g.add(foot);
+
+    return g;
+  }
+
+  cross = buildCross();
+  pivot.add(cross);
+
+  /* ── the figure, if the file is there ──────────────────────────────────
+     Loaded lazily and silently: if the model is missing the stage simply keeps
+     the cross, and the toggle hides itself. A boot screen must never be able
+     to fail closed. */
+  const FIGURE_URL = 'models/christ.glb';
+  function loadFigure() {
+    new GLTFLoader().load(FIGURE_URL, (gltf) => {
+      figure = gltf.scene;
+      figure.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true; o.receiveShadow = true;
+        if (o.material) { o.material.envMapIntensity = 0.9; o.material.needsUpdate = true; }
+      });
+      /* scale so the tallest dimension is 3.4 units, then recentre on the pivot */
+      const box = new THREE.Box3().setFromObject(figure);
+      const size = box.getSize(new THREE.Vector3());
+      const max = Math.max(size.x, size.y, size.z) || 1;
+      figure.scale.setScalar(3.4 / max);
+      figure.updateMatrixWorld(true);
+      const c = new THREE.Box3().setFromObject(figure).getCenter(new THREE.Vector3());
+      figure.position.sub(c);
+      figure.visible = false;
+      pivot.add(figure);
+      const t = document.querySelector('[data-stage-toggle]');
+      if (t) t.hidden = false;
+      applyWhich();
+    }, undefined, () => { /* no file yet — the cross carries the stage alone */ });
+  }
+  loadFigure();
+
+  function applyWhich() {
+    if (cross)  cross.visible  = which !== 'figure';
+    if (figure) figure.visible = which === 'figure';
+    document.querySelectorAll('[data-stage-pick]').forEach(b =>
+      b.classList.toggle('is-on', b.getAttribute('data-stage-pick') === which));
+  }
+  applyWhich();
+
+  /* ── forge sparks ───────────────────────────────────────────────────── */
+  function sparkTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(8, 8, 0, 8, 8, 8);
+    grd.addColorStop(0,    'rgba(255,255,255,1)');
+    grd.addColorStop(0.25, 'rgba(255,255,255,.85)');
+    grd.addColorStop(0.6,  'rgba(255,255,255,.3)');
+    grd.addColorStop(1,    'rgba(0,0,0,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 16, 16);
+    return new THREE.CanvasTexture(c);
+  }
+
+  (function makeSparks() {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(SPARKS * 3);
+    const col = new Float32Array(SPARKS * 3);
+    for (let i = 0; i < SPARKS; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 6.5;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 5.0 - 0.5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 6.5;
+      if (Math.random() < 0.62) {                 // embers
+        col[i * 3] = 1.0;
+        col[i * 3 + 1] = 0.42 + Math.random() * 0.16;
+        col[i * 3 + 2] = 0.06 + Math.random() * 0.1;
+      } else {                                    // cold motes, matching the rim light
+        col[i * 3] = 0.56 + Math.random() * 0.15;
+        col[i * 3 + 1] = 0.82 + Math.random() * 0.12;
+        col[i * 3 + 2] = 1.0;
+      }
+      sparkData.push({
+        vx: (Math.random() - 0.5) * 0.34,
+        vy: 0.13 + Math.random() * 0.26,
+        vz: (Math.random() - 0.5) * 0.34,
+        sway: 0.5 + Math.random() * 1.5,
+        amp: 0.05 + Math.random() * 0.14,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    sparks = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 0.026, vertexColors: true, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false, map: sparkTexture(),
+    }));
+    scene.add(sparks);
+  })();
+
+  /* ── input ──────────────────────────────────────────────────────────── */
+  window.addEventListener('pointermove', (e) => {
+    tMouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    tMouseY = (e.clientY / window.innerHeight) * 2 - 1;
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    sizes.w = window.innerWidth; sizes.h = window.innerHeight;
+    camera.aspect = sizes.w / sizes.h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(sizes.w, sizes.h);
+  }, { passive: true });
+
+  /* ── the loop ───────────────────────────────────────────────────────── */
+  let last = 0;
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (document.hidden) return;
+    if (now - last < 16) return;               // desktop only, so 60 is affordable
+    const dt = Math.min(clock.getDelta(), 0.05);
+    last = now;
+
+    mouseX += (tMouseX - mouseX) * 0.05;
+    mouseY += (tMouseY - mouseY) * 0.05;
+
+    /* a slow constant turn, plus a tilt that leans toward the pointer */
+    pivot.rotation.y += dt * 0.18;
+    pivot.rotation.x = mouseY * 0.14;
+    pivot.position.x = mouseX * 0.12;
+
+    if (sparks) {
+      const p = sparks.geometry.attributes.position.array;
+      const t = clock.getElapsedTime();
+      for (let i = 0; i < SPARKS; i++) {
+        const k = i * 3, d = sparkData[i];
+        p[k]     += d.vx * dt;
+        p[k + 1] += d.vy * dt;
+        p[k + 2] += d.vz * dt;
+        p[k]     += Math.sin(t * d.sway + d.phase) * d.amp * dt;
+        p[k + 2] += Math.cos(t * d.sway + d.phase) * d.amp * dt;
+        if (p[k + 1] > 3.0 || Math.abs(p[k]) > 3.5 || Math.abs(p[k + 2]) > 3.5) {
+          p[k + 1] = -2.5;
+          p[k]     = (Math.random() - 0.5) * 3.0;
+          p[k + 2] = (Math.random() - 0.5) * 3.0;
+        }
+      }
+      sparks.geometry.attributes.position.needsUpdate = true;
+    }
+
+    renderer.render(scene, camera);
+  }
+  raf = requestAnimationFrame(frame);
+
+  /* ── the way in ─────────────────────────────────────────────────────── */
+  HOST.addEventListener('click', (e) => {
+    const pick = e.target.closest('[data-stage-pick]');
+    if (pick) {
+      which = pick.getAttribute('data-stage-pick');
+      localStorage.setItem('nv.stage.model', which);
+      applyWhich();
+      return;
+    }
+    if (e.target.closest('[data-stage-enter]')) enter();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (HOST.hidden) return;
+    if (e.key === 'Enter' || e.key === 'Escape') enter();
+  });
+
+  function enter() {
+    if (HOST.classList.contains('is-leaving')) return;
+    HOST.classList.add('is-leaving');
+    sessionStorage.setItem('nv.stage.seen', '1');   // once per session, not once per navigation
+    setTimeout(() => {
+      HOST.hidden = true;
+      document.body.classList.remove('stage-locked');
+      /* hand over to the hub exactly as it was — nothing here replaces it */
+      if (window.lifeHub && window.lifeHub.open) window.lifeHub.open();
+      teardown();
+    }, 900);
+  }
+
+  /* WebGL contexts are not garbage: they hold GPU memory until told otherwise.
+     Once the stage is gone it gives everything back. */
+  function teardown() {
+    cancelAnimationFrame(raf);
+    scene.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach(m => { Object.values(m).forEach(v => v && v.isTexture && v.dispose()); m.dispose(); });
+      }
+    });
+    if (scene.environment) scene.environment.dispose();
+    renderer.dispose();
+  }
+}

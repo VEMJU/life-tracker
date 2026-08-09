@@ -6460,3 +6460,79 @@ body[data-split] .split-add { position: fixed; right: 22px; bottom: 22px; z-inde
   background: var(--done); border-color: var(--done);
   box-shadow: 0 0 12px -2px rgba(var(--done-rgb), .5);
 }
+
+/* ═══════════════════  §70  THE STAGE  ═══════════════════
+   A black room with one object in it. Everything here is chrome around a
+   canvas — the canvas does the work, this only keeps out of its way.
+   ═══════════════════════════════════════════════════════════════════════ */
+.stage {
+  position: fixed; inset: 0; z-index: 12000;
+  background: #000;
+  opacity: 1;
+  transition: opacity .9s var(--ease-vt);
+}
+.stage[hidden] { display: none; }
+.stage.is-leaving { opacity: 0; pointer-events: none; }
+body.stage-locked { overflow: hidden; }
+
+#stageCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* the chrome sits over the canvas and lets the pointer through, so the model
+   still leans toward you when the cursor crosses a label */
+.stage__ui {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: var(--sp-5); padding: 0 0 8vh;
+  pointer-events: none;
+}
+.stage__ui > * { pointer-events: auto; }
+
+.stage__eyebrow {
+  font-family: var(--ff-mono); font-size: 9px; letter-spacing: .42em;
+  text-transform: uppercase; color: rgba(255,255,255,.42);
+  margin: 0; pointer-events: none;
+  animation: stageUp 1.4s var(--ease-vt) both .5s;
+}
+
+.stage__pick {
+  display: flex; gap: 4px; padding: 4px;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 999px;
+  background: rgba(255,255,255,.03);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  animation: stageUp 1.4s var(--ease-vt) both .7s;
+}
+.stage__pick[hidden] { display: none; }
+.stage__pick button {
+  padding: 7px 18px; cursor: pointer; border: 0; border-radius: 999px;
+  font-family: var(--ff-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255,255,255,.5); background: none;
+  transition: color .25s var(--ease-vt), background .25s var(--ease-vt);
+}
+.stage__pick button:hover  { color: #fff; }
+.stage__pick button.is-on  { color: #0b0b0d; background: #f3ead6; }
+
+.stage__enter {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 30px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: .26em; text-transform: uppercase;
+  color: rgba(255,255,255,.86); background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  transition: color .3s var(--ease-vt), border-color .3s var(--ease-vt),
+              background .3s var(--ease-vt), transform .3s var(--spring);
+  animation: stageUp 1.4s var(--ease-vt) both .9s;
+}
+.stage__enter:hover {
+  color: #fff; border-color: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.09); transform: translateY(-2px);
+}
+.stage__enter:active { transform: scale(.97); }
+.stage__enter svg { opacity: .7; }
+
+@keyframes stageUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage__eyebrow, .stage__pick, .stage__enter { animation: none; }
+}

@@ -19,7 +19,7 @@
        change underneath us. Split view falls back to a plain CSS grid if
        this ever fails to load. -->
   <link rel="stylesheet" href="vendor/gridstack.min.css?v=1" />
-  <link rel="stylesheet" href="style.css?v=83" />
+  <link rel="stylesheet" href="style.css?v=84" />
   <!-- Daylight loads after style.css so it overrides without fighting
        specificity. Every rule inside is scoped to [data-theme="daylight"],
        so it costs the other themes nothing. -->
@@ -47,6 +47,35 @@
   </script>
 </head>
 <body data-view="home">
+
+  <!-- ───────────────────────────────  THE STAGE  ───────────────────────────────
+       A 3D door in front of the hub: one object, three lights, forge sparks, a
+       slow turn. Enter hands over to the hub exactly as it was — nothing the hub
+       does is replaced, this simply arrives first.
+
+       Desktop only, and once per session. Hidden by default and revealed by the
+       script, so a browser without WebGL, a phone, or a reduced-motion setting
+       never sees an empty black rectangle. -->
+  <div class="stage" id="stage" hidden>
+    <canvas id="stageCanvas"></canvas>
+
+    <div class="stage__ui">
+      <p class="stage__eyebrow">Son of God</p>
+
+      <div class="stage__pick" data-stage-toggle hidden>
+        <button type="button" data-stage-pick="cross" class="is-on">Cross</button>
+        <button type="button" data-stage-pick="figure">Christ</button>
+      </div>
+
+      <button class="stage__enter" data-stage-enter type="button">
+        Enter
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+             stroke-width="1.7" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
 
   <!-- ───────────────────────────────  SIGN IN  ─────────────────────────────── -->
   <div class="lock" id="lockScreen" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
@@ -1892,6 +1921,19 @@
     </div>
   </div>
 
+  <!-- Three.js r160 · MIT · vendored, same reasoning as Gridstack: a CDN having
+       a bad day must not be able to break the boot screen. The importmap lets
+       the addons resolve their own bare "three" imports. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three/build/three.module.min.js",
+      "three/addons/": "/vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="boot3d.js?v=1"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=9" defer></script>
@@ -1899,7 +1941,7 @@
   <script src="app.js?v=81" defer></script>
   <script src="bg.js?v=5" defer></script>
   <script src="fx.js?v=7" defer></script>
-  <script src="intro.js?v=12" defer></script>
+  <script src="intro.js?v=13" defer></script>
   <script src="gallery.js?v=8" defer></script>
   <script src="polish.js?v=3" defer></script>
   <script src="push.js?v=3" defer></script>

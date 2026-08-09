@@ -148,6 +148,11 @@
   // being thrown back to the opening ceremony is not a welcome, it is losing
   // your place — so a live desk keeps the screen it has.
   window.addEventListener('nv-data-ready', () => {
+    /* The 3D stage, when it is armed, is the thing that opens on sign-in — and
+       it calls open() itself once you press Enter. Without this check both
+       would open at once and the hub would sit behind a black canvas. */
+    if (window.lifeStage && window.lifeStage.armed) return;
+
     let desk = null;
     try { desk = JSON.parse(localStorage.getItem('nv.split') || 'null'); } catch (e) {}
     if (desk && desk.layout && desk.layout !== 'single') {
