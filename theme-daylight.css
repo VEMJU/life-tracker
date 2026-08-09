@@ -1,0 +1,215 @@
+/* ═══════════════════════════════  DAYLIGHT  ═══════════════════════════════
+   White first, grey for structure, near-black for type, light blue where the
+   crimson was.
+
+   The other three themes swap an accent and stop. This one turns the whole
+   monochrome ladder end for end — --c-void becomes the page and --c-blanc
+   becomes the ink — so every grey in the app inverts on its own.
+
+   ONE THING WORTH KNOWING, because it explains everything below: around 360
+   places in style.css use a literal rgba(255,255,255,alpha) as a subtle lift
+   against a dark background. On white those vanish rather than break. So every
+   surface that carries structure is given an explicit light value here. If
+   something still looks flat, it is one of those, and it is a one-line fix.
+
+   ONE INVERSION THAT IS NOT OBVIOUS: in a dark theme "bright" means lighter,
+   because lighter is more visible. On white the opposite holds — so
+   --accent-bright is the DEEPER blue here, not the paler one. Get that
+   backwards and every accented label turns to pale mush.
+
+   Lives in its own file so the theme can be read, and edited, as one thing.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root[data-theme="daylight"] {
+  color-scheme: light;                 /* native controls, scrollbars, form UI */
+
+  /* the monochrome ladder, end for end */
+  --c-void:        #f6f7f9;
+  --c-abyss:       #f0f2f5;
+  --c-coal:        #e9ecf0;
+  --c-graphite:    #e0e4ea;
+  --c-iron:        #d4d9e1;
+  --c-ash:         #bdc4cf;
+  --c-mid:         #97a0ae;
+  --c-fog:         #69727f;
+  --c-stone:       #48505b;
+  --c-bone:        #2a3039;
+  --c-paper:       #191e25;
+  --c-blanc:       #0b0e12;
+
+  --bg:            var(--c-void);
+  --fg:            var(--c-paper);
+  --fg-dim:        var(--c-stone);
+  --fg-mute:       var(--c-fog);
+
+  /* structure drawn in ink, not in light */
+  --border:        rgba(11, 14, 18, .13);
+  --border-strong: rgba(11, 14, 18, .26);
+  --hairline:      rgba(11, 14, 18, .075);
+
+  --good:          #0b0e12;
+  --good-soft:     rgba(11, 14, 18, .55);
+  --bad:           #97a0ae;
+
+  /* light blue — deeper where it must be read, paler where it only tints */
+  --c-crimson:     #0369A1;
+  --c-crimson-br:  #0284C7;
+  --c-oxblood:     #E0F2FE;
+  --accent-rgb:      3, 105, 161;
+  --accent-br-rgb:   2, 132, 199;
+  --accent-wine-rgb: 125, 185, 225;
+  --accent-soft:   rgba(var(--accent-rgb), .45);
+  --accent-glow:   rgba(var(--accent-br-rgb), .28);
+
+  /* glass over a light page is frosted white; the shadow does the lifting a
+     bright inset edge used to do on black */
+  --glass-bg:      rgba(255, 255, 255, .82);
+  --glass-bg-soft: rgba(255, 255, 255, .62);
+  --glass-sheen:   linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 48%);
+  --glass-shadow:
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 0 0 1px rgba(11,14,18,.055) inset,
+    0 16px 36px -22px rgba(11,14,18,.30);
+  --glass-shadow-hover:
+    0 1px 0 #fff inset,
+    0 0 0 1px rgba(11,14,18,.11) inset,
+    0 24px 54px -18px rgba(11,14,18,.34);
+}
+
+:root[data-theme="daylight"] body { background: var(--c-void); color: var(--c-paper); }
+:root[data-theme="daylight"] ::selection { background: rgba(var(--accent-br-rgb), .20); color: var(--c-blanc); }
+:root[data-theme="daylight"] ::-webkit-scrollbar-thumb { background: rgba(11,14,18,.18); }
+:root[data-theme="daylight"] ::-webkit-scrollbar-thumb:hover { background: rgba(11,14,18,.30); }
+
+/* ── the paper: cards lift with shadow, not with a glow ─────────────────── */
+:root[data-theme="daylight"] .card,
+:root[data-theme="daylight"] .grid-stack-item-content > .card {
+  background: #ffffff;
+  border-color: rgba(11,14,18,.09);
+  box-shadow: 0 1px 2px rgba(11,14,18,.04), 0 10px 26px -22px rgba(11,14,18,.28);
+}
+:root[data-theme="daylight"] .card:hover {
+  box-shadow: 0 1px 3px rgba(11,14,18,.06), 0 18px 40px -20px rgba(11,14,18,.32);
+}
+
+/* ── every recessed surface: grey, so it reads as inset rather than absent ── */
+:root[data-theme="daylight"] .tile-well,
+:root[data-theme="daylight"] .input,
+:root[data-theme="daylight"] select.input,
+:root[data-theme="daylight"] textarea.input,
+:root[data-theme="daylight"] .chz,
+:root[data-theme="daylight"] .rdy__row,
+:root[data-theme="daylight"] .hab__row,
+:root[data-theme="daylight"] .mtg__row,
+:root[data-theme="daylight"] .splitp__pre,
+:root[data-theme="daylight"] .splitp__wsgo,
+:root[data-theme="daylight"] .splitc__step,
+:root[data-theme="daylight"] .arr-btn,
+:root[data-theme="daylight"] .hubdesk,
+:root[data-theme="daylight"] .pane-slot,
+:root[data-theme="daylight"] .day-pill,
+:root[data-theme="daylight"] .cal-cell,
+:root[data-theme="daylight"] .subj-card,
+:root[data-theme="daylight"] .shop-row,
+:root[data-theme="daylight"] .td-row,
+:root[data-theme="daylight"] .goal-card,
+:root[data-theme="daylight"] .reminder,
+:root[data-theme="daylight"] .alert,
+:root[data-theme="daylight"] .check,
+:root[data-theme="daylight"] .range,
+:root[data-theme="daylight"] .navlink,
+:root[data-theme="daylight"] .btn {
+  background: #f2f4f7;
+  border-color: rgba(11,14,18,.10);
+  color: var(--c-paper);
+}
+:root[data-theme="daylight"] .input::placeholder { color: var(--c-mid); }
+
+:root[data-theme="daylight"] .chz:hover,
+:root[data-theme="daylight"] .rdy__row:hover,
+:root[data-theme="daylight"] .arr-btn:hover,
+:root[data-theme="daylight"] .hubdesk:hover,
+:root[data-theme="daylight"] .btn:hover,
+:root[data-theme="daylight"] .alert:hover,
+:root[data-theme="daylight"] .goal-card:hover,
+:root[data-theme="daylight"] .splitp__pre:hover,
+:root[data-theme="daylight"] .splitp__wsgo:hover { background: #e6eaf0; }
+
+/* the one loud button stays loud */
+:root[data-theme="daylight"] .btn--primary,
+:root[data-theme="daylight"] .tile-actions__btn.is-primary {
+  background: var(--c-crimson-br); border-color: var(--c-crimson); color: #fff;
+}
+:root[data-theme="daylight"] .btn--primary:hover { background: var(--c-crimson); }
+
+/* ── marks that were white on black are now white on colour, or ink ─────── */
+:root[data-theme="daylight"] .mtg__box::after,
+:root[data-theme="daylight"] .hab__tick::after { border-color: #ffffff; }
+:root[data-theme="daylight"] .mtg__row.is-on .mtg__box,
+:root[data-theme="daylight"] .hab__row.is-on .hab__tick {
+  background: var(--c-crimson-br); border-color: var(--c-crimson-br);
+}
+:root[data-theme="daylight"] .hab__dots i          { background: rgba(11,14,18,.08); }
+:root[data-theme="daylight"] .hab__dots i.is-on    { background: rgba(var(--accent-br-rgb), .72); }
+:root[data-theme="daylight"] .hab__dots i.is-today { box-shadow: inset 0 0 0 1px rgba(11,14,18,.28); }
+:root[data-theme="daylight"] .tile-hero__bar       { background: rgba(11,14,18,.07); }
+:root[data-theme="daylight"] .tile-hero__bar i     { background: var(--c-crimson-br); }
+:root[data-theme="daylight"] .rdy__dot             { background: rgba(11,14,18,.14); }
+
+/* ── split view and arrange, on paper ───────────────────────────────────── */
+:root[data-theme="daylight"] body[data-split] .views > [data-tab-panel],
+:root[data-theme="daylight"] .grid-stack-item-content > [data-tab-panel] {
+  background: #ffffff; border-color: rgba(11,14,18,.10);
+}
+:root[data-theme="daylight"] .pane-bar {
+  background: rgba(255,255,255,.92); border-bottom-color: rgba(11,14,18,.09);
+}
+:root[data-theme="daylight"] .is-arranging {
+  background-image: radial-gradient(rgba(11,14,18,.09) 1px, transparent 1px);
+}
+:root[data-theme="daylight"] .grid-stack > .grid-stack-placeholder > .placeholder-content {
+  background: rgba(var(--accent-br-rgb), .09);
+  border-color: rgba(var(--accent-br-rgb), .5);
+}
+:root[data-theme="daylight"] .pane-grip::after,
+:root[data-theme="daylight"] .grid-stack-item > .ui-resizable-se::after {
+  border-color: var(--c-stone);
+}
+
+/* ── the floating controls ──────────────────────────────────────────────── */
+:root[data-theme="daylight"] .alerts-fab,
+:root[data-theme="daylight"] .nova-fab,
+:root[data-theme="daylight"] .split-fab,
+:root[data-theme="daylight"] .split-add,
+:root[data-theme="daylight"] .hub-back { color: var(--c-stone); }
+:root[data-theme="daylight"] .alerts-fab:hover,
+:root[data-theme="daylight"] .nova-fab:hover,
+:root[data-theme="daylight"] .split-fab:hover,
+:root[data-theme="daylight"] .split-add:hover { color: var(--c-crimson-br); }
+
+/* ── THE HUB, IN DAYLIGHT ───────────────────────────────────────────────────
+   This is the screen seen at every sign-in, and a black cinematic curtain in
+   front of a white app is a flash in a dark room. So the hub becomes a bright
+   field: the drifting cloud canvas keeps its motion and takes the blue by
+   multiplying into the page, and the lettering flips to ink. */
+:root[data-theme="daylight"] .intro { background: #f6f7f9; }
+:root[data-theme="daylight"] .intro::before,
+:root[data-theme="daylight"] .intro::after { opacity: .3; }
+:root[data-theme="daylight"] #introSky { opacity: .45; mix-blend-mode: multiply; }
+:root[data-theme="daylight"] .intro__w,
+:root[data-theme="daylight"] .intro__verse,
+:root[data-theme="daylight"] .intro__eyebrow { color: var(--c-blanc); }
+:root[data-theme="daylight"] .intro__sep { background: rgba(11,14,18,.18); }
+:root[data-theme="daylight"] .intro-tab,
+:root[data-theme="daylight"] .intro__enter,
+:root[data-theme="daylight"] button.intro-tool {
+  background: rgba(255,255,255,.78);
+  border-color: rgba(11,14,18,.12);
+  color: var(--c-paper);
+  box-shadow: 0 10px 26px -20px rgba(11,14,18,.4);
+}
+:root[data-theme="daylight"] .intro-tab:hover,
+:root[data-theme="daylight"] .intro__enter:hover,
+:root[data-theme="daylight"] button.intro-tool:hover {
+  background: #fff; border-color: var(--accent-soft); color: var(--c-blanc);
+}

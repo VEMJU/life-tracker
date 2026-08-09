@@ -61,7 +61,9 @@
   }
 
   /* ---------- theme (accent color follows nv.theme, synced per account) ---------- */
-  const THEMES = ['crimson', 'violet', 'blue', 'mono'];
+  /* 'daylight' is the odd one out: the others only swap an accent, it inverts
+     the entire light/dark scale. It lives in theme-daylight.css. */
+  const THEMES = ['crimson', 'violet', 'blue', 'mono', 'daylight'];
   function applyTheme() {
     let t = 'crimson';
     try { t = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
