@@ -6591,3 +6591,63 @@ body.stage-locked { overflow: hidden; }
 body[data-split] .backdrop__canvas,
 body[data-split] .backdrop__noise,
 body[data-split] .cursor-glow { display: none; }
+
+/* ═══════════════════  §72  LITE MODE  ═══════════════════
+   Measured cause: 14fps with ZERO long tasks — so not JavaScript, but PAINT.
+   A full-screen canvas repainting 30×/sec underneath forty backdrop-filters
+   and three blend-mode layers means every canvas frame re-blurs and re-blends
+   the entire page. On hardware without working GPU acceleration that lands on
+   the CPU, and the whole app pays for a background nobody is looking at.
+
+   Lite mode removes exactly the things that cost per-frame and nothing that
+   carries information. It is not a downgrade of the app — it is the app
+   without a bill it could not afford.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 1. THE BIGGEST ONE. Forty elements each blurring whatever is behind them,
+      re-doing it whenever anything back there moves. */
+.lite *,
+.lite *::before,
+.lite *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* glass without the blur still needs to be opaque enough to read */
+.lite .card            { background: var(--card-bg); }
+.lite .nova,
+.lite .alerts,
+.lite .splitp,
+.lite .modal__dialog,
+.lite .cal-drawer,
+.lite .log-panel       { background: color-mix(in srgb, var(--c-void) 94%, transparent); }
+.lite .alerts-fab,
+.lite .nova-fab,
+.lite .split-fab,
+.lite .split-add,
+.lite .hub-back,
+.lite .intro-tab,
+.lite .intro__enter,
+.lite button.intro-tool { background: color-mix(in srgb, var(--c-void) 88%, transparent); }
+
+/* 2. BLEND MODES. Each one forces its own compositing layer and makes the
+      browser mix it against everything behind it, every frame. */
+.lite .cursor-glow    { display: none; }
+.lite .backdrop__noise { display: none; }
+.lite [style*="mix-blend"],
+.lite .hab__dots i    { mix-blend-mode: normal; }
+
+/* 3. FILTERS on moving things. */
+.lite .slide-title .char,
+.lite [class*="blur"] { filter: none !important; }
+
+/* 4. Long staggered entrances. The information arrives the same; it simply
+      stops arriving in a cascade that repaints the list forty times. */
+.lite .reveal { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+.lite .rdy__row, .lite .hab__row, .lite .chz,
+.lite .mtg__row, .lite .rgt__row { animation: none !important; }
+
+/* 5. Perpetual animations nobody is watching. */
+.lite .slot__plus,
+.lite .rdy__row.is-urgent .rdy__dot { animation: none !important; }
+
+/* the shadows stay — they are cheap and they carry the shape of the design */

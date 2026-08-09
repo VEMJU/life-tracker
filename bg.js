@@ -188,11 +188,30 @@
   let raf;
   resize();
   window.addEventListener('resize', resize, { passive: true });
-  if (reduceMotion) {
-    // single static paint, no animation
+
+  /* ── THE SINGLE BIGGEST COST IN THE APP ──────────────────────────────────
+     This canvas is full-screen. Repainting it thirty times a second forces the
+     browser to re-composite every blended and blurred layer sitting above it —
+     which, measured, was the difference between 14fps and a usable app.
+
+     So in lite mode it paints ONCE and stops. The crosses are still there, they
+     simply stop drifting, and the entire per-frame bill disappears. */
+  function isLite() { return document.documentElement.classList.contains('lite'); }
+
+  function paintStatic() {
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
     ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
     for (const c of crosses) drawCross(c);
-  } else {
-    raf = requestAnimationFrame(frame);
+    ctx.globalAlpha = 1;
   }
+
+  function start() {
+    if (reduceMotion || isLite()) { paintStatic(); return; }
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  /* react the moment the mode changes, without a reload */
+  window.addEventListener('nv-lite', start);
+  start();
 })();

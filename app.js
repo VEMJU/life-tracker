@@ -49,6 +49,53 @@
     window.nvErrorsClear = () => { try { localStorage.removeItem(ERRKEY); } catch (e) {} return 'cleared'; };
   })();
 
+  /* ═══════════════════  LITE MODE  ═══════════════════
+     Measured, not guessed: 14fps with ZERO long tasks. Long tasks are the
+     browser telling you JavaScript held the thread — zero of them at 69ms a
+     frame means the cost is not script at all, it is PAINT.
+
+     The mechanism: bg.js repaints a full-screen canvas thirty times a second,
+     and above it sit a blend-mode noise layer, a blend-mode cursor glow and
+     forty elements carrying backdrop-filter. Every canvas frame makes the
+     browser re-blend and re-blur every one of them. On hardware without
+     working GPU acceleration that is done on the CPU, and the whole app pays
+     for a background nobody is looking at.
+
+     Lite mode stops buying it. The choice sticks, and the app decides for
+     itself the first time it sees a machine that cannot afford the full thing. */
+  const LITE_KEY = 'nv.lite';
+  function liteOn(v, announce) {
+    document.documentElement.classList.toggle('lite', !!v);
+    try { localStorage.setItem(LITE_KEY, JSON.stringify(!!v)); } catch (e) {}
+    window.dispatchEvent(new CustomEvent('nv-lite', { detail: !!v }));
+    if (announce) toast(v ? 'Lite mode on — effects off' : 'Lite mode off');
+  }
+  (function initLite() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LITE_KEY)); } catch (e) {}
+    if (saved !== null) { document.documentElement.classList.toggle('lite', !!saved); return; }
+
+    /* No decision yet: watch the first three seconds and decide once. Never
+       reverses itself — a display that flips between modes is worse than one
+       that is simply plainer. */
+    let n = 0, sum = 0, prev = performance.now();
+    (function sample(now) {
+      const dt = now - prev; prev = now;
+      if (dt < 500) { sum += dt; n++; }
+      if (n < 150) return requestAnimationFrame(sample);
+      const avg = sum / n;
+      if (avg > 28) {
+        liteOn(true);
+        console.info('[perf] lite mode on automatically — average frame ' +
+          avg.toFixed(1) + 'ms. Turn it off with nvLite(false).');
+      } else {
+        try { localStorage.setItem(LITE_KEY, 'false'); } catch (e) {}
+      }
+    })(prev);
+  })();
+  window.nvLite = (v) => { liteOn(v === undefined ? !document.documentElement.classList.contains('lite') : v, true);
+                           return document.documentElement.classList.contains('lite') ? 'lite on' : 'lite off'; };
+
   /* ═══════════════════  THE STOPWATCH  ═══════════════════
      Three rounds of "it feels laggy" and three rounds of me guessing at the
      cause is two rounds too many. This measures instead.
