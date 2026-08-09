@@ -13,7 +13,13 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="style.css?v=76" />
+  <!-- Gridstack 13.0.2 · MIT · zero runtime dependencies.
+       Vendored rather than loaded from a CDN on purpose: a CDN having a bad
+       day should not be able to break the desk, and a pinned copy cannot
+       change underneath us. Split view falls back to a plain CSS grid if
+       this ever fails to load. -->
+  <link rel="stylesheet" href="vendor/gridstack.min.css?v=1" />
+  <link rel="stylesheet" href="style.css?v=78" />
 
   <!-- PWA: makes the app installable, which is what iOS requires before it
        will deliver push notifications at all. -->
@@ -1881,7 +1887,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
   <script src="sync.js?v=6" defer></script>
-  <script src="app.js?v=75" defer></script>
+  <script src="vendor/gridstack-all.js?v=1" defer></script>
+  <script src="app.js?v=76" defer></script>
   <script src="bg.js?v=3" defer></script>
   <script src="fx.js?v=7" defer></script>
   <script src="intro.js?v=12" defer></script>

@@ -8647,6 +8647,104 @@
       views.style.setProperty('--srh', st.rowh + 'vh');
     }
 
+    /* ══════════════════  GRIDSTACK  ══════════════════
+       Gridstack gives the desk what hand-rolled grid spans could not: drag a
+       pane by its bar to REORDER it, drag any edge or corner to resize, and
+       collision handling that pushes neighbours out of the way instead of
+       leaving holes.
+
+       It needs its own DOM shape — .grid-stack > .grid-stack-item >
+       .grid-stack-item-content — so each panel gets wrapped on the way in and
+       unwrapped on the way out. The panel's INSIDE is never touched, which is
+       what keeps every module's rendering working untouched.
+
+       If the library is missing, everything below no-ops and the CSS-grid desk
+       carries on. A vendored file that fails to load must not cost you the app. */
+    const GS = {
+      grid: null,
+      ok: () => typeof window.GridStack !== 'undefined',
+
+      /* wrap a panel so Gridstack can own its position */
+      wrap(el, i) {
+        if (el.parentElement && el.parentElement.classList.contains('grid-stack-item-content')) {
+          return el.parentElement.parentElement;
+        }
+        const item = document.createElement('div');
+        item.className = 'grid-stack-item';
+        item.dataset.paneIdx = String(i);
+        const content = document.createElement('div');
+        content.className = 'grid-stack-item-content';
+        el.parentElement.insertBefore(item, el);
+        item.appendChild(content);
+        content.appendChild(el);
+        return item;
+      },
+
+      /* put every panel back exactly where it started */
+      unwrapAll() {
+        const views = $('.views'); if (!views) return;
+        $$('.grid-stack-item', views).forEach(item => {
+          const content = item.querySelector(':scope > .grid-stack-item-content');
+          if (content) while (content.firstChild) views.appendChild(content.firstChild);
+          item.remove();
+        });
+        views.classList.remove('grid-stack');
+        views.removeAttribute('gs-current-row');
+      },
+
+      destroy() {
+        if (this.grid) { try { this.grid.destroy(false); } catch (e) {} this.grid = null; }
+        this.unwrapAll();
+      },
+
+      /* ROWS is the vertical resolution of the desk — 12 rows means a pane can
+         be a twelfth of the desk tall, which is fine granularity without being
+         fiddly to hit with a pointer. */
+      build(items) {
+        const views = $('.views'); if (!views || !this.ok()) return false;
+        this.destroy();
+        views.classList.add('grid-stack');
+
+        items.forEach(({ el, i, w, h, x, y }) => {
+          const item = this.wrap(el, i);
+          item.setAttribute('gs-w', String(w));
+          item.setAttribute('gs-h', String(h));
+          if (typeof x === 'number') item.setAttribute('gs-x', String(x));
+          if (typeof y === 'number') item.setAttribute('gs-y', String(y));
+        });
+
+        this.grid = window.GridStack.init({
+          column: 12,
+          cellHeight: Math.round((window.innerHeight * st.rowh) / 100 / 3),
+          margin: 4,
+          float: false,               // panes settle upward, never leaving holes
+          animate: true,
+          disableDrag: !!st.locked,
+          disableResize: !!st.locked,
+          handle: '.pane-bar',        // drag a pane by its own title bar
+          resizable: { handles: 'e, se, s, sw, w' },
+        }, views);
+
+        /* Locked panes opt out individually. */
+        this.grid.getGridItems().forEach(item => {
+          const i = +item.dataset.paneIdx;
+          if (st.pinned && st.pinned[i]) this.grid.update(item, { noMove: true, noResize: true });
+        });
+
+        const persist = () => {
+          st.gs = {};
+          this.grid.getGridItems().forEach(item => {
+            const n = item.gridstackNode; if (!n) return;
+            st.gs[item.dataset.paneIdx] = { x: n.x, y: n.y, w: n.w, h: n.h };
+          });
+          save();
+        };
+        this.grid.on('change', persist);
+        this.grid.on('resizestop dragstop', persist);
+        return true;
+      },
+    };
+
     /* ── DRAG A CORNER, LIKE A WINDOW ─────────────────────────────────
        Spans, not pixels. Dragging sets how many COLUMNS wide and how many
        ROWS tall a pane is, and the grid's own auto-flow does the rest — make
@@ -8771,7 +8869,12 @@
          .forEach(el => el.remove());
       });
       const views = $('.views');
-      $$('.pane-slot, .split-add', views).forEach(el => el.remove());
+      /* unwrap first: Gridstack owns the DOM while a desk is live, and the
+         panels have to be plain children of .views again before we re-place
+         them, or each render would nest another wrapper. */
+      GS.destroy();
+      $('.pane-slot, .split-add', views).forEach(el => el.remove());
+      $('.split-add', views.parentElement || views).forEach(el => el.remove());
       if (st.focus >= st.count) st.focus = 0;
 
       /* Every pane is one equal cell placed by ORDER, not by coordinates.
@@ -8818,6 +8921,31 @@
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       }
 
+      /* Hand the finished panes to Gridstack. Anything without a saved
+         position gets laid out on a 12-column grid at the requested width, and
+         Gridstack settles the rest — which is what makes "add one and it flows
+         next to the last, or below when there is no room" true by default. */
+      if (GS.ok()) {
+        const per = Math.max(2, Math.floor(12 / gcols()));
+        const items = [];
+        for (let i = 0; i < st.count; i++) {
+          const tab = st.tabs[i];
+          const el = (i === choosingFor || !tab)
+            ? views.querySelector(`.pane-slot[data-slot-idx="${i}"]`)
+            : $(`[data-tab-panel="${tab}"]`);
+          if (!el) continue;
+          const saved = (st.gs || {})[i];
+          items.push({
+            el, i,
+            w: saved ? saved.w : per,
+            h: saved ? saved.h : 3,
+            x: saved ? saved.x : undefined,
+            y: saved ? saved.y : undefined,
+          });
+        }
+        GS.build(items);
+      }
+
       /* A plus that adds a pane, floating over the desk rather than living in
          a menu — adding a screen should cost one tap from where you are. */
       if (!st.locked && st.count < MAX_PANES) {
@@ -8828,7 +8956,7 @@
         add.setAttribute('aria-label', 'Add a pane');
         add.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
           stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>`;
-        views.appendChild(add);
+        (views.parentElement || views).appendChild(add);
       }
 
       applySizes();
@@ -8849,11 +8977,13 @@
         });
         return out;
       };
-      st.zoom = shift(st.zoom); st.pinned = shift(st.pinned); st.span = shift(st.span);
+      st.zoom = shift(st.zoom); st.pinned = shift(st.pinned);
+      st.span = shift(st.span); st.gs = shift(st.gs);
       setCount(st.count - 1);
     }
 
     function exit() {
+      GS.destroy();
       st.count = 1; save();
       delete document.body.dataset.split;
       delete document.body.dataset.panebars;
@@ -9083,7 +9213,8 @@
             st.saved.push({ id: uid(), name, count: st.count, gcols: st.gcols, rowh: st.rowh,
                             tabs: st.tabs.slice(0, st.count),
                             zoom: Object.assign({}, st.zoom || {}),
-                            span: Object.assign({}, st.span || {}) });
+                            span: Object.assign({}, st.span || {}),
+                            gs:   Object.assign({}, st.gs   || {}) });
             save(); if (inp) inp.value = ''; paint(); paintHub(); toast('Desk saved ✓');
             return;
           }
@@ -9144,6 +9275,7 @@
       st.tabs = (w.tabs || ['home']).slice();
       st.zoom = Object.assign({}, w.zoom || {});
       st.span = Object.assign({}, w.span || {});
+      st.gs   = Object.assign({}, w.gs   || {});
       st.focus = 0; choosingFor = -1; save();
       /* Opening a desk from the hub has to dismiss the hub, or the layout
          changes behind a full-screen overlay and nothing appears to happen. */
@@ -9160,7 +9292,7 @@
        The desks you saved are untouched — this resets the arrangement, not
        your work. */
     function reset() {
-      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.span = {}; st.locked = false;
+      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.span = {}; st.gs = {}; st.locked = false;
       choosingFor = -1; save();
       if (active()) render(); paint();
       toast('Desk reset');

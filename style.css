@@ -6244,3 +6244,75 @@ body.is-splitdrag .pane-slot { overflow: hidden; }
 
 /* touch has no hover, so the grip is always visible there */
 @media (hover: none) { .pane-grip { opacity: .5; } }
+
+/* ═══════════════════  §65  GRIDSTACK, DRESSED  ═══════════════════
+   Gridstack owns position; we own everything you can see. Its default chrome
+   is a grey admin panel, so the item content is made transparent and the pane
+   keeps the glass, the hairline border and the focus accent it already had.
+
+   These come last so they win over both §64's CSS grid and gridstack.min.css.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-split] .views.grid-stack {
+  display: block;                 /* Gridstack positions absolutely */
+  height: auto; min-height: 60vh;
+  padding-bottom: 72px;
+}
+.grid-stack-item-content {
+  inset: 0; overflow: visible;
+  display: flex; flex-direction: column;
+  background: none; border: 0; padding: 0;
+}
+/* the panel itself is the visible pane, exactly as before */
+.grid-stack-item-content > [data-tab-panel],
+.grid-stack-item-content > .pane-slot {
+  flex: 1; min-height: 0; overflow: auto;
+  border: 1px solid var(--hairline); border-radius: 12px;
+  background: rgba(255,255,255,.012);
+  padding: 0 12px 14px;
+}
+.grid-stack-item-content > [data-tab-panel].is-focused,
+.grid-stack-item-content > .pane-slot.is-focused {
+  border-color: rgba(var(--accent-br-rgb, 255,255,255), .34);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-br-rgb, 255,255,255), .10);
+}
+
+/* the bar is the drag handle now, so it should say so */
+body[data-split] .pane-bar { cursor: grab; }
+body[data-split] .pane-bar:active { cursor: grabbing; }
+/* …but the controls inside it must stay clickable, not draggable */
+body[data-split] .pane-bar button,
+body[data-split] .pane-bar select { cursor: pointer; }
+
+/* where a pane will land, drawn in your accent rather than Gridstack's grey */
+.grid-stack > .grid-stack-placeholder > .placeholder-content {
+  background: rgba(var(--accent-br-rgb, 255,255,255), .07);
+  border: 1px dashed rgba(var(--accent-br-rgb, 255,255,255), .45);
+  border-radius: 12px;
+}
+
+/* resize handles: invisible until you go looking for them */
+.grid-stack-item > .ui-resizable-handle { opacity: 0; transition: opacity .18s var(--ease-vt); }
+.grid-stack-item:hover > .ui-resizable-handle { opacity: .8; }
+.grid-stack-item > .ui-resizable-se::after,
+.grid-stack-item > .ui-resizable-sw::after {
+  content: ""; position: absolute; right: 4px; bottom: 4px;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--c-bone); border-bottom: 2px solid var(--c-bone);
+}
+.grid-stack-item > .ui-resizable-sw::after { left: 4px; right: auto; transform: scaleX(-1); }
+
+/* the hand-rolled corner grip is Gridstack's job now */
+body[data-split] .pane-grip { display: none; }
+
+/* the plus rides outside the grid so absolute positioning cannot bury it */
+body[data-split] .split-add { position: fixed; right: 22px; bottom: 22px; z-index: 40; }
+
+@media (max-width: 780px) {
+  /* one column, normal flow — dragging panes around a phone is not a feature */
+  body[data-split] .views.grid-stack { display: flex; flex-direction: column; gap: 8px; }
+  .grid-stack-item { position: static !important; width: auto !important; height: auto !important;
+                     transform: none !important; }
+  .grid-stack-item-content > [data-tab-panel],
+  .grid-stack-item-content > .pane-slot { max-height: 78vh; }
+  .grid-stack-item > .ui-resizable-handle { display: none; }
+}
