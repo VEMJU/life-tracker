@@ -8947,8 +8947,8 @@
          panels have to be plain children of .views again before we re-place
          them, or each render would nest another wrapper. */
       GS.destroy();
-      $('.pane-slot, .split-add', views).forEach(el => el.remove());
-      $('.split-add', views.parentElement || views).forEach(el => el.remove());
+      $$('.pane-slot, .split-add', views).forEach(el => el.remove());
+      $$('.split-add', views.parentElement || views).forEach(el => el.remove());
       if (st.focus >= st.count) st.focus = 0;
 
       /* Every pane is one equal cell placed by ORDER, not by coordinates.
