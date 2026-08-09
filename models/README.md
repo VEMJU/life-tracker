@@ -12,7 +12,7 @@ light rays, a fish, and 120 drifting particles. On a black stage every one of
 those is either invisible or actively wrong, and each carried its own texture
 set — so they were most of the file.
 
-Stripped to the statue alone, welded, deduped and Draco-compressed:
+Stripped to the statue alone, welded and deduped:
 
 | | |
 |---|---|

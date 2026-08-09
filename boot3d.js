@@ -305,7 +305,12 @@ function build() {
       const t = document.querySelector('[data-stage-toggle]');
       if (t) t.hidden = false;
       applyWhich();
-    }, undefined, () => { /* no file yet — the cross carries the stage alone */ });
+    }, undefined, (err) => {
+      /* SAY SO. The first version swallowed this, so a model that downloaded
+         fine and then failed to DECODE looked identical to no model at all —
+         and the toggle simply never appeared with no way to find out why. */
+      console.warn('[stage] figure did not load — showing the cross alone.', err);
+    });
   }
   loadFigure();
 
