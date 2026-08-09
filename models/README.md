@@ -1,17 +1,30 @@
 # Models
 
-Drop `christ.glb` here and the stage picks it up automatically — no code change.
+## christ.glb — Christ of the Abyss
 
-**Current model:** Christ of the Abyss, CC Attribution
-https://sketchfab.com/3d-models/christ-of-the-abyss-5ee0395054084a9b959e26fde1e63fe6
+**Source:** https://sketchfab.com/3d-models/christ-of-the-abyss-5ee0395054084a9b959e26fde1e63fe6
+**Licence:** CC Attribution — credit the author wherever this ships.
 
-Download the **1K texture** version (~11MB), not the 2K (~17MB). At the size this
-renders on a boot screen the difference is invisible and the wait is not.
+### What was done to it
 
-If the file is missing the stage simply shows the coded cross and hides the
-toggle. A boot screen must never be able to fail closed.
+The download was the whole underwater diorama: statue, seabed, water surface,
+light rays, a fish, and 120 drifting particles. On a black stage every one of
+those is either invisible or actively wrong, and each carried its own texture
+set — so they were most of the file.
 
-## Attribution
+Stripped to the statue alone, welded, deduped and Draco-compressed:
 
-CC Attribution requires crediting the author. Keep the model page URL above, and
-credit the author in the app's README.
+| | |
+|---|---|
+| Original | 12.19 MB |
+| Shipped | **4.95 MB** |
+
+Regenerate with `@gltf-transform`: keep any mesh matching `/christ/i`, drop the
+rest, then `prune → dedup → weld → draco`. `prune` is what actually reclaims the
+space — it sweeps every material, texture and accessor nothing points at any more.
+
+### Adding another model
+
+Drop a `.glb` here and point `FIGURE_URL` in `boot3d.js` at it. If the file is
+missing the stage shows the coded cross and hides the toggle — it never fails
+closed.
