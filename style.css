@@ -6378,3 +6378,32 @@ body[data-split] .split-add { position: fixed; right: 22px; bottom: 22px; z-inde
   .is-arranging .grid-stack-item-content > .card { overflow: visible; }
   .is-arranging .grid-stack-item > .ui-resizable-handle { display: none; }
 }
+
+/* ═══════════════════  §67  USE THE MONITOR  ═══════════════════
+   --max-w was a flat 1280px. On a 2560px screen that is half the glass wasted
+   on empty gutters — which is exactly why Photos, Logs and the rest looked
+   small no matter what was in them. A reading column wants a cap; a board of
+   cards wants the room.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (min-width: 1500px) { :root { --max-w: 1440px; } }
+@media (min-width: 1750px) { :root { --max-w: 1660px; } }
+@media (min-width: 2000px) { :root { --max-w: 1900px; } }
+@media (min-width: 2400px) { :root { --max-w: 2240px; } }
+
+/* Arrange mode goes edge to edge regardless — when you are placing cards by
+   hand, the gutters are the first thing you want back. */
+.is-arranging {
+  margin-left:  calc(var(--sp-6) * -1);
+  margin-right: calc(var(--sp-6) * -1);
+  padding-left:  var(--sp-4);
+  padding-right: var(--sp-4);
+}
+@media (max-width: 780px) {
+  .is-arranging { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+}
+
+/* The boards that are one wide thing rather than a stack of cards should fill
+   whatever is given to them, not sit in a column in the middle. */
+.board--photos, .board--logs, .board--stats,
+.board--supplements, .board--subscriptions,
+.board--stocks, .board--vitals, .board--peak { width: 100%; }

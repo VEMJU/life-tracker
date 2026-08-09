@@ -8702,48 +8702,67 @@
       /* ROWS is the vertical resolution of the desk — 12 rows means a pane can
          be a twelfth of the desk tall, which is fine granularity without being
          fiddly to hit with a pointer. */
+      /* Every step is inside one try. If ANY of it fails — a version that
+         renamed a method, a browser that dislikes something — we tear the
+         wrappers back off and the plain CSS-grid desk carries on. A desk that
+         degrades is infinitely better than a desk that goes blank, and going
+         blank is exactly what happened when this had no net under it. */
       build(items) {
         const views = $('.views'); if (!views || !this.ok()) return false;
-        this.destroy();
-        views.classList.add('grid-stack');
+        try {
+          this.destroy();
+          views.classList.add('grid-stack');
 
-        items.forEach(({ el, i, w, h, x, y }) => {
-          const item = this.wrap(el, i);
-          item.setAttribute('gs-w', String(w));
-          item.setAttribute('gs-h', String(h));
-          if (typeof x === 'number') item.setAttribute('gs-x', String(x));
-          if (typeof y === 'number') item.setAttribute('gs-y', String(y));
-        });
-
-        this.grid = window.GridStack.init({
-          column: 12,
-          cellHeight: Math.round((window.innerHeight * st.rowh) / 100 / 3),
-          margin: 4,
-          float: false,               // panes settle upward, never leaving holes
-          animate: true,
-          disableDrag: !!st.locked,
-          disableResize: !!st.locked,
-          handle: '.pane-bar',        // drag a pane by its own title bar
-          resizable: { handles: 'e, se, s, sw, w' },
-        }, views);
-
-        /* Locked panes opt out individually. */
-        this.grid.getGridItems().forEach(item => {
-          const i = +item.dataset.paneIdx;
-          if (st.pinned && st.pinned[i]) this.grid.update(item, { noMove: true, noResize: true });
-        });
-
-        const persist = () => {
-          st.gs = {};
-          this.grid.getGridItems().forEach(item => {
-            const n = item.gridstackNode; if (!n) return;
-            st.gs[item.dataset.paneIdx] = { x: n.x, y: n.y, w: n.w, h: n.h };
+          items.forEach(({ el, i, w, h, x, y }) => {
+            const item = this.wrap(el, i);
+            item.setAttribute('gs-w', String(w));
+            item.setAttribute('gs-h', String(h));
+            if (typeof x === 'number') item.setAttribute('gs-x', String(x));
+            if (typeof y === 'number') item.setAttribute('gs-y', String(y));
           });
-          save();
-        };
-        this.grid.on('change', persist);
-        this.grid.on('resizestop dragstop', persist);
-        return true;
+
+          this.grid = window.GridStack.init({
+            column: 12,
+            cellHeight: Math.max(48, Math.round((window.innerHeight * st.rowh) / 100 / 3)),
+            margin: 4,
+            float: false,               // panes settle upward, never leaving holes
+            animate: true,
+            disableDrag: !!st.locked,
+            disableResize: !!st.locked,
+            handle: '.pane-bar',        // drag a pane by its own title bar
+            resizable: { handles: 'e, se, s, sw, w' },
+          }, views);
+
+          /* Locked panes opt out individually. */
+          try {
+            this.grid.getGridItems().forEach(item => {
+              const i = +item.dataset.paneIdx;
+              if (st.pinned && st.pinned[i]) this.grid.update(item, { noMove: true, noResize: true });
+            });
+          } catch (e) { /* a pane that will not lock is not worth losing the desk over */ }
+
+          const persist = () => {
+            try {
+              const next = {};
+              this.grid.getGridItems().forEach(item => {
+                const n = item.gridstackNode; if (!n) return;
+                next[item.dataset.paneIdx] = { x: n.x, y: n.y, w: n.w, h: n.h };
+              });
+              st.gs = next; save();
+            } catch (e) {}
+          };
+          /* registered one at a time — combined event strings are not
+             guaranteed across versions, and one bad call took the desk out */
+          ['change', 'resizestop', 'dragstop'].forEach(ev => {
+            try { this.grid.on(ev, persist); } catch (e) {}
+          });
+          return true;
+        } catch (err) {
+          console.warn('[split] Gridstack failed, falling back to the CSS grid:', err);
+          try { this.destroy(); } catch (e) {}
+          views.classList.remove('grid-stack');
+          return false;
+        }
       },
     };
 
@@ -8862,6 +8881,17 @@
     }
 
     function render() {
+      /* A throw anywhere in here used to leave an empty screen with no way
+         back. Now it reports, drops to a single view, and you keep an app. */
+      try { renderInner(); } catch (err) {
+        console.error('[split] render failed:', err);
+        try { GS.destroy(); } catch (e) {}
+        st.count = 1; save(); exit();
+        toast('Split view hit a problem — back to a single tab');
+      }
+    }
+
+    function renderInner() {
       document.body.dataset.split = String(st.count);
       document.body.dataset.panebars = st.bars || 'always';
       $$('[data-tab-panel]').forEach(p => {
@@ -9349,11 +9379,23 @@
     const KEY = 'nv.arrange';
     /* tab → the board selector. Add a line, get the feature. */
     const TABS = {
-      home:      '.board--home',
-      academics: '.board--academics',
-      nutrition: '.board--nutrition',
-      goals:     '.board--goals-pro',
-      finance:   '.board--finance',
+      home:          '.board--home',
+      academics:     '.board--academics',
+      nutrition:     '.board--nutrition',
+      goals:         '.board--goals-pro',
+      finance:       '.board--finance',
+      photos:        '.board--photos',
+      logs:          '.board--logs',
+      reminders:     '.board--stack',
+      stats:         '.board--stats',
+      supplements:   '.board--supplements',
+      subscriptions: '.board--subscriptions',
+      vitals:        '.board--vitals',
+      peak:          '.board--peak',
+      stocks:        '.board--stocks',
+      /* Deliberately absent: gym, clothes and sports carry complex internal
+         flow rather than independent cards, and calendar and map are each one
+         large thing with nothing to rearrange. */
     };
     const COLS = 12;
 
@@ -9426,12 +9468,17 @@
         if (s && typeof s.y === 'number') item.setAttribute('gs-y', String(s.y));
       });
 
-      grids[tab] = window.GridStack.init({
+      try {
+        grids[tab] = window.GridStack.init({
         column: COLS, cellHeight: 68, margin: 6,
         float: false, animate: true,
         handle: '.card__head, .eyebrow',    // drag a card by its own heading
         resizable: { handles: 'e, se, s, sw, w' },
-      }, el);
+        }, el);
+      } catch (err) {
+        console.warn('[arrange] Gridstack failed on ' + tab + ':', err);
+        unwrap(tab); return false;
+      }
 
       const persist = () => {
         const items = {};
