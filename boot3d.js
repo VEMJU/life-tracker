@@ -32,10 +32,18 @@ const CANVAS = document.getElementById('stageCanvas');
    The answer is published on window immediately, because intro.js has to know
    whether to open the hub itself or wait for the stage to hand over. Two
    things both opening on sign-in is the one failure this must not have. */
+/* Three names, because browsers disagree, and one option that matters:
+   failIfMajorPerformanceCaveat defaults to false but some setups still refuse
+   a context without it stated. If ALL of these come back null the machine
+   genuinely has no WebGL — almost always because hardware acceleration is
+   switched off in the browser, not because the hardware cannot do it. */
 function hasWebGL() {
   try {
     const c = document.createElement('canvas');
-    return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    const opts = { failIfMajorPerformanceCaveat: false };
+    return !!(c.getContext('webgl2', opts)
+           || c.getContext('webgl', opts)
+           || c.getContext('experimental-webgl', opts));
   } catch (e) { return false; }
 }
 
@@ -65,9 +73,21 @@ window.lifeStage = {
   checks,
   why() {
     const failed = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
-    const msg = ARMED ? 'Stage is armed — it opens on sign-in.'
-      : 'Stage skipped. Failed: ' + (failed.join(', ') || 'forced off') +
-        '\nAdd ?stage=1 to the URL to force it on.';
+    let msg;
+    if (ARMED) msg = 'Stage is armed — it opens on sign-in.';
+    else if (!checks.webgl) {
+      /* WebGL is the one failure no flag can override, so it gets the fix
+         rather than a shrug. It is nearly always the browser setting, not the
+         machine. */
+      msg = 'Stage skipped: this browser reports NO WEBGL, so the 3D scene cannot run.\n\n'
+          + 'Check chrome://gpu — if WebGL says Disabled or Software only, that is it.\n'
+          + 'Fix: Chrome ⋮ → Settings → System → "Use graphics acceleration when '
+          + 'available" → Relaunch.\n\n'
+          + '?stage=1 cannot help here — forcing it would only throw.';
+    } else {
+      msg = 'Stage skipped. Failed: ' + (failed.join(', ') || 'forced off')
+          + '\nAdd ?stage=1 to the URL to force it on.';
+    }
     console.log(msg, checks);
     return msg;
   },
@@ -294,6 +314,9 @@ function build() {
     if (figure) figure.visible = which === 'figure';
     document.querySelectorAll('[data-stage-pick]').forEach(b =>
       b.classList.toggle('is-on', b.getAttribute('data-stage-pick') === which));
+    /* the credit belongs to the model, so it comes and goes with it */
+    const credit = document.querySelector('[data-stage-credit]');
+    if (credit) credit.hidden = !(figure && which === 'figure');
   }
   applyWhich();
 

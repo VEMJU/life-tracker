@@ -19,7 +19,7 @@
        change underneath us. Split view falls back to a plain CSS grid if
        this ever fails to load. -->
   <link rel="stylesheet" href="vendor/gridstack.min.css?v=1" />
-  <link rel="stylesheet" href="style.css?v=84" />
+  <link rel="stylesheet" href="style.css?v=85" />
   <!-- Daylight loads after style.css so it overrides without fighting
        specificity. Every rule inside is scoped to [data-theme="daylight"],
        so it costs the other themes nothing. -->
@@ -76,6 +76,15 @@
           <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
+
+      <!-- CC Attribution is a condition of use, not a courtesy. It shows only
+           while the figure is on screen, since the cross is coded and owes
+           nobody anything. -->
+      <p class="stage__credit" data-stage-credit hidden>
+        <em>Christ of the Abyss</em> ·
+        <a href="https://sketchfab.com/3d-models/christ-of-the-abyss-5ee0395054084a9b959e26fde1e63fe6"
+           target="_blank" rel="noopener">Sketchfab</a> · CC BY
+      </p>
     </div>
   </div>
 
@@ -1934,7 +1943,7 @@
     }
   }
   </script>
-  <script type="module" src="boot3d.js?v=2"></script>
+  <script type="module" src="boot3d.js?v=3"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
