@@ -119,7 +119,7 @@ function build() {
   let mouseX = 0, mouseY = 0, tMouseX = 0, tMouseY = 0;
   const clock = new THREE.Clock();
   const sparkData = [];
-  const SPARKS = 380;
+  let SPARKS = 260;              // trimmed once already; the monitor can halve it again
 
   let cross = null, figure = null;
   let which = localStorage.getItem('nv.stage.model') || 'cross';
@@ -134,7 +134,11 @@ function build() {
 
   renderer = new THREE.WebGLRenderer({ canvas: CANVAS, antialias: true, alpha: false });
   renderer.setSize(sizes.w, sizes.h);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  /* PIXEL RATIO IS THE MOST EXPENSIVE NUMBER HERE. At 2 on a high-DPI screen
+     the GPU shades FOUR times as many pixels as at 1 — and on a boot screen
+     with one object on black, almost none of that is visible. 1.5 is the
+     honest ceiling; the quality monitor below can take it lower. */
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -181,7 +185,7 @@ function build() {
   const key = new THREE.SpotLight('#fff6ea', 26, 0, Math.PI / 4, 0.9, 1.2);
   key.position.set(4, 6, 3.4);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);      // 1024 is plenty for one object
+  key.shadow.mapSize.set(512, 512);        // one object in a black room does not need more
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 18;
   key.shadow.bias = -0.0015;
@@ -380,6 +384,50 @@ function build() {
     tMouseY = (e.clientY / window.innerHeight) * 2 - 1;
   }, { passive: true });
 
+  /* ── TAKE HOLD OF IT ─────────────────────────────────────────────────
+     Grab and turn. Not OrbitControls — that brings zoom and pan, which would
+     fight the Enter button and let you lose the object off the side of a
+     screen you are only meant to glance at.
+
+     Release carries momentum, and the momentum decays back into the constant
+     slow turn rather than stopping dead. Something with weight does not halt
+     the instant you let go of it. */
+  let dragging = false, lastX = 0, lastY = 0;
+  let spinV = 0, tiltV = 0;
+  const AUTO = 0.18;                  // radians/sec, the idle turn
+  let autoBlend = 1;                  // 1 = idle turn, 0 = wholly yours
+
+  CANVAS.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    autoBlend = 0;
+    lastX = e.clientX; lastY = e.clientY;
+    spinV = tiltV = 0;
+    CANVAS.setPointerCapture(e.pointerId);
+    HOST.classList.add('is-grabbing');
+  });
+
+  CANVAS.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    spinV = dx * 0.006;
+    tiltV = dy * 0.004;
+    pivot.rotation.y += spinV;
+    /* clamped: past a right angle you are looking at the top of its head, and
+       there is nothing there */
+    pivot.rotation.x = THREE.MathUtils.clamp(pivot.rotation.x + tiltV, -0.75, 0.75);
+  });
+
+  const endDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    try { CANVAS.releasePointerCapture(e.pointerId); } catch (err) {}
+    HOST.classList.remove('is-grabbing');
+  };
+  CANVAS.addEventListener('pointerup', endDrag);
+  CANVAS.addEventListener('pointercancel', endDrag);
+  CANVAS.addEventListener('pointerleave', endDrag);
+
   window.addEventListener('resize', () => {
     sizes.w = window.innerWidth; sizes.h = window.innerHeight;
     camera.aspect = sizes.w / sizes.h;
@@ -388,6 +436,37 @@ function build() {
   }, { passive: true });
 
   /* ── the loop ───────────────────────────────────────────────────────── */
+  /* ── THE QUALITY MONITOR ─────────────────────────────────────────────
+     I cannot see your graphics card, and guessing at it produces a scene that
+     is either ugly on good hardware or unusable on modest hardware. So the
+     scene measures itself: sixty frames of honest timing, and if it is not
+     holding up it sheds the expensive things in the order they cost the most —
+     resolution first, then shadows, then half the sparks.
+
+     It steps DOWN only. A scene that oscillates between settings is worse than
+     one that is simply a little plainer. */
+  let samples = [], tuned = false;
+  function judge(dt) {
+    if (tuned) return;
+    samples.push(dt);
+    if (samples.length < 60) return;
+    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+    tuned = true;
+    if (avg < 0.024) return;                 // ~42fps or better: leave it alone
+
+    renderer.setPixelRatio(1);
+    if (avg > 0.034) {                       // under ~30fps: shed the rest
+      renderer.shadowMap.enabled = false;
+      key.castShadow = false;
+      if (sparks) sparks.material.size = 0.02;
+      const attr = sparks && sparks.geometry.attributes.position;
+      if (attr) { SPARKS = Math.floor(SPARKS / 2); sparks.geometry.setDrawRange(0, SPARKS); }
+    }
+    console.info('[stage] tuned for this machine — avg frame ' +
+      (avg * 1000).toFixed(1) + 'ms', { pixelRatio: renderer.getPixelRatio(),
+      shadows: renderer.shadowMap.enabled, sparks: SPARKS });
+  }
+
   let last = 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -399,9 +478,19 @@ function build() {
     mouseX += (tMouseX - mouseX) * 0.05;
     mouseY += (tMouseY - mouseY) * 0.05;
 
-    /* a slow constant turn, plus a tilt that leans toward the pointer */
-    pivot.rotation.y += dt * 0.18;
-    pivot.rotation.x = mouseY * 0.14;
+    /* While you are holding it, it is yours and nothing else touches it.
+       On release your throw carries, decaying, and the idle turn creeps back
+       underneath — something with weight does not stop the instant you let go. */
+    if (!dragging) {
+      pivot.rotation.y += spinV;
+      spinV *= 0.94;
+      autoBlend = Math.min(1, autoBlend + dt * 0.35);
+      pivot.rotation.y += AUTO * dt * autoBlend;
+      /* the tilt only eases home once you have stopped throwing it */
+      if (Math.abs(spinV) < 0.002) {
+        pivot.rotation.x += (mouseY * 0.14 - pivot.rotation.x) * 0.02;
+      }
+    }
     pivot.position.x = mouseX * 0.12;
 
     if (sparks) {
