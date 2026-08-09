@@ -15,10 +15,24 @@
   const ctx = canvas.getContext('2d', { alpha: true });
   let W = 0, H = 0, DPR = 1;
 
-  /* ---- colours (accent follows the active theme) ---- */
-  const GREY    = '255,255,255';
-  const CRIMSON = (getComputedStyle(document.documentElement)
-    .getPropertyValue('--accent-rgb') || '196,22,59').trim() || '196,22,59';
+  /* ---- colours ----------------------------------------------------------
+     Both the plain crosses and the accented ones read from CSS, because the
+     backdrop has to survive a theme that inverts the page. The neutral used to
+     be a hardcoded white, which is invisible the moment the page IS white — so
+     it comes from --x-grey now, and Daylight sets that to a soft slate.
+
+     ALPHA MATTERS TOO, in the opposite direction: a pale mark on black needs
+     more opacity to be seen, a dark mark on white needs less. --x-alpha scales
+     every cross and speck in one number. */
+  const css = (n, fb) => ((getComputedStyle(document.documentElement)
+    .getPropertyValue(n) || '').trim() || fb);
+  let GREY = '255,255,255', CRIMSON = '196,22,59', AMUL = 1;
+  function readTheme() {
+    GREY    = css('--x-grey', '255,255,255');
+    CRIMSON = css('--accent-rgb', '196,22,59');
+    AMUL    = parseFloat(css('--x-alpha', '1')) || 1;
+  }
+  readTheme();
 
   /* ---- the drifting crosses ---- */
   const COUNT = window.innerWidth < 700 ? 18 : 32;
@@ -40,7 +54,7 @@
         swaySpeed: 0.002 + Math.random() * 0.004,
         swayAmp: 6 + depth * 16,
         baseX: 0,
-        alpha: crimson ? (0.07 + depth * 0.13) : (0.025 + depth * 0.07),
+        alpha: (crimson ? (0.07 + depth * 0.13) : (0.025 + depth * 0.07)) * AMUL,
         color: crimson ? CRIMSON : GREY,
       });
       crosses[i].baseX = crosses[i].x;
@@ -58,7 +72,7 @@
         y: Math.random() * H,
         r: 0.5 + Math.random() * 1.3,
         vy: -(0.05 + Math.random() * 0.18),
-        a: 0.06 + Math.random() * 0.18,
+        a: (0.06 + Math.random() * 0.18) * AMUL,
       });
     }
   }
@@ -96,6 +110,14 @@
     seedCrosses();
     seedDust();
   }
+
+  /* The theme can change while the app is open. Watch the attribute the
+     switcher writes, re-read the colours, and re-seed — otherwise the
+     backdrop keeps the palette it booted with until a reload. */
+  new MutationObserver(() => {
+    readTheme();
+    if (W && H) { seedCrosses(); seedDust(); }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   let t = 0;
   function frame() {

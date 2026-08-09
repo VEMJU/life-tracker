@@ -40,6 +40,12 @@
   --border-strong: rgba(255, 255, 255, .18);
   --hairline:      rgba(255, 255, 255, .04);
 
+  /* the living backdrop reads these: the neutral colour of the drifting
+     crosses, and a single multiplier for how strongly everything paints. A
+     pale mark on black needs opacity; a dark mark on white needs far less. */
+  --x-grey:  255, 255, 255;
+  --x-alpha: 1;
+
   /* semantic accents (kept monochrome — intensity, not hue) */
   --good:          #ffffff;
   --good-soft:     rgba(255, 255, 255, .60);
