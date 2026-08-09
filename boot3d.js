@@ -287,9 +287,18 @@ function build() {
      Loaded lazily and silently: if the model is missing the stage simply keeps
      the cross, and the toggle hides itself. A boot screen must never be able
      to fail closed. */
+  /* LOADED ON DEMAND, NOT AT BOOT. 5.5MB in the critical path of a screen you
+     look at for four seconds is the wrong trade — especially when the cross is
+     the default and most sessions never ask for the figure at all. The toggle
+     is shown immediately; the file is fetched the first time it is pressed. */
   const FIGURE_URL = 'models/christ.glb';
+  let figureRequested = false;
   function loadFigure() {
+    if (figureRequested) return;
+    figureRequested = true;
+    HOST.classList.add('is-loading');
     new GLTFLoader().load(FIGURE_URL, (gltf) => {
+      HOST.classList.remove('is-loading');
       figure = gltf.scene;
       figure.traverse((o) => {
         if (!o.isMesh) return;
@@ -306,17 +315,21 @@ function build() {
       figure.position.sub(c);
       figure.visible = false;
       pivot.add(figure);
-      const t = document.querySelector('[data-stage-toggle]');
-      if (t) t.hidden = false;
       applyWhich();
     }, undefined, (err) => {
-      /* SAY SO. The first version swallowed this, so a model that downloaded
-         fine and then failed to DECODE looked identical to no model at all —
-         and the toggle simply never appeared with no way to find out why. */
+      /* SAY SO. An earlier version swallowed this, so a model that downloaded
+         fine and then failed to DECODE looked identical to no model at all. */
+      HOST.classList.remove('is-loading');
+      figureRequested = false;            // allow a retry
+      which = 'cross'; applyWhich();
       console.warn('[stage] figure did not load — showing the cross alone.', err);
     });
   }
-  loadFigure();
+
+  /* The toggle is live from the first frame; the 5.5MB is not fetched until it
+     is actually pressed. Most sessions never leave the cross. */
+  { const t = document.querySelector('[data-stage-toggle]'); if (t) t.hidden = false; }
+  if (which === 'figure') loadFigure();
 
   function applyWhich() {
     if (cross)  cross.visible  = which !== 'figure';
@@ -522,6 +535,7 @@ function build() {
     if (pick) {
       which = pick.getAttribute('data-stage-pick');
       localStorage.setItem('nv.stage.model', which);
+      if (which === 'figure' && !figure) loadFigure();
       applyWhich();
       return;
     }
@@ -558,5 +572,12 @@ function build() {
     });
     if (scene.environment) scene.environment.dispose();
     renderer.dispose();
+    /* dispose() frees the OBJECTS. The CONTEXT itself lives on until it is
+       told to die — and a live WebGL context behind a hidden canvas still
+       holds GPU memory and still counts against the browser's context limit.
+       This is the difference between "the stage is hidden" and "the stage is
+       gone", and it is the thing most likely to slow the app down afterwards. */
+    if (renderer.forceContextLoss) renderer.forceContextLoss();
+    CANVAS.width = CANVAS.height = 1;
   }
 }
