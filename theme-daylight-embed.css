@@ -1,0 +1,106 @@
+/* ════════════════════════  DAYLIGHT — EMBEDDED TABS  ════════════════════════
+   Vitals, Subscriptions, Stack, Peak, Stocks, Map and Lifts are each their own
+   HTML document inside an iframe. An iframe cannot see the host page's CSS
+   variables, which is why those tabs stayed black while the rest of the app
+   turned white.
+
+   theme-bridge.js injects this file and sets data-mode="light" on the embedded
+   document whenever the host is in Daylight. The tiles were all built from the
+   same small vocabulary — --bg, --fg, --card, --border, --muted — so redefining
+   that vocabulary turns every one of them over at once.
+
+   Anything a tile hardcodes rather than tokenises will still read dark. Those
+   are caught below, per tile, as they turn up.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root[data-mode="light"] {
+  color-scheme: light;
+
+  /* the shared vocabulary */
+  --bg:            #ffffff;
+  --bg-elevated:   #fbfcfd;
+  --surface:       #ffffff;
+  --solid:         #ffffff;
+  --fg:            #181d23;
+  --ink:           #0a0d11;
+  --text:          #181d23;
+  --muted:         #69737f;
+  --muted-strong:  #48515b;
+  --card:          #f6f8fa;
+  --card-elev:     #f1f4f7;
+  --card-elevated: #f1f4f7;
+  --border:        rgba(10, 13, 17, .12);
+  --border-strong: rgba(10, 13, 17, .24);
+  --rule:          rgba(10, 13, 17, .10);
+  --rule-strong:   rgba(10, 13, 17, .20);
+
+  /* accents: cyan in place of the tiles' mint / gold / amber greens, kept
+     dark enough to read as text on white */
+  --tone:          #0891B2;
+  --tone-soft:     rgba(8, 145, 178, .16);
+  --tone-ink:      #0E7490;
+  --mint:          #0891B2;
+  --mint-deep:     #0E7490;
+  --mint-hover:    #0E7490;
+  --mint-glow:     rgba(8, 145, 178, .28);
+  --mint-ic:       #0891B2;
+  --gold:          #B45309;
+  --amber:         #B45309;
+  --warn:          #B45309;
+  --brand:         #0891B2;
+  --pos:           #047857;
+  --good:          #047857;
+}
+
+/* the page itself, in case a tile paints body directly rather than via --bg */
+:root[data-mode="light"] body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Tiles lift their cards with a white film — invisible on white. Give the
+   common card shapes a real surface and a border so they read as cards. */
+:root[data-mode="light"] .card,
+:root[data-mode="light"] .panel,
+:root[data-mode="light"] .tile,
+:root[data-mode="light"] .row,
+:root[data-mode="light"] .item,
+:root[data-mode="light"] .stat,
+:root[data-mode="light"] .well {
+  background: #ffffff;
+  border-color: rgba(10, 13, 17, .11);
+  box-shadow: 0 1px 2px rgba(10, 13, 17, .04);
+}
+
+/* inputs and buttons inside tiles */
+:root[data-mode="light"] input,
+:root[data-mode="light"] select,
+:root[data-mode="light"] textarea,
+:root[data-mode="light"] button {
+  color: var(--fg);
+  border-color: rgba(10, 13, 17, .14);
+}
+:root[data-mode="light"] input,
+:root[data-mode="light"] select,
+:root[data-mode="light"] textarea {
+  background: #f4f6f9;
+}
+
+/* A tile's own canvas backdrop paints light-on-dark. Multiplying it into a
+   white page keeps the motion and drops the glow, which is the same trick the
+   host hub uses. */
+:root[data-mode="light"] canvas {
+  mix-blend-mode: multiply;
+  opacity: .5;
+}
+/* …except canvases that ARE the content — a chart must stay as drawn */
+:root[data-mode="light"] canvas.chart,
+:root[data-mode="light"] canvas[data-chart],
+:root[data-mode="light"] .chart canvas {
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* the map is a photographic surface — leave its tiles alone, only its chrome */
+:root[data-mode="light"] .leaflet-container { background: #eef1f4; }
+:root[data-mode="light"] .leaflet-tile-pane { filter: none; }

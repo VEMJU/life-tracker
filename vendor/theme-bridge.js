@@ -34,6 +34,29 @@
     if (t.accentBr)  window.NV_ACCENT = t.accentBr;
     if (t.accentBrRgb) window.NV_ACCENT_RGB = t.accentBrRgb;
 
+    /* LIGHT MODE. An accent alone was never enough — the host can now invert
+       its whole scale, and an iframe that only hears "the accent is cyan"
+       stays a black rectangle inside a white app. So the host says which mode
+       it is in, and the embedded page pulls in the shared light overrides.
+
+       The stylesheet is added once and left in place; only the attribute
+       toggles, so switching back and forth afterwards costs nothing. */
+    if (t.mode) {
+      var root = document.documentElement;
+      if (t.mode === 'light') {
+        if (!document.getElementById('nv-daylight-embed')) {
+          var link = document.createElement('link');
+          link.id = 'nv-daylight-embed';
+          link.rel = 'stylesheet';
+          link.href = '/theme-daylight-embed.css?v=1';
+          document.head.appendChild(link);
+        }
+        root.setAttribute('data-mode', 'light');
+      } else {
+        root.removeAttribute('data-mode');
+      }
+    }
+
     /* let the page react (repaint a canvas, redraw a chart) */
     window.dispatchEvent(new CustomEvent('nv-theme', { detail: t }));
   }

@@ -63,7 +63,7 @@
   /* ---------- theme (accent color follows nv.theme, synced per account) ---------- */
   /* 'daylight' is the odd one out: the others only swap an accent, it inverts
      the entire light/dark scale. It lives in theme-daylight.css. */
-  const THEMES = ['crimson', 'violet', 'blue', 'mono', 'daylight'];
+  const THEMES = ['crimson', 'violet', 'daylight'];
   function applyTheme() {
     let t = 'crimson';
     try { t = JSON.parse(localStorage.getItem('nv.theme')) || 'crimson'; } catch (e) {}
@@ -87,6 +87,9 @@
       accentBr:   v('--accent-bright', '#E11D38'),
       accentRgb:  v('--accent-rgb', '196, 22, 59'),
       accentBrRgb:v('--accent-br-rgb', '225, 29, 56'),
+      /* the tiles are separate documents; without this they stay black
+         inside a white app no matter what colour the accent is */
+      mode: (root.dataset.theme === 'daylight') ? 'light' : 'dark',
     };
     document.querySelectorAll('iframe.gl-frame').forEach(f => {
       try { f.contentWindow.postMessage(payload, '*'); } catch (e) {}
@@ -104,12 +107,13 @@
     if (e.data && e.data.source === 'nv-embed' && e.data.type === 'theme:request') broadcastTheme();
   });
   /* A cycle button with no label tells you nothing about where you are in the
-     cycle. Five themes deep, you press it once, see a slightly different red,
-     and conclude nothing changed — so it names what it just switched to, and
-     the button itself carries the current name. */
+     cycle — press once, see a slightly different red, and reasonably conclude
+     nothing happened. So it names what it just switched to, and carries the
+     current name itself. Blue and Mono were dropped from the rotation, which
+     puts Daylight two presses away instead of five. */
   const THEME_NAMES = {
-    crimson: 'Crimson', violet: 'Violet', blue: 'Blue',
-    mono: 'Mono', daylight: 'Daylight — white',
+    crimson: 'Crimson', violet: 'Violet',
+    daylight: 'Daylight — white',
   };
   function labelThemeBtn() {
     const el = document.getElementById('themeCycle');

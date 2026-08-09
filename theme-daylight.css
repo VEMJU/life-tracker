@@ -222,3 +222,54 @@
 :root[data-theme="daylight"] button.intro-tool:hover {
   background: #fff; border-color: var(--accent-soft); color: var(--c-blanc);
 }
+
+/* ── THE HUB RING, IN DAYLIGHT ──────────────────────────────────────────────
+   The ring cards were a wine gradient fading to near-black, with a white
+   caption laid over a black scrim. On a white page they read as dark holes,
+   and the labels — Stats, Home, Vitals — were the first thing to disappear.
+
+   White card, ink label, and the caption scrim inverted so the text sits on
+   paper rather than on shadow. */
+:root[data-theme="daylight"] .hub-card {
+  background: #ffffff;
+  border-color: rgba(10,13,17,.14);
+  box-shadow: 0 14px 34px -18px rgba(10,13,17,.35), 0 0 0 1px rgba(10,13,17,.03);
+}
+:root[data-theme="daylight"] .hub-card__cap {
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.86) 34%, #ffffff);
+  color: var(--c-blanc);
+}
+:root[data-theme="daylight"] .hub-card__cap * { color: var(--c-blanc); }
+:root[data-theme="daylight"] .hub-card img { opacity: .9; }
+
+/* ── THE TAB NAME, QUIETER ──────────────────────────────────────────────────
+   It was near-black gothic at full weight — the loudest thing on a white page,
+   competing with the content it was labelling. Slate, and the slash before it
+   lighter still: a label, not a headline. */
+:root[data-theme="daylight"] .view-head__title { color: var(--c-stone); font-weight: 600; }
+:root[data-theme="daylight"] .view-head__title::before { color: var(--c-ash); }
+:root[data-theme="daylight"] .view-head__eyebrow { color: var(--c-mid); }
+
+/* ── THE TAB WORDS, MONO-STYLE ──────────────────────────────────────────────
+   Mono's trick was to drop the accent entirely and let the type carry it —
+   neutral until it is the one you are on. Same treatment here. */
+:root[data-theme="daylight"] .navlink,
+:root[data-theme="daylight"] .topbar__link,
+:root[data-theme="daylight"] .intro-tab {
+  color: var(--c-stone);
+  background: #ffffff;
+  border-color: rgba(10,13,17,.12);
+}
+:root[data-theme="daylight"] .navlink:hover,
+:root[data-theme="daylight"] .topbar__link:hover,
+:root[data-theme="daylight"] .intro-tab:hover {
+  color: var(--c-blanc);
+  border-color: rgba(10,13,17,.26);
+}
+:root[data-theme="daylight"] .navlink.is-active,
+:root[data-theme="daylight"] .topbar__link.is-active {
+  color: var(--c-blanc);
+  border-color: var(--c-crimson-br);
+  background: #ffffff;
+}
+:root[data-theme="daylight"] .navlink__label { color: inherit; }
