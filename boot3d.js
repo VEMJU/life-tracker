@@ -39,18 +39,57 @@ function hasWebGL() {
   } catch (e) { return false; }
 }
 
-const ARMED = !!(HOST && CANVAS)
-  && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  && !window.matchMedia('(max-width: 900px), (pointer: coarse)').matches
-  && sessionStorage.getItem('nv.stage.seen') !== '1'
-  && hasWebGL();
+/* Each check reports WHY it said no. A boot screen that silently declines to
+   appear is impossible to debug from the outside — and "I don't see it" was
+   exactly the report this had to answer. Run nvStage() in the console. */
+const FORCE = new URLSearchParams(location.search).get('stage');
+const checks = {
+  markup:  !!(HOST && CANVAS),
+  webgl:   hasWebGL(),
+  motion:  !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  /* WIDTH ONLY, plus genuinely hover-less devices. The first version also
+     rejected `pointer: coarse`, which is true on any touchscreen laptop — so a
+     desktop with a touch monitor was quietly refused. */
+  desktop: !window.matchMedia('(max-width: 900px)').matches
+           && !window.matchMedia('(hover: none)').matches,
+  unseen:  sessionStorage.getItem('nv.stage.seen') !== '1',
+};
 
-window.lifeStage = { armed: ARMED };
+const ARMED = FORCE === '1'
+  ? (checks.markup && checks.webgl)
+  : FORCE === '0' ? false
+  : Object.values(checks).every(Boolean);
+
+window.lifeStage = {
+  armed: ARMED,
+  checks,
+  why() {
+    const failed = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const msg = ARMED ? 'Stage is armed — it opens on sign-in.'
+      : 'Stage skipped. Failed: ' + (failed.join(', ') || 'forced off') +
+        '\nAdd ?stage=1 to the URL to force it on.';
+    console.log(msg, checks);
+    return msg;
+  },
+};
+window.nvStage = () => window.lifeStage.why();
 
 /* The stage arrives AFTER sign-in, in the same beat the hub used to. */
 if (ARMED) window.addEventListener('nv-data-ready', () => boot(), { once: true });
 
 function boot() {
+  /* Anything that throws in here must not take the app with it — the stage is
+     a nicety in front of a working hub, and it has to fail toward the hub. */
+  try { build(); }
+  catch (err) {
+    console.error('[stage] failed to build, handing over to the hub:', err);
+    HOST.hidden = true;
+    document.body.classList.remove('stage-locked');
+    if (window.lifeHub && window.lifeHub.open) window.lifeHub.open();
+  }
+}
+
+function build() {
   HOST.hidden = false;
   document.body.classList.add('stage-locked');
 
