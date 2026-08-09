@@ -7,6 +7,48 @@
 (() => {
   'use strict';
 
+  /* ═══════════════════  THE BLACK BOX  ═══════════════════
+     I cannot see your console. When something breaks, "there are a lot of
+     errors" is all either of us has, and that is not enough to fix anything.
+
+     So the app keeps its own flight recorder: the last twenty errors with file
+     and line, in localStorage so they survive the reload that usually loses
+     them. Run nvErrors() in the console — or ask Nova for "errors" — and it
+     prints them ready to paste back.
+
+     It only listens. It never swallows anything the browser would have shown. */
+  const ERRKEY = 'nv.errors';
+  (function flightRecorder() {
+    const push = (entry) => {
+      try {
+        const prev = JSON.parse(localStorage.getItem(ERRKEY) || '[]');
+        prev.push(Object.assign({ t: new Date().toISOString() }, entry));
+        localStorage.setItem(ERRKEY, JSON.stringify(prev.slice(-20)));
+      } catch (e) { /* a broken recorder must never become the problem */ }
+    };
+    window.addEventListener('error', (e) => {
+      push({
+        msg: String(e.message || e.error || 'error'),
+        at: String(e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0),
+        stack: e.error && e.error.stack ? String(e.error.stack).split('\n').slice(0, 4).join(' | ') : '',
+      });
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      push({ msg: 'unhandled promise: ' + String((e.reason && e.reason.message) || e.reason), at: '', stack: '' });
+    });
+    window.nvErrors = () => {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(ERRKEY) || '[]'); } catch (e) {}
+      if (!list.length) { console.log('No errors recorded.'); return 'No errors recorded.'; }
+      const out = list.map(x =>
+        x.t.slice(11, 19) + '  ' + x.msg + '\n    ' + x.at + (x.stack ? '\n    ' + x.stack : '')
+      ).join('\n\n');
+      console.log(out);
+      return out;
+    };
+    window.nvErrorsClear = () => { try { localStorage.removeItem(ERRKEY); } catch (e) {} return 'cleared'; };
+  })();
+
   /* ─────────────────  HELPERS  ───────────────── */
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -8953,11 +8995,15 @@
         setTimeout(() => Tabs.renderPanelContent(tab), i * 16);
       }
 
-      /* Hand the finished panes to Gridstack. Anything without a saved
-         position gets laid out on a 12-column grid at the requested width, and
-         Gridstack settles the rest — which is what makes "add one and it flows
-         next to the last, or below when there is no room" true by default. */
-      if (GS.ok()) {
+      /* Gridstack is OPT-IN here, and that is a decision made the hard way.
+         The plain CSS grid is the version that worked; layering Gridstack over
+         it by default is what broke the desk. So the simple engine is the
+         floor, and free-form dragging is something you switch on knowing what
+         it is — and switch off the moment it misbehaves.
+
+         Anything without a saved position lands on a 12-column grid at the
+         requested width and Gridstack settles the rest. */
+      if (st.free && GS.ok()) {
         const per = Math.max(2, Math.floor(12 / gcols()));
         const items = [];
         for (let i = 0; i < st.count; i++) {
@@ -9083,6 +9129,9 @@
              </button>
              <button type="button" class="splitp__lock ${st.bars === 'auto' ? 'is-on' : ''}" data-split-bars>
                ${st.bars === 'auto' ? '👁 Bars hidden — hover the top of a pane' : '👁 Hide the pane bars'}
+             </button>
+             <button type="button" class="splitp__lock ${st.free ? 'is-on' : ''}" data-split-free>
+               ${st.free ? '▦ Free layout on — drag panes anywhere' : '▦ Free layout (drag panes anywhere)'}
              </button>
              <button type="button" class="splitp__lock" data-split-reset>↺ Reset — even sizes, no zoom</button>`
           : '');
@@ -9238,6 +9287,13 @@
             save(); render(); paint();
             return;
           }
+          if (e.target.closest('[data-split-free]')) {
+            st.free = !st.free; save();
+            if (!st.free) { try { GS.destroy(); } catch (err) {} }
+            render(); paint();
+            toast(st.free ? 'Free layout on' : 'Back to the even grid');
+            return;
+          }
           if (e.target.closest('[data-split-reset]')) { reset(); return; }
           if (e.target.closest('[data-split-save]')) {
             const inp = $('[data-split-name]');
@@ -9324,7 +9380,9 @@
        The desks you saved are untouched — this resets the arrangement, not
        your work. */
     function reset() {
-      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {}; st.span = {}; st.gs = {}; st.locked = false;
+      st.gcols = 2; st.rowh = 44; st.zoom = {}; st.pinned = {};
+      st.span = {}; st.gs = {}; st.locked = false; st.free = false;
+      try { GS.destroy(); } catch (e) {}
       choosingFor = -1; save();
       if (active()) render(); paint();
       toast('Desk reset');
@@ -9727,6 +9785,13 @@
         const tab = jumpTo(word);
         if (tab) return { ok:true, tab, say:'Opening ' + tab };
         return { ok:false, say:'I have no tab called ' + word };
+      }
+
+      /* "errors" prints the flight recorder — the fastest route from
+         something-is-broken to something-I-can-actually-fix. */
+      if (/^(errors?|show errors?|what is broken|debug)$/.test(low)) {
+        const out = window.nvErrors ? window.nvErrors() : 'No recorder.';
+        return { ok: true, say: 'Printed to the console — send me what it says.', note: out };
       }
 
       /* ── DESKS BY NAME ───────────────────────────────────────────────────
