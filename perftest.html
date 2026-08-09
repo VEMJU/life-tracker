@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Perf test — is it the app, or the machine?</title>
+<style>
+  /* Deliberately almost no CSS. This page has to be able to say "an empty page
+     is slow on this machine" without its own styling muddying the answer. */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px; background: #0b0b0d; color: #eaeaea;
+    font: 14px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  h1 { font-size: 19px; font-weight: 600; margin: 0 0 6px; }
+  p.sub { color: #8a8a8a; margin: 0 0 24px; max-width: 62ch; }
+  .test { border: 1px solid #26262a; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .test h2 { font-size: 13px; margin: 0 0 4px; font-weight: 600; }
+  .test p { color: #8a8a8a; margin: 0 0 12px; font-size: 12.5px; }
+  button {
+    font: inherit; font-size: 12.5px; padding: 8px 16px; cursor: pointer;
+    background: #17171a; color: #eaeaea; border: 1px solid #33333a; border-radius: 7px;
+  }
+  button:hover { border-color: #55555f; }
+  button[disabled] { opacity: .5; cursor: default; }
+  .out { margin-top: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
+  .verdict { margin-top: 22px; padding: 16px; border-radius: 10px; border: 1px solid #33333a; background: #111114; }
+  .good { color: #7dd488; } .bad { color: #e0a030; }
+
+  /* the layers under test, off until switched on */
+  #canvasLayer, #blurLayer { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #canvasLayer canvas { width: 100%; height: 100%; display: block; }
+  #blurLayer.on, #canvasLayer.on { display: block; }
+  #blurLayer .pane {
+    position: absolute; width: 240px; height: 150px; border-radius: 14px;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    -webkit-backdrop-filter: blur(24px) saturate(130%); backdrop-filter: blur(24px) saturate(130%);
+  }
+</style>
+</head>
+<body>
+
+<h1>Is it the app, or the machine?</h1>
+<p class="sub">
+  Three tests, each adding one thing. This page is nearly empty, so if the FIRST
+  test is already slow, nothing in your app is to blame — the browser cannot
+  paint on this machine, and the fix is a browser or driver setting rather than
+  any amount of code. Run them in order.
+</p>
+
+<div class="test">
+  <h2>1 · An empty page</h2>
+  <p>No canvas, no blur, no animation. This is the floor — the best your browser can do.</p>
+  <button data-run="1">Run 5s</button>
+  <div class="out" data-out="1"></div>
+</div>
+
+<div class="test">
+  <h2>2 · Plus a full-screen animated canvas</h2>
+  <p>What <code>bg.js</code> does: 400 shapes redrawn every frame across the whole window.</p>
+  <button data-run="2">Run 5s</button>
+  <div class="out" data-out="2"></div>
+</div>
+
+<div class="test">
+  <h2>3 · Plus 20 backdrop-filter panels</h2>
+  <p>What the cards do: twenty elements each blurring whatever is behind them.</p>
+  <button data-run="3">Run 5s</button>
+  <div class="out" data-out="3"></div>
+</div>
+
+<div class="verdict" data-verdict>Run all three, then this will tell you what it means.</div>
+
+<div id="canvasLayer"><canvas id="c"></canvas></div>
+<div id="blurLayer"></div>
+
+<script>
+(() => {
+  'use strict';
+  const results = {};
+  const canvasLayer = document.getElementById('canvasLayer');
+  const blurLayer   = document.getElementById('blurLayer');
+  const cvs = document.getElementById('c');
+  const ctx = cvs.getContext('2d');
+  let raf = null, dots = [];
+
+  function sizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cvs.width  = Math.round(innerWidth  * dpr);
+    cvs.height = Math.round(innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function seed() {
+    dots = [];
+    for (let i = 0; i < 400; i++) {
+      dots.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+                  r: 2 + Math.random() * 20, vy: -(0.2 + Math.random()) });
+    }
+  }
+  function paint() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ctx.fillStyle = 'rgba(200,160,80,.18)';
+    for (const d of dots) {
+      d.y += d.vy; if (d.y < -30) d.y = innerHeight + 30;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.283); ctx.fill();
+    }
+    raf = requestAnimationFrame(paint);
+  }
+  function makePanes() {
+    if (blurLayer.children.length) return;
+    for (let i = 0; i < 20; i++) {
+      const d = document.createElement('div');
+      d.className = 'pane';
+      d.style.left = (i % 5) * 19 + 2 + 'vw';
+      d.style.top  = Math.floor(i / 5) * 23 + 4 + 'vh';
+      blurLayer.appendChild(d);
+    }
+  }
+
+  function measure(seconds) {
+    return new Promise(resolve => {
+      const f = []; let prev = performance.now(), stop = false;
+      (function tick(now) { if (stop) return; f.push(now - prev); prev = now; requestAnimationFrame(tick); })(prev);
+      setTimeout(() => {
+        stop = true;
+        const s = f.slice(2).filter(x => x < 2000);
+        const avg = s.reduce((a, b) => a + b, 0) / (s.length || 1);
+        resolve({ avg, fps: Math.round(1000 / avg), slow: s.filter(x => x > 32).length, total: s.length });
+      }, seconds * 1000);
+    });
+  }
+
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-run]'); if (!b) return;
+    const n = b.getAttribute('data-run');
+    document.querySelectorAll('[data-run]').forEach(x => x.disabled = true);
+    document.querySelector('[data-out="' + n + '"]').textContent = 'measuring…';
+
+    if (n === '1') { canvasLayer.classList.remove('on'); blurLayer.classList.remove('on'); if (raf) cancelAnimationFrame(raf), raf = null; }
+    if (n === '2') { sizeCanvas(); seed(); canvasLayer.classList.add('on'); blurLayer.classList.remove('on'); if (!raf) raf = requestAnimationFrame(paint); }
+    if (n === '3') { sizeCanvas(); seed(); makePanes(); canvasLayer.classList.add('on'); blurLayer.classList.add('on'); if (!raf) raf = requestAnimationFrame(paint); }
+
+    const r = await measure(5);
+    results[n] = r;
+    document.querySelector('[data-out="' + n + '"]').textContent =
+      r.avg.toFixed(1) + 'ms per frame  ·  ' + r.fps + ' fps  ·  ' +
+      r.slow + '/' + r.total + ' frames over 32ms';
+    document.querySelectorAll('[data-run]').forEach(x => x.disabled = false);
+    verdict();
+  });
+
+  function verdict() {
+    const el = document.querySelector('[data-verdict]');
+    const dpr = (devicePixelRatio || 1).toFixed(2);
+    const info = 'screen ' + innerWidth + '×' + innerHeight + ' · devicePixelRatio ' + dpr +
+                 ' · cores ' + (navigator.hardwareConcurrency || '?');
+    if (!results['1']) { el.textContent = 'Run test 1 first. ' + info; return; }
+
+    const a = results['1'], b = results['2'], c = results['3'];
+    let out = info + '\n\n';
+
+    if (a.fps < 40) {
+      out += 'AN EMPTY PAGE runs at ' + a.fps + ' fps on this machine.\n\n' +
+             'Nothing in the app is responsible for that. A blank document with no ' +
+             'canvas, no blur and no animation cannot be optimised further — the ' +
+             'browser itself cannot paint at speed here.\n\n' +
+             'Look at chrome://gpu, at whether a second monitor is running at a high ' +
+             'refresh rate, at browser extensions (test in an incognito window), and ' +
+             'at whether another program is using the GPU.';
+      el.className = 'verdict bad';
+    } else {
+      out += 'Empty page: ' + a.fps + ' fps — the browser is healthy.\n';
+      if (b) out += 'With the animated canvas: ' + b.fps + ' fps' +
+        (b.fps < a.fps * 0.6 ? '  ← the canvas is expensive here\n' : '\n');
+      if (c) out += 'With canvas + 20 blurs: ' + c.fps + ' fps' +
+        (b && c.fps < b.fps * 0.6 ? '  ← backdrop-filter is expensive here\n' : '\n');
+      out += '\nWhichever step drops hardest is the thing to remove from the app.';
+      el.className = 'verdict good';
+    }
+    el.textContent = out;
+  }
+
+  addEventListener('resize', () => { if (raf) { sizeCanvas(); seed(); } }, { passive: true });
+  verdict();
+})();
+</script>
+</body>
+</html>
