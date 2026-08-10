@@ -122,7 +122,8 @@ function build() {
   let SPARKS = 260;              // trimmed once already; the monitor can halve it again
 
   let cross = null, figure = null;
-  let which = localStorage.getItem('nv.stage.model') || 'cross';
+  let which = 'cross';
+  try { which = JSON.parse(localStorage.getItem('nv.stage.model')) || 'cross'; } catch (e) {}
 
   /* ── scene, camera, renderer ────────────────────────────────────────── */
   scene = new THREE.Scene();
@@ -534,7 +535,9 @@ function build() {
     const pick = e.target.closest('[data-stage-pick]');
     if (pick) {
       which = pick.getAttribute('data-stage-pick');
-      localStorage.setItem('nv.stage.model', which);
+      /* JSON, because sync.js mirrors every nv.* key to the cloud and parses
+         it as JSON on the way. A bare string threw on every single sync. */
+      localStorage.setItem('nv.stage.model', JSON.stringify(which));
       if (which === 'figure' && !figure) loadFigure();
       applyWhich();
       return;

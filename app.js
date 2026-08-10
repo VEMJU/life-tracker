@@ -132,6 +132,22 @@
       const avg = f.reduce((a, b) => a + b, 0) / (f.length || 1);
       const worst = Math.max.apply(null, f.concat(0));
       const over32 = f.filter(x => x > 32).length;
+      /* WHAT ELSE IS RUNNING. Four rounds of "still slow" happened because I
+         was guessing at the environment instead of reading it. getAnimations()
+         is the decisive one: every CSS animation still ticking, counted. An
+         infinite animation on a visible element repaints it forever. */
+      let anims = 0, infinite = 0;
+      try {
+        const all = document.getAnimations();
+        anims = all.length;
+        infinite = all.filter(a => {
+          const t = a.effect && a.effect.getTiming && a.effect.getTiming();
+          return t && (t.iterations === Infinity);
+        }).length;
+      } catch (e) {}
+      const frames = document.querySelectorAll('iframe.gl-frame');
+      const asleep = document.querySelectorAll('iframe.gl-frame[data-src]');
+
       const report = [
         '─── nvPerf ───────────────────────────────',
         'average frame : ' + avg.toFixed(1) + 'ms  (' + Math.round(1000 / avg) + ' fps)',
@@ -141,6 +157,13 @@
         'long tasks    : ' + longs.length + (longs.length
           ? '  — worst ' + Math.max.apply(null, longs.map(l => l.ms)) + 'ms' : ''),
         longs.length ? 'sources       : ' + [...new Set(longs.map(l => l.at))].join(', ') : '',
+        '─── what is running ──────────────────────',
+        'lite mode     : ' + (document.documentElement.classList.contains('lite') ? 'ON' : 'off'),
+        'animations    : ' + anims + '  (' + infinite + ' of them INFINITE)',
+        'iframes awake : ' + (frames.length - asleep.length) + ' of ' + frames.length,
+        'DOM nodes     : ' + document.getElementsByTagName('*').length,
+        'devicePixelRatio ' + (window.devicePixelRatio || 1) +
+          ' · window ' + window.innerWidth + '×' + window.innerHeight,
         '──────────────────────────────────────────',
         avg > 24 ? 'VERDICT: genuinely slow. Send this whole block back.'
                  : 'VERDICT: frame rate is fine — the lag is somewhere else.',

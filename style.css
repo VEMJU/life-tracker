@@ -6613,3 +6613,18 @@ body[data-split] .cursor-glow { display: none; }
 .lite .rdy__row.is-urgent .rdy__dot { animation: none !important; }
 
 /* the shadows stay — they are cheap and they carry the shape of the design */
+
+/* ── §72b · stop every perpetual animation ────────────────────────────
+   An animation with `infinite` on a visible element repaints that element for
+   as long as the page is open. The stylesheet has twenty-three of them —
+   breathing dots, pulsing seals, drifting dashes — and several are on screen
+   at any moment. Individually trivial; together, a constant repaint bill for
+   decoration nobody is looking at.
+
+   Lite mode lets each play once and then stop. The element keeps its final
+   appearance; it simply stops re-drawing itself forever. */
+.lite *,
+.lite *::before,
+.lite *::after {
+  animation-iteration-count: 1 !important;
+}
