@@ -83,8 +83,8 @@
   /* glass over a light page is frosted white; the shadow does the lifting a
      bright inset edge used to do on black */
   --card-bg:       #ffffff;
-  --glass-bg:      rgba(255, 255, 255, .82);
-  --glass-bg-soft: rgba(255, 255, 255, .62);
+  --glass-bg:      rgba(255, 255, 255, .97);
+  --glass-bg-soft: rgba(255, 255, 255, .92);
   --glass-sheen:   linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 48%);
   --glass-shadow:
     0 1px 0 rgba(255,255,255,.95) inset,
