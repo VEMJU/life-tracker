@@ -145,7 +145,10 @@
           return t && (t.iterations === Infinity);
         }).length;
       } catch (e) {}
-      const frames = document.querySelectorAll('iframe.gl-frame');
+      /* NOT `frames` — that name is already the frame-timing array above, and
+         redeclaring it put the original into the temporal dead zone for the
+         whole block, so the report threw before it could print anything. */
+      const embeds = document.querySelectorAll('iframe.gl-frame');
       const asleep = document.querySelectorAll('iframe.gl-frame[data-src]');
 
       const report = [
@@ -160,7 +163,7 @@
         '─── what is running ──────────────────────',
         'lite mode     : ' + (document.documentElement.classList.contains('lite') ? 'ON' : 'off'),
         'animations    : ' + anims + '  (' + infinite + ' of them INFINITE)',
-        'iframes awake : ' + (frames.length - asleep.length) + ' of ' + frames.length,
+        'iframes awake : ' + (embeds.length - asleep.length) + ' of ' + embeds.length,
         'DOM nodes     : ' + document.getElementsByTagName('*').length,
         'devicePixelRatio ' + (window.devicePixelRatio || 1) +
           ' · window ' + window.innerWidth + '×' + window.innerHeight,
