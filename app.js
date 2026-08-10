@@ -8601,10 +8601,31 @@
     const navlinks = () => $$('.navlink');
     const toplinks = () => $$('.topbar__link');
 
+    /* ── THE EMBEDDED TABS, ON DEMAND ────────────────────────────────────
+       Seven of these tabs are iframes, and an iframe is not a picture — it is
+       a whole separate document with its own stylesheet, its own scripts, its
+       own canvas and its own animation loop. All seven used to load with the
+       page and keep running for as long as it was open, visible or not.
+
+       Measured on real hardware: ONE animated canvas is free. EIGHT is thirteen
+       frames a second.
+
+       So the src is held in data-src and promoted the first time its tab is
+       actually opened. Once promoted it stays — coming back to a tab must not
+       reload it. */
+    function wakeFrames(panel) {
+      if (!panel) return;
+      $$('iframe[data-src]', panel).forEach(f => {
+        f.src = f.getAttribute('data-src');
+        f.removeAttribute('data-src');
+      });
+    }
+
     /* Building a panel's contents, separated from deciding which panel to
        show — because split view needs several built at once, and the old code
        could only ever mean "the one". */
     function renderPanelContent(name) {
+      wakeFrames($(`[data-tab-panel="${name}"]`));
       if (name==='home')      { Goals.renderWidget(); Ideas.init(); Noticed.render(); DayFlow.render(); }
       if (name==='goals')     Goals.renderAll();
       if (name==='reminders') Reminders.render();

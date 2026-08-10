@@ -91,13 +91,13 @@
          inside a white app no matter what colour the accent is */
       mode: (root.dataset.theme === 'daylight') ? 'light' : 'dark',
     };
-    document.querySelectorAll('iframe.gl-frame').forEach(f => {
+    document.querySelectorAll('iframe.gl-frame:not([data-src])').forEach(f => {
       try { f.contentWindow.postMessage(payload, '*'); } catch (e) {}
     });
   }
   /* an iframe that finishes loading later still needs telling */
   window.addEventListener('load', () => {
-    document.querySelectorAll('iframe.gl-frame').forEach(f => {
+    document.querySelectorAll('iframe.gl-frame:not([data-src])').forEach(f => {
       f.addEventListener('load', broadcastTheme);
     });
     broadcastTheme();
