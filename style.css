@@ -6665,3 +6665,46 @@ body[data-split] .cursor-glow { display: none; }
   /* the progress drawer should not eat the whole screen either */
   .cal-drawer { width: min(340px, 92vw); }
 }
+
+/* ═══════════════════  CALENDAR ON A PHONE — THE SIZES  ═══════════════════
+   The earlier mobile block fixed the modal's height and got the floating
+   clock out of the way. It did not touch the thing that actually makes the
+   calendar too big, which is arithmetic:
+
+     .cal-cell has min-height: 62px. Six rows of that is 372px of grid before
+     a single other element — and above it sit the load meter, the week/month/
+     year tabs and the weekday row, with the legend below. On a 390px-wide
+     phone the month alone is taller than the screen.
+
+   Meanwhile the cells are ~45px WIDE at that width (350px of usable card
+   minus 36px of gaps, over seven columns), so a 62px minimum also makes every
+   cell a tall narrow box rather than a square.
+
+   So: shrink the cell to fit its own width, tighten everything around it, and
+   let the day list breathe instead. Numbers here are chosen against a 390px
+   viewport — the common iPhone width — not picked to look right on a laptop.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  .card--cal { padding: 14px 12px; }
+
+  .cal-grid { gap: 4px; }
+  .cal-cell {
+    min-height: 40px;              /* was 62 — 6 rows: 372px → 240px */
+    padding-top: 3px; gap: 2px;
+  }
+  .cal-cell__n { font-size: 13px; }
+  .cal-wd { font-size: 8px; letter-spacing: .1em; }
+  .cal-cross { font-size: 10px; }
+  .cal-dots i { width: 3px; height: 3px; }
+
+  /* the controls above the grid */
+  .cal-load { padding: 10px 12px; }
+  .cal-load__val { font-size: 20px; }
+  .cal-views { gap: 4px; }
+  .cal-view { padding: 6px 10px; font-size: 11px; }
+  .cal-legend { font-size: 10px; }
+
+  /* the day list — the part that should get the room the grid gave back */
+  .cal-sect__head { padding: 9px 11px; font-size: 12px; }
+  .cal-daybody { gap: 10px; }
+}
