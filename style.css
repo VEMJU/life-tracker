@@ -6628,3 +6628,40 @@ body[data-split] .cursor-glow { display: none; }
 .lite *::after {
   animation-iteration-count: 1 !important;
 }
+
+/* ═══════════════════════  CALENDAR ON A PHONE  ═══════════════════════════
+   Two things make the day view unusable on a small screen, and neither is
+   obvious from a desktop browser.
+
+   1. `max-height: 92vh`. On mobile, `vh` is measured against the viewport as
+      if the browser's address bar were hidden — which it usually is not. So
+      92vh is taller than the screen actually is, the bottom of the panel sits
+      under the browser chrome, and the last few rows cannot be reached. `dvh`
+      is the same measurement done honestly, against the space that is really
+      there. The vh line stays first as the fallback for anything old.
+
+   2. The floating clock. It is 250px wide, fixed to the bottom-right, sits
+      above everything at z-index 72, and is DRAGGABLE — so on a phone it is
+      a large object that intercepts the exact swipe you were using to scroll.
+      That is almost certainly the "cannot move it correctly". It is a desktop
+      ornament; on a phone it only takes things away.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  .modal__dialog--full {
+    width: 100vw;
+    max-height: 92vh;              /* fallback */
+    max-height: 92dvh;             /* the honest one */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;   /* momentum scrolling on iOS */
+    overscroll-behavior: contain;        /* stop the page behind it scrolling too */
+  }
+
+  /* the day list itself — give the rows room to be tapped */
+  .cal-daybody { gap: 12px; }
+
+  /* the floating clock is a desktop toy. On a phone it blocks the swipe. */
+  .cal-watch-float { display: none; }
+
+  /* the progress drawer should not eat the whole screen either */
+  .cal-drawer { width: min(340px, 92vw); }
+}
