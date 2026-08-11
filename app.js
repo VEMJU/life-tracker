@@ -10793,7 +10793,115 @@
 
     // Sync initial visibility
     WidgetManager.updateVisibility(document.body.dataset.view || 'home');
+
+    DueSoon.init();
   }
+
+  /* ══════════════════  ON TIME  ═══════════════════════════════════════════
+     A notification at the moment a task is actually due — not a summary in
+     the morning about a thing that happens at four.
+
+     WHY THIS IS SEPARATE FROM THE ALERTS DRAWER: that one fires once a day,
+     for whatever is urgent, whenever you happen to open the app. This one
+     watches the clock and speaks at the minute. Different job, different
+     lifetime.
+
+     WHAT IT CANNOT DO, stated plainly: this only runs while the page is open.
+     A browser tab that has been closed cannot execute anything — no amount of
+     code fixes that, it is how the web works. The phone half of this problem
+     is solved server-side (see api/push-send.js ?due=1) because only a server
+     can act while every one of your screens is off.
+
+     So: this covers the case where you are AT the computer and would still
+     have missed it. Which, honestly, is most of them. */
+  const DueSoon = (() => {
+    const SEEN = 'nv.due.seen';
+    const LEAD = 10;              // also warn ten minutes ahead
+    const TICK = 30000;           // check twice a minute — cheap, and precise enough
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const dayKeyLocal = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    };
+    /* "16:30" → 990. Anything unparseable returns null and is skipped rather
+       than defaulting to midnight, which would fire every task at 00:00. */
+    const minutesOf = (t) => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+      if (!m) return null;
+      const h = +m[1], mi = +m[2];
+      return (h > 23 || mi > 59) ? null : h * 60 + mi;
+    };
+
+    const readSeen = () => {
+      try { return JSON.parse(localStorage.getItem(SEEN)) || {}; } catch (e) { return {}; }
+    };
+    const writeSeen = (o) => {
+      try { localStorage.setItem(SEEN, JSON.stringify(o)); } catch (e) {}
+    };
+
+    function fire(title, body) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+      try { new Notification(title, { body, tag: title + body, silent: false }); return true; }
+      catch (e) { return false; }
+    }
+
+    function tick() {
+      const today = dayKeyLocal();
+      const list = (() => {
+        try { return JSON.parse(localStorage.getItem('nv.day.' + today)) || []; }
+        catch (e) { return []; }
+      })();
+      if (!Array.isArray(list) || !list.length) return;
+
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      const seen = readSeen();
+      let changed = false;
+
+      for (const t of list) {
+        if (!t || t.done || !t.text) continue;
+        const at = minutesOf(t.at);
+        if (at === null) continue;                  // no time set — the morning brief covers it
+
+        const gap = at - mins;
+        /* Two moments per task. The window is a minute wide on each so a tab
+           that was asleep for twenty seconds does not sail straight past it —
+           and `seen` means a wider window still only ever speaks once. */
+        const stage = (gap <= 0 && gap > -2) ? 'now'
+                    : (gap <= LEAD && gap > LEAD - 2) ? 'soon'
+                    : null;
+        if (!stage) continue;
+
+        const key = today + '|' + t.text + '|' + stage;
+        if (seen[key]) continue;
+
+        const said = stage === 'now'
+          ? fire('Now — ' + t.at, t.text)
+          : fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at);
+        if (said) { seen[key] = 1; changed = true; }
+      }
+
+      /* keep only today's marks, so this never grows without bound */
+      if (changed) {
+        const trimmed = {};
+        for (const k in seen) if (k.startsWith(today + '|')) trimmed[k] = 1;
+        writeSeen(trimmed);
+      }
+    }
+
+    function init() {
+      if (!('Notification' in window)) return;
+      setInterval(tick, TICK);
+      /* A laptop that wakes from sleep has missed every interval in between.
+         Checking on focus catches the task that came due while it was shut. */
+      window.addEventListener('focus', tick);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+      tick();
+    }
+
+    return { init, tick };
+  })();
 
   // Boot only once the cloud layer has pulled our data into localStorage.
   // If sync.js isn't present, it still fires nv-data-ready in local-only mode.

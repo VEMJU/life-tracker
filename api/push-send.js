@@ -142,6 +142,62 @@ function composeBrief(state, today) {
   return { title: 'Today', body: 'Nothing due. Open your board and pick the day.', tab: 'home', tag: 'daily' };
 }
 
+/* ── THE MINUTE-BY-MINUTE BRIEF ───────────────────────────────────────────
+   The daily brief answers "what does today look like". This answers "it is
+   happening NOW", which is a different question and needs a different clock.
+
+   Vercel's free plan runs cron once a day, so this mode is not driven by
+   Vercel. Any scheduler that can make an HTTP request works, and a free
+   external one does it every minute. This endpoint does not care who rings
+   the bell — only that the secret is right.
+
+   Returns null when nothing is due, and the caller then sends nothing at all.
+   That is the whole design: a job firing 1,440 times a day must be silent
+   1,438 of them, or it stops being a reminder and becomes a nuisance. */
+function composeDue(state, today, nowMin) {
+  const rawDay = state[`nv.day.${today}`];
+  const day = Array.isArray(rawDay) ? rawDay : rawDay && typeof rawDay === 'object' ? [rawDay] : [];
+  if (!day.length) return null;
+
+  /* "16:30" → 990. Unparseable returns null and is skipped — defaulting to
+     midnight would fire every untimed task at 00:00. */
+  const minutesOf = (t) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    return (h > 23 || mi > 59) ? null : h * 60 + mi;
+  };
+
+  const LEAD = 10;
+  let now = null, soon = null;
+
+  for (const t of day) {
+    if (!t || t.done || !t.text) continue;
+    const at = minutesOf(t.at);
+    if (at === null) continue;
+    const gap = at - nowMin;
+    /* Two minutes wide on each moment, because a scheduler that promises
+       "every minute" drifts by seconds and an exact match would be missed. */
+    if (gap <= 0 && gap > -2 && !now) now = t;
+    else if (gap <= LEAD && gap > LEAD - 2 && !soon) soon = t;
+  }
+
+  if (now)  return { title: 'Now · ' + now.at, body: now.text, tab: 'home', tag: 'due-' + now.at, urgent: true };
+  if (soon) return { title: 'In ' + LEAD + ' minutes', body: soon.text + '  ·  ' + soon.at, tab: 'home', tag: 'soon-' + soon.at };
+  return null;
+}
+
+/* Minutes past midnight where the PERSON is, not where the server is. */
+function localMinutes(tz) {
+  try {
+    const s = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(new Date());
+    const m = /^(\d{2}):(\d{2})$/.exec(s);
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  } catch (e) { return null; }
+}
+
 async function dropDead(endpoint) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
@@ -174,7 +230,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: 0, note: 'Supabase reachable, but no device has subscribed yet' });
   }
 
-  const today = localToday(process.env.USER_TZ || 'America/New_York');
+  const tz = process.env.USER_TZ || 'America/New_York';
+  const today = localToday(tz);
+  /* ?due=1 switches from "what does today look like" to "is something
+     happening right now". Meant to be called every minute by an external
+     scheduler; silent unless a task's time has just arrived. */
+  const dueMode = !!req.query.due;
+  const nowMin = dueMode ? localMinutes(tz) : null;
+  if (dueMode && nowMin === null) {
+    return res.status(500).json({ error: `USER_TZ is not a valid timezone: ${tz}` });
+  }
 
   /* One brief per ACCOUNT, not per device — otherwise someone on a phone and
      a laptop pays to have their board read twice and gets two notifications
@@ -188,10 +253,23 @@ export default async function handler(req, res) {
 
   const briefs = new Map();
   await Promise.all([...byUser.keys()].map(async (id) => {
-    if (id === 'anon') { briefs.set(id, { title: 'Today', body: 'Open your board.', tab: 'home', tag: 'daily' }); return; }
+    if (id === 'anon') {
+      /* An anonymous device has no board to read, so it has no times either —
+         it gets the generic nudge on the daily run and nothing at all on the
+         minute-by-minute one. */
+      if (!dueMode) briefs.set(id, { title: 'Today', body: 'Open your board.', tab: 'home', tag: 'daily' });
+      return;
+    }
     const state = await stateFor(id, ['nv.goals', `nv.day.${today}`]);
-    briefs.set(id, composeBrief(state, today));
+    const brief = dueMode ? composeDue(state, today, nowMin) : composeBrief(state, today);
+    if (brief) briefs.set(id, brief);
   }));
+
+  /* Nothing due this minute — the overwhelmingly common case. Return before
+     touching the push service at all. */
+  if (dueMode && !briefs.size) {
+    return res.status(200).json({ sent: 0, mode: 'due', today, nowMin, note: 'nothing due' });
+  }
 
   /* ?preview=1 shows what today's brief WOULD say and sends nothing — so it
      can be checked at any hour instead of waiting for 9am. Returns before the
@@ -206,6 +284,10 @@ export default async function handler(req, res) {
   await Promise.all(subs.map(async (s) => {
     const sub = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } };
     const payload = req.query.test ? testPayload : briefs.get(s.user_id || 'anon');
+    /* In ?due=1 mode a user with nothing happening has no brief at all.
+       Without this guard JSON.stringify(undefined) returns undefined — not a
+       string — and the push fails silently for everyone in the same batch. */
+    if (!payload) return;
     try {
       await webpush.sendNotification(sub, JSON.stringify(payload));
       sent++;
