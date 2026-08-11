@@ -169,8 +169,17 @@ function composeDue(state, today, nowMin) {
   };
 
   const LEAD = 10;
-  const MIN_LONG = 15;   // below this, "ten minutes left" is just the start bell again
-  let now = null, soon = null, wrap = null;
+  const DEFAULT_LEN = 30;   // a task with no end time is assumed half an hour
+
+  /* HOW LONG A WARNING SHOULD BE, GIVEN HOW LONG THE TASK IS.
+     A ten-minute warning on a ten-minute task is just the start bell again.
+     The warning has to be a meaningful slice of the task and still leave room
+     to act on it, so it scales — and under five minutes there is none at all,
+     because a task that short is over before a notice about it means anything.
+     MUST MATCH wrapLead() in app.js. */
+  const wrapLead = (len) => !(len > 0) ? 0 : len < 5 ? 0 : len < 10 ? 2 : len < 20 ? 5 : len < 45 ? 10 : 15;
+
+  let now = null, soon = null, wrap = null, wrapAt = 0;
 
   for (const t of day) {
     if (!t || t.done || !t.text) continue;
@@ -185,16 +194,19 @@ function composeDue(state, today, nowMin) {
     /* The third moment, and the most useful one on a long task: ten minutes
        before it ENDS. Starting late costs you ten minutes; running over costs
        you the next thing. Only for tasks long enough to lose track inside. */
-    const end = minutesOf(t.end);
-    if (end === null || (end - at) < MIN_LONG) continue;
+    /* No end time? Assume half an hour — you will forget to set one, and a
+       feature that only works on the days you remembered is not a feature. */
+    const end = minutesOf(t.end) ?? (at + DEFAULT_LEN);
+    const warn = wrapLead(end - at);
+    if (!warn) continue;
     const endGap = end - nowMin;
-    if (endGap <= LEAD && endGap > LEAD - 2 && !wrap) wrap = t;
+    if (endGap <= warn && endGap > warn - 2 && !wrap) { wrap = t; wrapAt = warn; }
   }
 
   /* `day` rides along so tapping the notification opens the day it was about
      rather than dropping the person on the calendar to go hunting. */
   if (now)  return { title: 'Now · ' + now.at, body: now.text, tab: 'calendar', day: today, tag: 'due-' + now.at, urgent: true, renotify: false };
-  if (wrap) return { title: LEAD + ' minutes left', body: wrap.text + '  ·  ends ' + wrap.end, tab: 'calendar', day: today, tag: 'wrap-' + wrap.end, urgent: true, renotify: false };
+  if (wrap) return { title: wrapAt + ' minutes left', body: wrap.text + (wrap.end ? '  ·  ends ' + wrap.end : ''), tab: 'calendar', day: today, tag: 'wrap-' + wrap.at, urgent: true, renotify: false };
   if (soon) return { title: 'In ' + LEAD + ' minutes', body: soon.text + '  ·  ' + soon.at, tab: 'calendar', day: today, tag: 'soon-' + soon.at, renotify: false };
   return null;
 }

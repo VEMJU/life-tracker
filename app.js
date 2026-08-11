@@ -10827,7 +10827,24 @@
   const DueSoon = (() => {
     const SEEN = 'nv.due.seen';
     const LEAD = 10;              // warn ten minutes ahead, and ten before the end
-    const MIN_LONG = 15;          // below this, "ten minutes left" is just the start bell again
+    const DEFAULT_LEN = 30;       // a task with no end time is assumed half an hour
+
+    /* HOW LONG A WARNING SHOULD BE, GIVEN HOW LONG THE TASK IS.
+       Nathan spotted this: a ten-minute warning on a ten-minute task is just
+       the start bell again. The warning has to be a meaningful slice of the
+       task AND leave enough room to actually do something about it — so it
+       scales, and below five minutes there is no warning at all, because a
+       thing that short is over before a notice about it means anything.
+       A table rather than duration/3, because predictable beats clever when
+       you are trying to work out why your phone buzzed. */
+    function wrapLead(len) {
+      if (!(len > 0)) return 0;
+      if (len < 5)  return 0;     // too short to warn about
+      if (len < 10) return 2;
+      if (len < 20) return 5;
+      if (len < 45) return 10;
+      return 15;                  // 45 minutes and up
+    }
     const TICK = 30000;           // check twice a minute — cheap, and precise enough
 
     const pad2 = (n) => String(n).padStart(2, '0');
@@ -10882,22 +10899,27 @@
         if (at === null) continue;                  // no time set — the morning brief covers it
 
         const gap = at - mins;
-        const end = minutesOf(t.end);
+        /* NO END TIME? ASSUME THIRTY MINUTES.
+           You will forget to set one, and a task with no end gets no wrap-up
+           warning at all — so the feature would only work on the days you
+           remembered to feed it. Thirty is the honest default for "a thing on
+           a list", and setting a real end still overrides it. */
+        const end = minutesOf(t.end) ?? (at + DEFAULT_LEN);
         /* THREE moments, not two. The third is Nathan's, and it is the best
            of them: on a task long enough to lose track inside, a warning ten
            minutes before it ENDS is worth more than one before it starts.
            Starting late costs you ten minutes; running over costs you the
            next thing. Only for tasks of MIN_LONG or more — on a ten-minute
            task, "ten minutes left" is just the start bell again. */
-        const long = end !== null && (end - at) >= MIN_LONG;
-        const endGap = long ? end - mins : null;
+        const warn = wrapLead(end - at);
+        const endGap = warn ? end - mins : null;
 
         /* Windows are a minute wide so a tab asleep for twenty seconds does
            not sail straight past — and `seen` means a wide window still only
            ever speaks once. */
         const stage = (gap <= 0 && gap > -2) ? 'now'
                     : (gap <= LEAD && gap > LEAD - 2) ? 'soon'
-                    : (long && endGap <= LEAD && endGap > LEAD - 2) ? 'wrap'
+                    : (warn && endGap <= warn && endGap > warn - 2) ? 'wrap'
                     : null;
         if (!stage) continue;
 
@@ -10906,7 +10928,7 @@
 
         const said = stage === 'now'  ? fire('Now · ' + t.at, t.text, 'due-' + t.at)
                    : stage === 'soon' ? fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at, 'soon-' + t.at)
-                   :                    fire(LEAD + ' minutes left', t.text + '  ·  ends ' + t.end, 'wrap-' + t.end);
+                   :                    fire(warn + ' minutes left', t.text + (t.end ? '  ·  ends ' + t.end : ''), 'wrap-' + at);
         if (said) { seen[key] = 1; changed = true; }
       }
 
