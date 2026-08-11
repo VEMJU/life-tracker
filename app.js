@@ -10851,9 +10851,15 @@
       try { localStorage.setItem(SEEN, JSON.stringify(o)); } catch (e) {}
     };
 
-    function fire(title, body) {
+    /* THE TAG MUST MATCH THE SERVER'S.
+       On a phone with the app open, this fires locally AND the push arrives —
+       two notifications for one task. A shared tag makes the second REPLACE
+       the first instead of stacking, so whichever wins the race, you see one.
+       The formats are 'due-16:00' / 'soon-16:00' / 'wrap-17:00' and they are
+       written identically in api/push-send.js — change one, change both. */
+    function fire(title, body, tag) {
       if (!('Notification' in window) || Notification.permission !== 'granted') return false;
-      try { new Notification(title, { body, tag: title + body, silent: false }); return true; }
+      try { new Notification(title, { body, tag: tag || (title + body), silent: false }); return true; }
       catch (e) { return false; }
     }
 
@@ -10898,9 +10904,9 @@
         const key = today + '|' + t.text + '|' + stage;
         if (seen[key]) continue;
 
-        const said = stage === 'now'  ? fire('Now · ' + t.at, t.text)
-                   : stage === 'soon' ? fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at)
-                   :                    fire(LEAD + ' minutes left', t.text + '  ·  ends ' + t.end);
+        const said = stage === 'now'  ? fire('Now · ' + t.at, t.text, 'due-' + t.at)
+                   : stage === 'soon' ? fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at, 'soon-' + t.at)
+                   :                    fire(LEAD + ' minutes left', t.text + '  ·  ends ' + t.end, 'wrap-' + t.end);
         if (said) { seen[key] = 1; changed = true; }
       }
 

@@ -193,9 +193,9 @@ function composeDue(state, today, nowMin) {
 
   /* `day` rides along so tapping the notification opens the day it was about
      rather than dropping the person on the calendar to go hunting. */
-  if (now)  return { title: 'Now · ' + now.at, body: now.text, tab: 'calendar', day: today, tag: 'due-' + now.at, urgent: true };
-  if (wrap) return { title: LEAD + ' minutes left', body: wrap.text + '  ·  ends ' + wrap.end, tab: 'calendar', day: today, tag: 'wrap-' + wrap.end, urgent: true };
-  if (soon) return { title: 'In ' + LEAD + ' minutes', body: soon.text + '  ·  ' + soon.at, tab: 'calendar', day: today, tag: 'soon-' + soon.at };
+  if (now)  return { title: 'Now · ' + now.at, body: now.text, tab: 'calendar', day: today, tag: 'due-' + now.at, urgent: true, renotify: false };
+  if (wrap) return { title: LEAD + ' minutes left', body: wrap.text + '  ·  ends ' + wrap.end, tab: 'calendar', day: today, tag: 'wrap-' + wrap.end, urgent: true, renotify: false };
+  if (soon) return { title: 'In ' + LEAD + ' minutes', body: soon.text + '  ·  ' + soon.at, tab: 'calendar', day: today, tag: 'soon-' + soon.at, renotify: false };
   return null;
 }
 

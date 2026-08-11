@@ -16,7 +16,7 @@
    nothing.
    ========================================================================== */
 
-const CACHE = 'nv-shell-v2';   // bumped so the new notificationclick handler takes over
+const CACHE = 'nv-shell-v3';   // bumped for the renotify fix
 
 /* The shell only. Tab data lives in localStorage/Supabase and must never be
    served stale from here. */
@@ -79,7 +79,15 @@ self.addEventListener('push', (e) => {
     icon: '/vendor/icon-192.png',
     badge: '/vendor/icon-192.png',
     tag: d.tag || 'nv-alert',
-    renotify: true,
+    /* THE DOUBLE-NOTIFICATION BUG.
+       `tag` already makes a second notification REPLACE the first rather than
+       stack — but renotify:true then makes that replacement buzz again, which
+       is a second alert for the same thing. The due-time notices are sent
+       every minute by an external scheduler with a two-minute catch window
+       (deliberately: a scheduler that drifts must not miss the minute), so the
+       same task legitimately arrives twice and used to alert twice.
+       Now the payload decides, and the due notices ask for a silent replace. */
+    renotify: d.renotify !== false,
     requireInteraction: !!d.urgent,
     /* `day` must survive this hop. It is set on the payload by the server and
        read back in notificationclick — drop it here and the tap silently
