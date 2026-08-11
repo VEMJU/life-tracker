@@ -6708,3 +6708,53 @@ body[data-split] .cursor-glow { display: none; }
   .cal-sect__head { padding: 9px 11px; font-size: 12px; }
   .cal-daybody { gap: 10px; }
 }
+
+/* ══════════  THE DAY PANEL WAS TOO WIDE, NOT TOO TALL  ══════════════════
+   A screenshot settled what three rounds of guessing did not. The task text
+   was clipped on BOTH sides — left and right — which only happens when the
+   content is wider than the box and sitting centred inside it. I had been
+   fixing heights.
+
+   The day timeline is built for a desktop column: hour rows, absolutely
+   positioned blocks, and block text on one line. On a 414px iPhone the
+   whole thing overhangs the screen in both directions, so the middle of
+   every task is the only part you can read.
+
+   Fix the container first, then let the text wrap instead of running off. */
+@media (max-width: 720px) {
+  /* nothing in the app may exceed the viewport */
+  .modal__dialog--full,
+  .cal-timegrid, .cal-canvas, .cal-cvwrap, .cal-daybody, .cal-sect {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .modal__dialog--full {
+    width: 100%;
+    margin: 0 auto;
+    padding-left: 10px; padding-right: 10px;
+    overflow-x: hidden;          /* the page must never scroll sideways */
+  }
+
+  /* the hour column was sized for a desktop gutter */
+  .cal-timegrid { font-size: 12px; }
+  .cal-hlabel, .cal-hour { min-width: 0; }
+
+  /* THE ACTUAL CLIPPING: block text was one long unbroken line */
+  .cal-block {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;     /* break inside a long word rather than overhang */
+    padding: 6px 8px;
+  }
+  .cal-block__txt {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 12.5px; line-height: 1.35;
+  }
+  .cal-block__at { font-size: 9px; }
+
+  /* the day-panel header ("LEFT TODAY / 9 of 9") was eating the top third */
+  .cal-sect__head { padding: 8px 10px; }
+}
