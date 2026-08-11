@@ -8481,7 +8481,17 @@
       renderDay();
       openDay();
     }
-    return {init, materializeToday};
+    /* Open a specific day, from outside the module. A notification that only
+       lands you on the calendar still makes you hunt for the thing it was
+       about — this puts the day itself in front of you. */
+    function goToDay(ds) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ds || ''))) return;
+      selected = ds;
+      view = new Date(ds + 'T00:00:00');
+      renderMonth(); renderDay(); openDay();
+    }
+
+    return {init, materializeToday, goToDay};
   })();
 
   /* ═══════════════════  DAYFLOW (goal ticker · day ring · to-do)  ═══════════════════ */
@@ -10816,7 +10826,8 @@
      have missed it. Which, honestly, is most of them. */
   const DueSoon = (() => {
     const SEEN = 'nv.due.seen';
-    const LEAD = 10;              // also warn ten minutes ahead
+    const LEAD = 10;              // warn ten minutes ahead, and ten before the end
+    const MIN_LONG = 15;          // below this, "ten minutes left" is just the start bell again
     const TICK = 30000;           // check twice a minute — cheap, and precise enough
 
     const pad2 = (n) => String(n).padStart(2, '0');
@@ -10865,20 +10876,31 @@
         if (at === null) continue;                  // no time set — the morning brief covers it
 
         const gap = at - mins;
-        /* Two moments per task. The window is a minute wide on each so a tab
-           that was asleep for twenty seconds does not sail straight past it —
-           and `seen` means a wider window still only ever speaks once. */
+        const end = minutesOf(t.end);
+        /* THREE moments, not two. The third is Nathan's, and it is the best
+           of them: on a task long enough to lose track inside, a warning ten
+           minutes before it ENDS is worth more than one before it starts.
+           Starting late costs you ten minutes; running over costs you the
+           next thing. Only for tasks of MIN_LONG or more — on a ten-minute
+           task, "ten minutes left" is just the start bell again. */
+        const long = end !== null && (end - at) >= MIN_LONG;
+        const endGap = long ? end - mins : null;
+
+        /* Windows are a minute wide so a tab asleep for twenty seconds does
+           not sail straight past — and `seen` means a wide window still only
+           ever speaks once. */
         const stage = (gap <= 0 && gap > -2) ? 'now'
                     : (gap <= LEAD && gap > LEAD - 2) ? 'soon'
+                    : (long && endGap <= LEAD && endGap > LEAD - 2) ? 'wrap'
                     : null;
         if (!stage) continue;
 
         const key = today + '|' + t.text + '|' + stage;
         if (seen[key]) continue;
 
-        const said = stage === 'now'
-          ? fire('Now — ' + t.at, t.text)
-          : fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at);
+        const said = stage === 'now'  ? fire('Now · ' + t.at, t.text)
+                   : stage === 'soon' ? fire('In ' + LEAD + ' minutes', t.text + '  ·  ' + t.at)
+                   :                    fire(LEAD + ' minutes left', t.text + '  ·  ends ' + t.end);
         if (said) { seen[key] = 1; changed = true; }
       }
 
@@ -10891,6 +10913,17 @@
     }
 
     function init() {
+      /* The day-jump is wired up regardless of notification permission — a
+         tapped push from the PHONE still has to land somewhere useful, and
+         that has nothing to do with whether this browser may show notices. */
+      window.addEventListener('nv-go-day', (e) => {
+        const ds = e && e.detail;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ds || ''))) return;
+        try { Tabs.setActive('calendar'); } catch (err) {}
+        /* let the tab finish painting before opening the day on top of it */
+        setTimeout(() => { try { Cal.goToDay(ds); } catch (err) {} }, 260);
+      });
+
       if (!('Notification' in window)) return;
       setInterval(tick, TICK);
       /* A laptop that wakes from sleep has missed every interval in between.

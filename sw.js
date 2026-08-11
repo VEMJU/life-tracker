@@ -16,7 +16,7 @@
    nothing.
    ========================================================================== */
 
-const CACHE = 'nv-shell-v1';
+const CACHE = 'nv-shell-v2';   // bumped so the new notificationclick handler takes over
 
 /* The shell only. Tab data lives in localStorage/Supabase and must never be
    served stale from here. */
@@ -81,7 +81,10 @@ self.addEventListener('push', (e) => {
     tag: d.tag || 'nv-alert',
     renotify: true,
     requireInteraction: !!d.urgent,
-    data: { tab: d.tab || 'home', url: d.url || '/' },
+    /* `day` must survive this hop. It is set on the payload by the server and
+       read back in notificationclick — drop it here and the tap silently
+       falls back to "open the calendar", with nothing to show it broke. */
+    data: { tab: d.tab || 'home', url: d.url || '/', day: d.day || '' },
     vibrate: [90, 50, 90],
   };
   e.waitUntil(self.registration.showNotification(title, opts));
@@ -91,17 +94,24 @@ self.addEventListener('push', (e) => {
    piling up duplicates, and tells the app which tab to show. */
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const tab = (e.notification.data && e.notification.data.tab) || 'home';
+  const data = e.notification.data || {};
+  const tab = data.tab || 'home';
+  /* A due-task notice carries the day it was about, so the tap can open that
+     day rather than dropping you on the calendar to go hunting for it. */
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(data.day || '')) ? data.day : '';
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
         if (c.url.includes(self.location.origin)) {
-          c.postMessage({ source: 'nv-sw', type: 'go', tab });
+          c.postMessage({ source: 'nv-sw', type: 'go', tab, day });
           return c.focus();
         }
       }
-      return self.clients.openWindow('/?tab=' + encodeURIComponent(tab));
+      /* cold start — the app is not open, so the day rides in the URL */
+      return self.clients.openWindow(
+        '/?tab=' + encodeURIComponent(tab) + (day ? '&day=' + encodeURIComponent(day) : '')
+      );
     })
   );
 });

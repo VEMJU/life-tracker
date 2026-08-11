@@ -141,14 +141,23 @@
     const m = e.data;
     if (m && m.source === 'nv-sw' && m.type === 'go') {
       window.dispatchEvent(new CustomEvent('nv-go-tab', { detail: m.tab }));
+      /* and if the notice was about one specific day, open that day too */
+      if (m.day) window.dispatchEvent(new CustomEvent('nv-go-day', { detail: m.day }));
     }
   });
 
   /* opened from a notification on a cold start */
-  const qTab = new URLSearchParams(location.search).get('tab');
-  if (qTab) {
+  const qs   = new URLSearchParams(location.search);
+  const qTab = qs.get('tab');
+  const qDay = qs.get('day');
+  if (qTab || qDay) {
     window.addEventListener('load', () => {
-      setTimeout(() => window.dispatchEvent(new CustomEvent('nv-go-tab', { detail: qTab })), 400);
+      setTimeout(() => {
+        if (qTab) window.dispatchEvent(new CustomEvent('nv-go-tab', { detail: qTab }));
+        /* the day goes second and later — the tab has to exist before a day
+           can be opened on top of it */
+        if (qDay) setTimeout(() => window.dispatchEvent(new CustomEvent('nv-go-day', { detail: qDay })), 300);
+      }, 400);
     });
   }
 
