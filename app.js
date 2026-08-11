@@ -959,9 +959,167 @@
         seedGoals();
         persist();
       }
+      lateGoals();
+      lateEdits();
       if (data.seeded) return;
       data.seeded = true;
       persist();
+    }
+
+    /* ══════════════════  GOALS ADDED AFTER THE FIRST SEED  ══════════════════
+       seedGoals() only runs on an EMPTY board, which is correct — re-running it
+       would wipe whatever you had done to your goals. The consequence is that a
+       goal added to that list later never reaches a board that already exists,
+       which is every board including yours.
+
+       So new goals land here instead. Matched by title, appended once, and
+       harmless to re-run — if you have already got it (or deleted it on
+       purpose) nothing happens.
+
+       TO ADD ANOTHER: put it in the array. Nothing else to change. */
+    const LATE_GOALS = [
+      { title: 'Make a prayer place', categoryId: 'soul', deadline: '2026-08-24',
+        notes: 'A dedicated space, not a corner. The spot is already chosen — this is build, not decide. '
+             + 'The physical anchor under the Prayer habit: a fixed place turns an intention into a routine.',
+        steps: ['Clear the space', 'Icons up', 'Cross up', 'Somewhere to stand or kneel', 'Pray there once'] },
+
+      /* ── UNLOCKS ──────────────────────────────────────────────────────────
+         Each of these is one action that moves several other goals. They are
+         dated tight on purpose: every one is gated by somebody else's
+         calendar, so the only thing that matters is starting them early. */
+
+      { title: 'Get the Marian Catholic transcript', categoryId: 'life', deadline: '2026-08-11',
+        notes: 'The slowest paper you own, and Nebraska cannot evaluate your credits without it — '
+             + 'so this blocks the whole school chain, not just one form. '
+             + 'Mrs. Teresa Sheer, (570) 467-3335. Phone, not email.',
+        steps: ['Call and ask what they need', 'Send whatever they ask for', 'Confirm it was sent to Nebraska'] },
+
+      { title: 'One barber who does the whole face', categoryId: 'mirror', deadline: '2026-08-31',
+        notes: 'NOT just eyebrows — a proper barber who shaves the whole face AND can tell you what cut '
+             + 'suits your face shape. That is the real unlock: you cannot "decide" on a haircut or a '
+             + 'beard without knowing what works on you, so the information comes first and the decision '
+             + 'follows. One good chair closes the haircut, the beard question and the shave together.',
+        steps: ['Find two barbers with real reviews', 'Book the first', 'Ask what cut suits your face — and why',
+                'Ask: beard, moustache or clean, on this face', 'Set the return interval'] },
+
+      { title: 'Eyelid lump from the old stye — get it looked at', categoryId: 'mirror', deadline: '2026-09-07',
+        notes: 'AN EYE DOCTOR, NOT THE DERMATOLOGIST. The eyelid belongs to ophthalmology — a derm will '
+             + 'send you away and you will have burned the appointment.\n\n'
+             + 'A stye that never fully cleared very often leaves a chalazion: a blocked oil gland, firm '
+             + 'and painless, and extremely common. Only the doctor can say what yours is — but that is '
+             + 'the word to walk in with.\n\n'
+             + 'Ask three things: what is it, can it be removed, and what happens if I leave it.',
+        steps: ['Find an ophthalmologist (optometrists usually refer on)', 'Book it',
+                'Ask: what is it', 'Ask: can it be removed', 'Ask: what if I leave it'] },
+
+      { title: 'The conversation with Dad', categoryId: 'build', deadline: '2026-08-24',
+        notes: 'Three goals in one talk, which is why it is worth preparing rather than blurting. '
+             + 'The college budget — the number you need before any school decision is real. Smart homes '
+             + 'into the family builds — your first customer already exists, and this is the Babson story. '
+             + 'And the Bronx building. Same conversation, same person, one sitting.',
+        steps: ['Write down the three asks first', 'Pick a calm moment', 'Ask the budget number',
+                'Ask about the builds', 'Write down what he said'] },
+
+      { title: 'Find one place to serve', categoryId: 'soul', deadline: '2026-09-30',
+        notes: 'The best deal on the whole board: one commitment satisfies a faith goal you actually care '
+             + 'about AND fills the exact hole in your college application. Nothing else does double duty.\n\n'
+             + 'It has to be ONE regular thing, not five one-offs — both the faith and the application want '
+             + 'consistency over variety. Church is the obvious first place to ask.',
+        steps: ['Ask at church what needs doing', 'Pick ONE', 'Commit to a regular slot', 'Show up four times'] },
+
+      { title: 'The nose — get it done', categoryId: 'mirror', deadline: '2027-06-30',
+        notes: 'DECIDED. Not parked, not "maybe". Three stages, in this order, because that is how you '
+             + 'said you want to do it:\n\n'
+             + '1. Work out what YOU want changed — before anyone else puts an opinion in your head.\n'
+             + '2. Consult, and hear what the surgeon actually recommends.\n'
+             + '3. A second appointment for the surgery itself.\n\n'
+             + 'Two scheduling facts to plan around, not to argue with: under 18 needs a parent to consent, '
+             + 'and most surgeons want facial growth finished. You turn 18 in January 2027 — so stages 1 '
+             + 'and 2 make sense now, stage 3 after.',
+        steps: ['Decide what I want changed — in my own words first', 'Talk to my parents',
+                'Find two surgeons, check their work', 'Consult — hear what they recommend',
+                'Book the surgery'] },
+
+      /* ── RESTORED ────────────────────────────────────────────────────────
+         Words from Nathan's original dump that got narrowed or dropped when I
+         turned it into goals. He caught it by asking whether the list was
+         complete. It was not. */
+
+      { title: 'A straight back, always', categoryId: 'body',
+        notes: 'You said this in your first dump and I demoted it to a daily habit. It is a goal — '
+             + 'posture is also the one lever still open on height.' },
+
+      { title: 'Private parts — healthy, clean, well cared for', categoryId: 'body',
+        notes: 'Your words, folded into a footnote on the health check-up instead of standing on its own. '
+             + 'The check-up is how it gets answered; this is the goal it answers.' },
+
+      { title: 'Groomed everywhere — not just the face', categoryId: 'mirror',
+        notes: 'Your definition: the face, PLUS the places that need shaving to look good — while still '
+             + 'looking masculine. Not everything, and not the look of having removed everything. '
+             + 'Knowing where that line sits IS the goal, and a barber can tell you where it is.' },
+    ];
+
+    /* ══════════════════  AMENDMENTS TO GOALS ALREADY SEEDED  ══════════════
+       LATE_GOALS only appends. These fix goals that already exist but lost
+       something in translation — a reason, a date, half a title. Matched by
+       title, applied once each, and never overwriting a note you have edited
+       yourself.
+
+       TO ADD ANOTHER: put it in the array. */
+    const LATE_EDITS = [
+      { match: 'Italian', notes: 'NOT a hobby — you called these "selling languages". You want them for '
+             + 'business, which changes where they sit entirely. Re-date accordingly.' },
+      { match: 'German', notes: 'NOT a hobby — a "selling language", wanted for business. Same as Italian.' },
+      { match: 'Live on my own — and be sure it is the right call', deadline: '2027-12-31',
+        notes: 'You said NEXT YEAR and I dropped the date. Here it is back — 2027, adjust it if that moved.' },
+      { match: 'Build my own family one day',
+        notes: 'Your words were "build a family AND be a good husband and father". The character half is '
+             + 'the part you can start on now.' },
+      { match: 'My own style — clothes, shoes, watches, rings, fragrance',
+        notes: 'Also chains and bracelets — you listed them and I dropped them.' },
+    ];
+
+    function lateEdits() {
+      if (!Array.isArray(data.goals)) return;
+      const done = Array.isArray(data.goalsEdited) ? data.goalsEdited : [];
+      let n = 0;
+      for (const e of LATE_EDITS) {
+        if (done.includes(e.match)) continue;
+        done.push(e.match);
+        const g = data.goals.find(x => x && x.title === e.match);
+        if (!g) continue;
+        /* never clobber a note the owner wrote — append instead */
+        if (e.notes) g.notes = g.notes ? (g.notes + '\n\n' + e.notes) : e.notes;
+        if (e.deadline && !g.deadline) g.deadline = e.deadline;
+        n++;
+      }
+      data.goalsEdited = done;
+      if (n) persist();
+    }
+
+    function lateGoals() {
+      if (!Array.isArray(data.goals)) return;
+      /* Deleting a goal is a decision, not an accident — so a title that was
+         added once and is now gone stays gone. `goalsAdded` remembers what has
+         ever been offered, rather than checking only what is on the board now. */
+      const offered = Array.isArray(data.goalsAdded) ? data.goalsAdded : [];
+      let added = 0;
+      for (const g of LATE_GOALS) {
+        if (offered.includes(g.title)) continue;
+        offered.push(g.title);
+        if (data.goals.some(x => x && x.title === g.title)) continue;
+        data.goals.push({
+          id: uid(), title: g.title, categoryId: g.categoryId,
+          deadline: g.deadline || '', notes: g.notes || '',
+          /* steps drive the percentage — a goal that arrives with them shows
+             real progress from day one instead of sitting at 0% until edited */
+          steps: (g.steps || []).map(text => ({ id: uid(), text, done: false })),
+          legacyProgress: 0, createdAt: Date.now(), open: false, view: 'steps',
+        });
+        added++;
+      }
+      data.goalsAdded = offered;
+      if (added) persist();
     }
 
     function seedHabits() {
@@ -1047,6 +1205,8 @@
         G('Guitar', 'mind', '', 'PARKED — real, but not 2026.'),
 
         /* ── SOUL ── */
+        G('Make a prayer place', 'soul', '',
+          'The physical anchor under the Prayer habit — a fixed place turns an intention into a routine.'),
         G('Learn Orthodox teaching, practice and the fathers', 'soul'),
         G('Be like Christ — morally, not just in name', 'soul'),
         G('Master my temptations', 'soul'),

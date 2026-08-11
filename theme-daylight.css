@@ -284,3 +284,97 @@
   background: #ffffff;
 }
 :root[data-theme="daylight"] .navlink__label { color: inherit; }
+
+/* ═══════════════════════════════  THE CALENDAR  ═══════════════════════════
+   The tab that got missed. Around thirty .cal-* rules in style.css were
+   written against black and hardcode their colours rather than reading a
+   token, so on white the calendar breaks in three distinct ways:
+
+     · `color: #fff` on labels, hours and day numbers — white ink on a white
+       page, which reads as text that simply is not there.
+     · `rgba(255,255,255,.02–.06)` surfaces — the faint lift that separates a
+       cell from its grid on black. On white it separates nothing.
+     · `rgba(8,8,8,.35)` / `rgba(0,0,0,.35)` panels — deliberate dark wells
+       on a dark page, which become black slabs on a light one.
+
+   Everything below is those three, inverted. No new structure. */
+
+/* ── ink: everything that hardcoded #fff ─────────────────────────────── */
+:root[data-theme="daylight"] .cal-sect__hours,
+:root[data-theme="daylight"] .cal-hour,
+:root[data-theme="daylight"] .cal-hlabel,
+:root[data-theme="daylight"] .cal-block__at,
+:root[data-theme="daylight"] .cal-cell.is-today .cal-cell__n,
+:root[data-theme="daylight"] .cal-min:hover,
+:root[data-theme="daylight"] .cal-min.is-over {
+  color: var(--c-blanc);
+}
+:root[data-theme="daylight"] .cal-note { color: var(--c-paper); }
+:root[data-theme="daylight"] .cal-drawer-tab:hover { color: var(--c-blanc); }
+
+/* The completion crosses carry meaning, so they cannot just be dimmed.
+   Done = ink you notice. Fell short = the muted grey, matching --bad. */
+:root[data-theme="daylight"] .cal-cross--white {
+  color: var(--c-blanc);
+  text-shadow: none;                 /* a white glow on white is a smudge */
+}
+:root[data-theme="daylight"] .cal-scale__side--white {
+  color: var(--c-blanc);
+  text-shadow: none;
+}
+
+/* ── surfaces: the faint white lifts, re-drawn in ink ─────────────────── */
+:root[data-theme="daylight"] .cal-cell,
+:root[data-theme="daylight"] .cal-min,
+:root[data-theme="daylight"] .cal-prog,
+:root[data-theme="daylight"] .cal-scale {
+  background: rgba(10, 13, 17, .028);
+}
+:root[data-theme="daylight"] .cal-cell:hover { background: rgba(10, 13, 17, .07); }
+:root[data-theme="daylight"] .cal-cell:hover .cal-cell__n { background: rgba(10, 13, 17, .09); }
+:root[data-theme="daylight"] .cal-prog__bar { background: rgba(10, 13, 17, .08); }
+:root[data-theme="daylight"] .cal-hrow { border-top-color: rgba(10, 13, 17, .05); }
+:root[data-theme="daylight"] .cal-hrow:not(.is-half) { border-top-color: rgba(10, 13, 17, .11); }
+:root[data-theme="daylight"] .cal-sec::after {
+  background: linear-gradient(90deg, rgba(10, 13, 17, .12), transparent);
+}
+
+/* ── wells: dark panels become recessed light ones ───────────────────── */
+:root[data-theme="daylight"] .cal-canvas,
+:root[data-theme="daylight"] .cal-timegrid,
+:root[data-theme="daylight"] .cal-cvwrap,
+:root[data-theme="daylight"] .cal-load {
+  background: var(--c-graphite);
+}
+:root[data-theme="daylight"] .cal-drawer,
+:root[data-theme="daylight"] .cal-gdrawer,
+:root[data-theme="daylight"] .cal-watch-float {
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: 0 18px 48px -24px rgba(10, 13, 17, .28);
+}
+:root[data-theme="daylight"] .cal-drawer-tab {
+  background: #ffffff;
+  color: var(--c-stone);
+  border-color: var(--border);
+}
+:root[data-theme="daylight"] .cal-note {
+  background: var(--c-coal);
+  border-color: var(--border);
+}
+
+/* ── the one true inversion ──────────────────────────────────────────────
+   A selected day was white-on-near-black. Flipping the two literals keeps
+   the contrast identical and the meaning intact. */
+:root[data-theme="daylight"] .cal-cell.is-selected:not(.is-today) .cal-cell__n {
+  background: var(--c-blanc);
+  color: var(--c-void);
+}
+
+/* The "today" pill already paints itself with --accent, which the theme has
+   redefined to cyan — so it needs no colour here, only readable ink, handled
+   in the block above. The progress fill was a light gradient for the same
+   reason and becomes an ink one. */
+:root[data-theme="daylight"] .cal-prog__fill {
+  background: linear-gradient(90deg, var(--c-stone), var(--c-blanc));
+}
