@@ -9,31 +9,6 @@
   const intro = document.getElementById('intro');
   if (!intro) return;
 
-  /* ---------- splash, not a door ----------
-     Two modes.
-
-       SPLASH (default) — the opening art shows for about a second and fades
-       on its own. No cards, no Enter, nothing to click. What a phone app does.
-
-       HUB — nvIntro(true) — the full ceremony: tab cards rise and you click
-       one to pass through. This was the original behaviour.
-
-     Either way the Hub button summons the full hub on demand, so nothing is
-     lost in splash mode. Nothing here is deleted, only gated. */
-  const SPLASH_MS = 950;   // visible before the fade starts; the fade adds ~900ms
-  const INTRO_KEY = 'nv.intro';
-  const introOn = () => {
-    try { return JSON.parse(localStorage.getItem(INTRO_KEY) || 'false') === true; }
-    catch (e) { return false; }
-  };
-  window.nvIntro = (v) => {
-    const on = (v === undefined) ? !introOn() : !!v;
-    try { localStorage.setItem(INTRO_KEY, JSON.stringify(on)); } catch (e) {}
-    return on
-      ? 'Hub mode — reload for the full opening with tab cards.'
-      : 'Splash mode — a one-second opening that fades on its own.';
-  };
-
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sky = document.getElementById('introSky');
   const ctx = sky ? sky.getContext('2d') : null;
@@ -178,9 +153,6 @@
        would open at once and the hub would sit behind a black canvas. */
     if (window.lifeStage && window.lifeStage.armed) return;
 
-    /* Ceremony off — signing in lands you on the board, not the opening. */
-    if (!introOn()) return;
-
     let desk = null;
     try { desk = JSON.parse(localStorage.getItem('nv.split') || 'null'); } catch (e) {}
     if (desk && desk.layout && desk.layout !== 'single') {
@@ -193,16 +165,11 @@
     }
     open();
   });
-  // boot: let the lettering decode as the cards rise. Splash is gone by 1700ms,
-  // so firing this then would only animate something nobody is looking at.
-  if (introOn()) setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
+  // boot: let the lettering decode as the cards rise
+  setTimeout(() => window.dispatchEvent(new CustomEvent('nv-hub-open')), 1700);
 
   /* ---------- wiring ---------- */
   intro.addEventListener('click', (e) => {
-    /* Splash has nothing to click, so a tap just skips it. This is also the
-       failsafe: if the timer ever does not fire, you are never trapped behind
-       a screen with no way out. */
-    if (!introOn()) { hide(null); return; }
     const card = e.target.closest('[data-go]');
     if (card) { hide(card.getAttribute('data-go')); return; }
     if (e.target.closest('#introEnter')) hide(null);
@@ -217,15 +184,6 @@
   window.addEventListener('load', resize, { passive: true });
 
   /* ---------- boot ---------- */
-  if (!introOn()) {
-    // SPLASH. Show the art, then get out of the way on a timer. The body is
-    // never locked, so the board underneath is already live the moment the
-    // fade clears. hide(null) does the rest of the teardown.
-    startCanvas();
-    requestAnimationFrame(resize);
-    setTimeout(() => hide(null), SPLASH_MS);
-    return;
-  }
   document.body.classList.add('intro-locked');     // the hub is the home base + navigation
   if (reduce || !ctx) return;                      // static hub (no canvas), still navigable
   startCanvas();
