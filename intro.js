@@ -9,6 +9,26 @@
   const intro = document.getElementById('intro');
   if (!intro) return;
 
+  /* ---------- straight to the board ----------
+     The opening ceremony is opt-in and OFF by default, so the app behaves like
+     a phone app: open it, you are on your board. Nothing is deleted.
+       nvIntro(true)   bring the ceremony back on every load
+       nvIntro(false)  boot straight to the board  (default)
+       nvIntro()       toggle
+     The Hub button still summons it on demand either way. */
+  const INTRO_KEY = 'nv.intro';
+  const introOn = () => {
+    try { return JSON.parse(localStorage.getItem(INTRO_KEY) || 'false') === true; }
+    catch (e) { return false; }
+  };
+  window.nvIntro = (v) => {
+    const on = (v === undefined) ? !introOn() : !!v;
+    try { localStorage.setItem(INTRO_KEY, JSON.stringify(on)); } catch (e) {}
+    return on
+      ? 'Intro ON — reload to see the opening.'
+      : 'Intro OFF — boots straight to the board.';
+  };
+
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sky = document.getElementById('introSky');
   const ctx = sky ? sky.getContext('2d') : null;
@@ -153,6 +173,9 @@
        would open at once and the hub would sit behind a black canvas. */
     if (window.lifeStage && window.lifeStage.armed) return;
 
+    /* Ceremony off — signing in lands you on the board, not the opening. */
+    if (!introOn()) return;
+
     let desk = null;
     try { desk = JSON.parse(localStorage.getItem('nv.split') || 'null'); } catch (e) {}
     if (desk && desk.layout && desk.layout !== 'single') {
@@ -184,6 +207,16 @@
   window.addEventListener('load', resize, { passive: true });
 
   /* ---------- boot ---------- */
+  if (!introOn()) {
+    // Straight to the board. Mirrors the split-desk dismiss below: hide the
+    // hub, unlock the body, tell the app the intro is gone. The canvas never
+    // starts, so nothing is animating behind the board either.
+    dismissed = true;
+    intro.style.display = 'none';
+    document.body.classList.remove('intro-locked');
+    window.dispatchEvent(new CustomEvent('nv-intro-hidden'));
+    return;
+  }
   document.body.classList.add('intro-locked');     // the hub is the home base + navigation
   if (reduce || !ctx) return;                      // static hub (no canvas), still navigable
   startCanvas();

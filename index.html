@@ -7,6 +7,22 @@
   <meta name="theme-color" content="#000000" />
   <title>Nathan Vélez — Son of God</title>
 
+  <!-- Straight to the board. This runs before the body paints, so the opening
+       never flashes on screen while the deferred intro.js waits to load.
+       intro.js reads the same key and does the real dismissal.
+       Turn the ceremony back on with nvIntro(true). -->
+  <script>
+    try {
+      if (JSON.parse(localStorage.getItem('nv.intro') || 'false') !== true) {
+        document.documentElement.classList.add('nv-no-intro');
+      }
+    } catch (e) { document.documentElement.classList.add('nv-no-intro'); }
+  </script>
+  <style>
+    .nv-no-intro .intro { display: none !important; }
+    .nv-no-intro body.intro-locked { overflow: auto !important; }
+  </style>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -1943,7 +1959,7 @@
     }
   }
   </script>
-  <script type="module" src="boot3d.js?v=7"></script>
+  <script type="module" src="boot3d.js?v=8"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js" defer></script>
   <script src="config.js?v=1" defer></script>
@@ -1952,7 +1968,7 @@
   <script src="app.js?v=96" defer></script>
   <script src="bg.js?v=6" defer></script>
   <script src="fx.js?v=7" defer></script>
-  <script src="intro.js?v=13" defer></script>
+  <script src="intro.js?v=14" defer></script>
   <script src="gallery.js?v=8" defer></script>
   <script src="polish.js?v=3" defer></script>
   <script src="push.js?v=4" defer></script>

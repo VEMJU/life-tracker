@@ -50,7 +50,25 @@ function hasWebGL() {
 /* Each check reports WHY it said no. A boot screen that silently declines to
    appear is impossible to debug from the outside — and "I don't see it" was
    exactly the report this had to answer. Run nvStage() in the console. */
-const FORCE = new URLSearchParams(location.search).get('stage');
+/* A persisted preference, so "off" survives a reload instead of needing
+   ?stage=0 every time. The URL param still wins when present, which keeps the
+   debug path intact. Default is OFF: the app opens on the board, and the stage
+   is something you ask for. Turn it back on with nvStagePref(true). */
+const STAGE_KEY = 'nv.stage.on';
+const stagePref = () => {
+  try { return JSON.parse(localStorage.getItem(STAGE_KEY) || 'false') === true; }
+  catch (e) { return false; }
+};
+window.nvStagePref = (v) => {
+  const on = (v === undefined) ? !stagePref() : !!v;
+  try { localStorage.setItem(STAGE_KEY, JSON.stringify(on)); } catch (e) {}
+  return on
+    ? 'Stage ON — reload to see it on sign-in.'
+    : 'Stage OFF — the app opens on the board.';
+};
+
+const URL_FORCE = new URLSearchParams(location.search).get('stage');
+const FORCE = URL_FORCE !== null ? URL_FORCE : (stagePref() ? null : '0');
 const checks = {
   markup:  !!(HOST && CANVAS),
   webgl:   hasWebGL(),
