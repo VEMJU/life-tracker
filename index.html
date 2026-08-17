@@ -7,20 +7,22 @@
   <meta name="theme-color" content="#000000" />
   <title>Nathan Vélez — Son of God</title>
 
-  <!-- Straight to the board. This runs before the body paints, so the opening
-       never flashes on screen while the deferred intro.js waits to load.
-       intro.js reads the same key and does the real dismissal.
-       Turn the ceremony back on with nvIntro(true). -->
+  <!-- Splash mode, the default: the opening art shows for about a second and
+       fades on its own, like a phone app. The tab cards and Enter button are
+       hidden, because a splash is something you watch, not a door you open.
+       This runs before first paint so the cards never flash into view while
+       the deferred intro.js loads. nvIntro(true) restores the full hub. -->
   <script>
     try {
       if (JSON.parse(localStorage.getItem('nv.intro') || 'false') !== true) {
-        document.documentElement.classList.add('nv-no-intro');
+        document.documentElement.classList.add('nv-splash');
       }
-    } catch (e) { document.documentElement.classList.add('nv-no-intro'); }
+    } catch (e) { document.documentElement.classList.add('nv-splash'); }
   </script>
   <style>
-    .nv-no-intro .intro { display: none !important; }
-    .nv-no-intro body.intro-locked { overflow: auto !important; }
+    .nv-splash .intro-tab,
+    .nv-splash .intro__enter,
+    .nv-splash .intro__tools { display: none !important; }
   </style>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1968,7 +1970,7 @@
   <script src="app.js?v=96" defer></script>
   <script src="bg.js?v=6" defer></script>
   <script src="fx.js?v=7" defer></script>
-  <script src="intro.js?v=14" defer></script>
+  <script src="intro.js?v=15" defer></script>
   <script src="gallery.js?v=8" defer></script>
   <script src="polish.js?v=3" defer></script>
   <script src="push.js?v=4" defer></script>
